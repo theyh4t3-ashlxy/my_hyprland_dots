@@ -4,48 +4,6 @@
 hl.env("XCURSOR_THEME", "breeze_cursors")
 hl.env("XCURSOR_SIZE", "24")
 
--- Settings
-hl.config({
-    animations = {
-        enabled = true,
-    },
-    decoration = {
-        blur = {
-            contrast = 0.9,
-            enabled = true,
-            ignore_opacity = true,
-            new_optimizations = true,
-            noise = 0.015,
-            passes = 2,
-            popups = false,
-            size = 4,
-            vibrancy = 0.15,
-            xray = false,
-        },
-        dim_inactive = false,
-        rounding = 16,
-        shadow = {
-            render_power = 4,
-        },
-    },
-    ecosystem = {
-        enforce_permissions = false,
-    },
-    input = {
-        touchpad = {
-            disable_while_typing = false,
-        },
-    },
-    misc = {
-        disable_splash_rendering = true,
-    },
-    xwayland = {
-        enabled = true,
-        force_zero_scaling = false,
-        use_nearest_neighbor = false,
-    },
-})
-
 -- Bezier curves
 hl.curve("superSnappy", { type = "bezier", points = { {0.1, 1.05}, {0.15, 1.05} } })
 

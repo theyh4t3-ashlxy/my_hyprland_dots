@@ -1,4 +1,3 @@
--- the "gimmethisrq" module
 -- autostart stuff that runs when hyprland starts
 
 local wp = "awww-daemon --format argb"

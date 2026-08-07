@@ -1,54 +1,68 @@
 -- i am not a keyboard, i am a piano
 
-local terminal = "kitty"
-local launcher = "qs ipc call launcher toggle"
-local browser = "firefox"
+-- because repeating "SUPER" 50 times makes me want to cry
+local mainMod = "SUPER"
+
+-- wait the wiki literally says "for the majority of users it's recommended to use hyprland without uwsm" because they think we are not "adventurous" enough but whatever we do what we want
+local terminal = "uwsm app -- kitty"
 
 -- open apps
-hl.bind("SUPER + T", hl.dsp.exec_cmd(terminal))
-hl.bind("SUPER + R", hl.dsp.exec_cmd(launcher))
-hl.bind("SUPER + B", hl.dsp.exec_cmd(browser))
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd(terminal))
 
 -- window management
-hl.bind("SUPER + Q", hl.dsp.window.close())
-hl.bind("SUPER + SHIFT + Q", hl.dsp.exec_cmd("hyprctl dispatch forcekillactive"))
-hl.bind("SUPER + F", hl.dsp.window.fullscreen())
-hl.bind("SUPER + SPACE", hl.dsp.window.float({ action = "toggle" }))
-hl.bind("SUPER + SHIFT + SPACE", hl.dsp.window.pin())
+hl.bind(mainMod .. " + Q", hl.dsp.window.close())
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
+hl.bind(mainMod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mainMod .. " + SHIFT + SPACE", function()
+    -- inside a function, dispatchers are literally just dumb tables that do nothing unless we wrap them in hl.dispatch() because why make things easy
+    hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
+    hl.dispatch(hl.dsp.window.pin())
+end)
 
--- exit hyprland gracefully
-hl.bind("SUPER + SHIFT + END", hl.dsp.exec_cmd("hyprshutdown"))
+-- we use uwsm btw, not the regular hyprland. vaxry hates me :[ (according to the wiki ofc)
+hl.bind(mainMod .. " + SHIFT + END", hl.dsp.exec_cmd("uwsm end"))
 
--- moving windows around (i-j-k-l gamer layout)
-hl.bind("SUPER + I", hl.dsp.focus({ direction = "up" }))
-hl.bind("SUPER + J", hl.dsp.focus({ direction = "left" }))
-hl.bind("SUPER + K", hl.dsp.focus({ direction = "down" }))
-hl.bind("SUPER + L", hl.dsp.focus({ direction = "right" }))
+-- moving windows around (because vim is for the linux nerds)
+hl.bind(mainMod .. " + I", hl.dsp.focus({ direction = "up" }))
+hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "down" }))
+hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
 
-hl.bind("SUPER + SHIFT + I", hl.dsp.window.move({ direction = "up" }))
-hl.bind("SUPER + SHIFT + J", hl.dsp.window.move({ direction = "left" }))
-hl.bind("SUPER + SHIFT + K", hl.dsp.window.move({ direction = "down" }))
-hl.bind("SUPER + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + I", hl.dsp.window.move({ direction = "up" }))
+hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "left" }))
+hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "down" }))
+hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
 
--- mouse controls
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
+-- mouse controls (wow u really use guis instead of being a elitist -_-)
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
--- media keys
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"))
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"))
+-- volume keys (f1 - f4)
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
+-- holding these actually does stuff now instead of giving you carpal tunnel
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
+
+-- brightness keys (f5 & f6)
+-- also holdable now so you can blind yourself instantly
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { locked = true, repeating = true })
+
+-- airplane mode / wifi toggle (f8)
+hl.bind("XF86WLAN", hl.dsp.exec_cmd("nmcli radio wifi toggle"), { locked = true })
 
 -- lock screen
 hl.bind("XF86Launch1", hl.dsp.exec_cmd("hyprlock"))
 
 -- screenshot
 hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region"))
-hl.bind("SUPER + Print", hl.dsp.exec_cmd("hyprshot -m window"))
+hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd("hyprshot -m window"))
 hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output"))
 
--- workspaces
+-- workspaces (i mean.. there is literally a + in my quickshell but i still use the windows key?)
 for i = 1, 9 do
     local ws = tostring(i)
-    hl.bind("SUPER + " .. i, hl.dsp.focus({ workspace = ws }))
-    hl.bind("SUPER + SHIFT + " .. i, hl.dsp.window.move({ workspace = ws }))
+    hl.bind(mainMod .. " + " .. i, hl.dsp.focus({ workspace = ws }))
+    hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = ws }))
 end

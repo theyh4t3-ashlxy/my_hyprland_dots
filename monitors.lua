@@ -12,7 +12,7 @@ hl.monitor({
     output = "phone",
     disabled = false,
     mode = "1560x720@60",
-    position = "auto-right", -- Automatically places it next to eDP-1 without overlapping
+    position = "auto-right",
     scale = 1,
     transform = 0,
     cm = "srgb",

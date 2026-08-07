@@ -1,10 +1,1 @@
--- window rules for apps that need special treatment
-
--- scrcpy: phone mirroring that doesn't look like ass
-hl.window_rule({
-	match = { class = "scrcpy" },
-	float = true,
-	size = { 480, 1040 },
-	center = true,
-	keep_aspect_ratio = true,
-})
+-- there is nothing here but i cant put a print() statement cuz hyprmod will literally throw a tantrum and be a soulless piece of grey
