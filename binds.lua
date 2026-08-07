@@ -42,7 +42,9 @@ hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURC
 hl.bind("XF86Launch1", hl.dsp.exec_cmd("hyprlock"))
 
 -- screenshot
-hl.bind("Print", hl.dsp.exec_cmd("grim"), { locked = true })
+hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region"))
+hl.bind("SUPER + Print", hl.dsp.exec_cmd("hyprshot -m window"))
+hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output"))
 
 -- workspaces
 for i = 1, 9 do

@@ -1,18 +1,20 @@
--- imagine using 1366x768 in 2026 man.. unless u have a chromebook, shit aint cutting it.
-
+-- Monitors
 hl.monitor({
     output = "eDP-1",
+    disabled = false,
     mode = "1920x1200@60",
     position = "0x0",
     scale = 1,
-    vrr = 1,
     cm = "srgb",
 })
 
--- for the dual monitor setups or when i actually decide to hook up to a tv
--- hl.monitor({
---     output = "HDMI-A-1",
---     mode = "preferred",
---     position = "auto-right",
---     scale = 1,
--- })
+hl.monitor({
+    output = "phone",
+    disabled = false,
+    mode = "1560x720@60",
+    position = "auto-right", -- Automatically places it next to eDP-1 without overlapping
+    scale = 1,
+    transform = 0,
+    cm = "srgb",
+    vrr = 0,
+})

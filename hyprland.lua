@@ -11,4 +11,4 @@ require("rules")
 require("gestures")    -- optional, delete if you don't use touchpad
 
 -- HyprMod managed settings
-require("hyprland-gui")
+require("hyprmod")
