@@ -4,6 +4,19 @@
 hl.env("XCURSOR_THEME", "breeze_cursors")
 hl.env("XCURSOR_SIZE", "24")
 
+-- Settings
+hl.config({
+    cursor = {
+        hide_on_key_press = false,
+        hide_on_tablet = true,
+        hide_on_touch = true,
+        inactive_timeout = 0.0,
+    },
+    general = {
+        layout = "dwindle",
+    },
+})
+
 -- Bezier curves
 hl.curve("superSnappy", { type = "bezier", points = { {0.1, 1.05}, {0.15, 1.05} } })
 
