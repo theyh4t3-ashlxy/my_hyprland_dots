@@ -18,8 +18,13 @@ if ok and type(user_colors) == "table" then
 	if user_colors.inactive_border then colors.inactive_border = user_colors.inactive_border end
 end
 
+-- cursor environment merged from hyprmod
+hl.env("XCURSOR_THEME", "breeze_cursors")
+hl.env("XCURSOR_SIZE", "24")
+
 hl.config({
 	general = {
+		layout = "dwindle",
 		-- gaps are just empty space for the soul to breathe (or to peek at our wallpaper)
 		gaps_out = 10,
 		border_size = 2,
@@ -37,6 +42,13 @@ hl.config({
 				angle = 0,
 			},
 		},
+	},
+
+	cursor = {
+		hide_on_key_press = false,
+		hide_on_tablet = true,
+		hide_on_touch = true,
+		inactive_timeout = 0.0,
 	},
 
 	animations = {
