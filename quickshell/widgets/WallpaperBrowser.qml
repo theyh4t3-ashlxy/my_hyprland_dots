@@ -439,13 +439,30 @@ Rectangle {
                     }
                 }
 
+                // Filtered local list
+                readonly property var filteredLocalWps: {
+                    let result = [];
+                    for (let i = 0; i < localWpModel.count; i++) {
+                        let item = localWpModel.get(i);
+                        let pMatch = root.localCategoryFilter === "all" || item.parentCategory === root.localCategoryFilter || item.category.indexOf(root.localCategoryFilter) !== -1;
+                        let subMatch = root.localSubCategoryFilter === "all" || item.subCategory === root.localSubCategoryFilter;
+                        let sQuery = root.localSearchQuery.trim();
+                        let searchMatch = sQuery === "" || item.name.toLowerCase().indexOf(sQuery) !== -1 || item.category.toLowerCase().indexOf(sQuery) !== -1;
+
+                        if (pMatch && subMatch && searchMatch) {
+                            result.push(item);
+                        }
+                    }
+                    return result;
+                }
+
                 // Category summary and roll-random banner
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
                     Text {
-                        text: (parent.filteredLocalWps.length) + " wallpapers"
+                        text: (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -493,23 +510,6 @@ Rectangle {
                             }
                         }
                     }
-                }
-
-                // Filtered local list
-                readonly property var filteredLocalWps: {
-                    let result = [];
-                    for (let i = 0; i < localWpModel.count; i++) {
-                        let item = localWpModel.get(i);
-                        let pMatch = root.localCategoryFilter === "all" || item.parentCategory === root.localCategoryFilter || item.category.indexOf(root.localCategoryFilter) !== -1;
-                        let subMatch = root.localSubCategoryFilter === "all" || item.subCategory === root.localSubCategoryFilter;
-                        let sQuery = root.localSearchQuery.trim();
-                        let searchMatch = sQuery === "" || item.name.toLowerCase().indexOf(sQuery) !== -1 || item.category.toLowerCase().indexOf(sQuery) !== -1;
-
-                        if (pMatch && subMatch && searchMatch) {
-                            result.push(item);
-                        }
-                    }
-                    return result;
                 }
 
                 GridView {
