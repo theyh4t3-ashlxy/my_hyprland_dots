@@ -30,14 +30,14 @@ for folder in "${FOLDERS[@]}"; do
         continue
     fi
 
-    # flatpak sandbox bwrap breaks if gtk-3.0 / gtk-4.0 are directory symlinks
+    # flatpak sandbox bwrap breaks if gtk-3.0 / gtk-4.0 or their internal files are external symlinks
     if [[ "$folder" == "gtk-3.0" || "$folder" == "gtk-4.0" ]]; then
         [[ -L "$target" ]] && rm -f "$target"
         mkdir -p "$target"
         for file in "$src"/*; do
-            [[ -f "$file" ]] && ln -sf "$file" "$target/"
+            [[ -f "$file" ]] && cp -f "$file" "$target/"
         done
-        echo "linked $folder files -> $target (flatpak bwrap safe)"
+        echo "synced $folder real files -> $target (flatpak sandbox safe)"
         continue
     fi
 
