@@ -15,8 +15,12 @@ Rectangle {
 
     property string activeTab: "local" // "local", "online", "theme"
     property string localCategoryFilter: "all"
+    property string localSubCategoryFilter: "all"
     property string localSearchQuery: ""
-    property string onlineQuery: ""
+    property string onlineQuery: "anime"
+    property string onlineSorting: "random"
+    property int onlinePage: 1
+    property bool isOnlineLoading: false
 
     ListModel {
         id: localWpModel
@@ -49,12 +53,21 @@ Rectangle {
         }
     }
 
-    function fetchWallhaven(query) {
+    function fetchWallhaven(query, sort, page) {
+        root.isOnlineLoading = true
         let req = new XMLHttpRequest()
         let q = query && query.trim() !== "" ? query.trim() : "anime"
-        req.open("GET", "https://wallhaven.cc/api/v1/search?q=" + encodeURIComponent(q) + "&sorting=random")
+        let s = sort || root.onlineSorting || "random"
+        let p = page || 1
+        root.onlineQuery = q
+        root.onlineSorting = s
+        root.onlinePage = p
+
+        let url = "https://wallhaven.cc/api/v1/search?q=" + encodeURIComponent(q) + "&sorting=" + encodeURIComponent(s) + "&page=" + p
+        req.open("GET", url)
         req.onreadystatechange = function() {
             if (req.readyState === XMLHttpRequest.DONE) {
+                root.isOnlineLoading = false
                 if (req.status === 200) {
                     try {
                         let data = JSON.parse(req.responseText).data
@@ -98,7 +111,7 @@ Rectangle {
             if (popup.open) {
                 reloadLocalWallpapers()
                 if (onlineWpModel.count === 0) {
-                    fetchWallhaven("anime")
+                    fetchWallhaven(root.onlineQuery, root.onlineSorting, 1)
                 }
             }
         }
@@ -106,14 +119,14 @@ Rectangle {
 
     PopupPanel {
         id: popup
-        cardWidth: 440
-        cardHeight: 600
+        cardWidth: 480
+        cardHeight: 640
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 
-            // header tabs
+            // header tabs + actions
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
@@ -187,7 +200,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             root.activeTab = "online"
-                            if (onlineWpModel.count === 0) fetchWallhaven("anime")
+                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage)
                         }
                     }
                 }
@@ -226,13 +239,30 @@ Rectangle {
                     }
                 }
 
+                // Random roll button
+                IconButton {
+                    icon: "󰒝"
+                    iconSize: Theme.fontSizeSm
+                    tooltip: "roll random wallpaper"
+                    onClicked: {
+                        let activeCat = "all"
+                        if (root.localCategoryFilter !== "all") {
+                            activeCat = root.localCategoryFilter
+                            if (root.localSubCategoryFilter !== "all") {
+                                activeCat = root.localCategoryFilter + "/" + root.localSubCategoryFilter
+                            }
+                        }
+                        WallpaperService.applyRandomWallpaper(activeCat)
+                    }
+                }
+
                 IconButton {
                     icon: Theme.iconRefresh
                     iconSize: Theme.fontSizeSm
                     tooltip: "rescan"
                     onClicked: {
                         if (root.activeTab === "local") reloadLocalWallpapers()
-                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text)
+                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage)
                         else WallpaperService.reapplyTheme()
                     }
                 }
@@ -246,6 +276,7 @@ Rectangle {
 
             // === LOCAL TAB VIEW ===
             ColumnLayout {
+                id: localView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.activeTab === "local"
@@ -287,7 +318,18 @@ Rectangle {
                     }
                 }
 
-                // Category Chips
+                // Top-Level Category Chips
+                readonly property var uniqueParentCategories: {
+                    let cats = ["all"];
+                    for (let i = 0; i < localWpModel.count; i++) {
+                        let pCat = localWpModel.get(i).parentCategory || "root";
+                        if (pCat && cats.indexOf(pCat) === -1) {
+                            cats.push(pCat);
+                        }
+                    }
+                    return cats;
+                }
+
                 Flickable {
                     Layout.fillWidth: true
                     height: 28
@@ -300,7 +342,7 @@ Rectangle {
                         spacing: 6
 
                         Repeater {
-                            model: ["all", "hyprland", "wallhaven", "windows", "random"]
+                            model: localView.uniqueParentCategories
 
                             delegate: Rectangle {
                                 required property string modelData
@@ -322,21 +364,150 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.localCategoryFilter = modelData
+                                    onClicked: {
+                                        root.localCategoryFilter = modelData
+                                        root.localSubCategoryFilter = "all"
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // filtered model so gridview doesnt leave ghost gaps
+                // Nested Subcategory Chips (when selected category has subfolders)
+                readonly property var uniqueSubCategories: {
+                    if (root.localCategoryFilter === "all") return [];
+                    let subs = ["all"];
+                    for (let i = 0; i < localWpModel.count; i++) {
+                        let item = localWpModel.get(i);
+                        if (item.parentCategory === root.localCategoryFilter && item.subCategory && item.subCategory !== "") {
+                            if (subs.indexOf(item.subCategory) === -1) {
+                                subs.push(item.subCategory);
+                            }
+                        }
+                    }
+                    return subs.length > 1 ? subs : [];
+                }
+
+                Flickable {
+                    Layout.fillWidth: true
+                    height: 26
+                    visible: localView.uniqueSubCategories.length > 0
+                    contentWidth: subCatRow.width
+                    flickableDirection: Flickable.HorizontalFlick
+                    clip: true
+
+                    RowLayout {
+                        id: subCatRow
+                        spacing: 6
+
+                        Text {
+                            text: "󰉋 subfolder:"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            color: Theme.on_surface_variant
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        Repeater {
+                            model: localView.uniqueSubCategories
+
+                            delegate: Rectangle {
+                                required property string modelData
+                                height: 22
+                                width: subCatText.implicitWidth + 14
+                                radius: Theme.radiusPill
+                                color: root.localSubCategoryFilter === modelData ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    id: subCatText
+                                    text: modelData
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: root.localSubCategoryFilter === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.localSubCategoryFilter = modelData
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Category summary and roll-random banner
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: (parent.filteredLocalWps.length) + " wallpapers"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        height: 24
+                        width: rollText.implicitWidth + 18
+                        radius: Theme.radiusPill
+                        color: Theme.surface_container_highest
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            Text {
+                                text: "󰒝"
+                                font.family: Theme.fontMono
+                                font.pixelSize: 10
+                                color: Theme.primary
+                            }
+                            Text {
+                                id: rollText
+                                text: "random from here"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                font.weight: Font.Medium
+                                color: Theme.on_surface
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                let cat = "all"
+                                if (root.localCategoryFilter !== "all") {
+                                    cat = root.localCategoryFilter
+                                    if (root.localSubCategoryFilter !== "all") {
+                                        cat = root.localCategoryFilter + "/" + root.localSubCategoryFilter
+                                    }
+                                }
+                                WallpaperService.applyRandomWallpaper(cat)
+                            }
+                        }
+                    }
+                }
+
+                // Filtered local list
                 readonly property var filteredLocalWps: {
                     let result = [];
                     for (let i = 0; i < localWpModel.count; i++) {
                         let item = localWpModel.get(i);
-                        let catMatch = root.localCategoryFilter === "all" || item.category.toLowerCase().indexOf(root.localCategoryFilter) !== -1;
-                        let searchMatch = root.localSearchQuery === "" || item.name.toLowerCase().indexOf(root.localSearchQuery) !== -1;
-                        if (catMatch && searchMatch) result.push(item);
+                        let pMatch = root.localCategoryFilter === "all" || item.parentCategory === root.localCategoryFilter || item.category.indexOf(root.localCategoryFilter) !== -1;
+                        let subMatch = root.localSubCategoryFilter === "all" || item.subCategory === root.localSubCategoryFilter;
+                        let sQuery = root.localSearchQuery.trim();
+                        let searchMatch = sQuery === "" || item.name.toLowerCase().indexOf(sQuery) !== -1 || item.category.toLowerCase().indexOf(sQuery) !== -1;
+
+                        if (pMatch && subMatch && searchMatch) {
+                            result.push(item);
+                        }
                     }
                     return result;
                 }
@@ -432,7 +603,7 @@ Rectangle {
                 }
             }
 
-            // === ONLINE TAB VIEW ===
+            // === ONLINE TAB VIEW (WALLHAVEN) ===
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -470,11 +641,11 @@ Rectangle {
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface
-                            text: "anime"
+                            text: root.onlineQuery
 
                             Keys.onPressed: (event) => {
                                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    fetchWallhaven(text)
+                                    fetchWallhaven(text, root.onlineSorting, 1)
                                     event.accepted = true
                                 }
                             }
@@ -483,7 +654,164 @@ Rectangle {
                         IconButton {
                             icon: Theme.iconSearch
                             iconSize: Theme.fontSizeSm
-                            onClicked: fetchWallhaven(onlineInput.text)
+                            onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1)
+                        }
+                    }
+                }
+
+                // Preset Tag Chips
+                Flickable {
+                    Layout.fillWidth: true
+                    height: 26
+                    contentWidth: tagRow.width
+                    flickableDirection: Flickable.HorizontalFlick
+                    clip: true
+
+                    RowLayout {
+                        id: tagRow
+                        spacing: 6
+
+                        Repeater {
+                            model: ["anime", "cyberpunk", "landscape", "minimalist", "dark", "pixel art", "space", "nature"]
+
+                            delegate: Rectangle {
+                                required property string modelData
+                                height: 24
+                                width: tagText.implicitWidth + 14
+                                radius: Theme.radiusPill
+                                color: root.onlineQuery === modelData ? Theme.primary : Theme.surface_container_high
+
+                                Text {
+                                    id: tagText
+                                    text: modelData
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: root.onlineQuery === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        onlineInput.text = modelData
+                                        fetchWallhaven(modelData, root.onlineSorting, 1)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sorting + Pagination Bar
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    // Sorting chips
+                    Repeater {
+                        model: [
+                            { label: "random", val: "random" },
+                            { label: "toplist", val: "toplist" },
+                            { label: "views", val: "views" },
+                            { label: "latest", val: "date_added" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            height: 24
+                            width: sortText.implicitWidth + 12
+                            radius: Theme.radiusSm
+                            color: root.onlineSorting === modelData.val ? Theme.primary : Theme.surface_container_highest
+
+                            Text {
+                                id: sortText
+                                text: modelData.label
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                color: root.onlineSorting === modelData.val ? Theme.on_primary : Theme.on_surface
+                                anchors.centerIn: parent
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    fetchWallhaven(onlineInput.text, modelData.val, 1)
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // Left/Right pagination controls
+                    Rectangle {
+                        height: 24
+                        width: 28
+                        radius: Theme.radiusSm
+                        color: root.onlinePage > 1 ? Theme.surface_container_highest : Theme.surface_container_low
+                        opacity: root.onlinePage > 1 ? 1.0 : 0.4
+
+                        Text {
+                            text: "◀"
+                            font.family: Theme.fontMono
+                            font.pixelSize: 10
+                            color: Theme.on_surface
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: root.onlinePage > 1 && !root.isOnlineLoading
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: {
+                                if (root.onlinePage > 1) {
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1)
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 24
+                        width: pageText.implicitWidth + 12
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_high
+
+                        Text {
+                            id: pageText
+                            text: "p. " + root.onlinePage
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Theme.primary
+                            anchors.centerIn: parent
+                        }
+                    }
+
+                    Rectangle {
+                        height: 24
+                        width: 28
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+
+                        Text {
+                            text: "▶"
+                            font.family: Theme.fontMono
+                            font.pixelSize: 10
+                            color: Theme.on_surface
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: !root.isOnlineLoading
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1)
+                            }
                         }
                     }
                 }
@@ -497,6 +825,7 @@ Rectangle {
                     cellWidth: width / 2
                     cellHeight: cellWidth * 0.65
                     model: onlineWpModel
+                    visible: !root.isOnlineLoading && onlineWpModel.count > 0
 
                     delegate: Item {
                         required property string thumbUrl
@@ -556,10 +885,10 @@ Rectangle {
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: onlineWpModel.count === 0
+                    visible: root.isOnlineLoading || onlineWpModel.count === 0
 
                     Text {
-                        text: Theme.kaoLoading + "\nfetching wallpapers from wallhaven..."
+                        text: root.isOnlineLoading ? (Theme.kaoLoading + "\nfetching wallpapers from wallhaven...") : "no wallpapers found"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMd
                         color: Theme.on_surface_variant

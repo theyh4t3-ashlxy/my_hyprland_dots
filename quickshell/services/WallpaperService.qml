@@ -53,6 +53,20 @@ QtObject {
         Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme])
     }
 
+    function applyRandomWallpaper(category) {
+        let cat = category ?? "all"
+        let tType = Settings.awwwTransitionType ?? "wipe"
+        let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
+        let tStep = "" + (Settings.awwwTransitionStep ?? 90)
+        let tDur = "" + (Settings.awwwTransitionDuration ?? 3)
+        let tFps = "" + (Settings.awwwTransitionFps ?? 60)
+        let tFilter = Settings.awwwFilter ?? "Lanczos3"
+        let mode = currentMode ?? "dark"
+        let scheme = currentSchemeType ?? "scheme-tonal-spot"
+
+        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme])
+    }
+
     function setWallpaper(url) {
         let tType = Settings.awwwTransitionType ?? "wipe"
         let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)

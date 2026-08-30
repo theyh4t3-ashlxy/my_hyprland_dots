@@ -11,6 +11,49 @@ case "$action" in
         python3 "$SCRIPT_DIR/scan_wallpapers.py"
         ;;
 
+    random)
+        filter_cat="${2:-all}"
+        transition="${3:-wipe}"
+        angle="${4:-30}"
+        step="${5:-90}"
+        duration="${6:-3}"
+        fps="${7:-60}"
+        filt="${8:-Lanczos3}"
+        mode="${9:-dark}"
+        scheme="${10:-scheme-tonal-spot}"
+
+        python3 "$SCRIPT_DIR/scan_wallpapers.py"
+        selected_wp=$(python3 -c '
+import json, random, sys
+cat = sys.argv[1].lower() if len(sys.argv) > 1 else "all"
+try:
+    with open("/tmp/qs_wallpapers.json") as f:
+        wps = json.load(f)
+    if cat != "all" and cat != "":
+        filtered = [w["path"] for w in wps if cat in w["category"].lower() or cat in w["parentCategory"].lower() or cat in w["subCategory"].lower()]
+        if filtered:
+            print(random.choice(filtered))
+            sys.exit(0)
+    if wps:
+        print(random.choice([w["path"] for w in wps]))
+except Exception:
+    pass
+' "$filter_cat")
+
+        if [[ -n "$selected_wp" && -f "$selected_wp" ]]; then
+            echo "$selected_wp" > "$CUR_WP_FILE"
+            awww img "$selected_wp" \
+                --transition-type "$transition" \
+                --transition-angle "$angle" \
+                --transition-step "$step" \
+                --transition-duration "$duration" \
+                --transition-fps "$fps" \
+                --filter "$filt" 2>/dev/null || true
+
+            matugen image "$selected_wp" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+        fi
+        ;;
+
     download)
         shift
         python3 "$SCRIPT_DIR/download_wallpaper.py" "$@"

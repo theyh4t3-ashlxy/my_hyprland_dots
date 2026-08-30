@@ -60,6 +60,9 @@ hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region"))
 hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd("hyprshot -m window"))
 hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output"))
 
+-- roll random wallpaper on the fly
+hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.config/quickshell/scripts/wallpaper.sh random all"))
+
 -- workspaces (i mean.. there is literally a + in my quickshell but i still use the windows key?)
 for i = 1, 9 do
     local ws = tostring(i)
