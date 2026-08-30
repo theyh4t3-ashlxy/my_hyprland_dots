@@ -1,5 +1,4 @@
-# --- prompt layout & visual style ---
-
+# dynamic prompt fueled purely by wallpaper color juice
 autoload -U add-zsh-hook
 setopt PROMPT_SUBST
 

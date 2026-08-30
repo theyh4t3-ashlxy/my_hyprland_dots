@@ -1,26 +1,26 @@
-# --- Zsh Options ---
-setopt AUTO_CD              # Just type a directory name to cd into it
-setopt INTERACTIVE_COMMENTS # Allow comments starting with '#' in the command line
-setopt NO_BEEP              # Turn off that annoying terminal bell
-setopt GLOB_COMPLETE        # Show autocompletes for globs
-setopt MENU_COMPLETE        # Auto-select the first option in the completion menu
+# making zsh stop acting like it was born in 1989
+setopt AUTO_CD              # typing cd every 3 seconds is for cavemen
+setopt INTERACTIVE_COMMENTS # paste broken snippets with # without terminal screaming
+setopt NO_BEEP              # if my pc beeps at me one more time im throwing it out the window
+setopt GLOB_COMPLETE        # auto-expand globs
+setopt MENU_COMPLETE        # pick the first autocomplete option immediately
 
-# --- History Configuration ---
+# remembering the 50000 mistakes ive made in terminal
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
 
-setopt HIST_IGNORE_ALL_DUPS # Don't record duplicate commands
-setopt HIST_REDUCE_BLANKS   # Remove superfluous blanks before recording
-setopt SHARE_HISTORY        # Share command history instantly across all open tabs
-setopt HIST_VERIFY          # Show history command before executing (like !!)
+setopt HIST_IGNORE_ALL_DUPS # stop recording the 40 times i spammed ls in 2 seconds
+setopt HIST_REDUCE_BLANKS   # trim useless whitespace before saving
+setopt SHARE_HISTORY        # telepathically sync my bad decisions across tabs
+setopt HIST_VERIFY          # show history command before executing
 
-# --- completion engine with colored category headers ---
+# completion drip so i dont have to memorize flags
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 zstyle ':completion:*' rehash true
 
-# group completion results by category with colored headers
+# category headers styled with matugen accents
 zstyle ':completion:*:*:*:*:descriptions' format '%F{cyan}󰅂 %d%f'
 zstyle ':completion:*:messages' format '%F{yellow}󰅂 %d%f'
 zstyle ':completion:*:warnings' format '%F{red}󰅂 no matches found: %d%f'
@@ -30,10 +30,10 @@ zstyle ':completion:*' group-name ''
 # colorize completion entries using ls colors
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
-# case-insensitive + partial word + substring matching
+# case-insensitive + typo correction so i dont cry when typing fast
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|='
 
-# enable interactive selection menu with arrow keys & ijkl motion
+# ijkl because hjkl is an actual war crime
 zstyle ':completion:*' menu select
 zmodload zsh/complist
 bindkey -M menuselect 'i' up-line-or-history
@@ -42,11 +42,11 @@ bindkey -M menuselect 'j' backward-char
 bindkey -M menuselect 'l' forward-char
 bindkey -M menuselect '^[[Z' reverse-menu-complete
 
-# process list formatting for kill
+# process list formatting so kill is interactive
 zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,%cpu,%mem,command -w"
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 
-# Initialize completion system (checks cache to avoid slowing down shell startup)
+# cache compdump so opening tabs doesn't lag
 autoload -Uz compinit
 if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.m-1) ]]; then
     compinit -C
@@ -54,20 +54,19 @@ else
     compinit
 fi
 
-# --- Keyboard Bindings (Emacs style with modern terminal fixes) ---
+# keys that actually work when i press them
 bindkey -e
 
-# Fix standard keys (Home, End, Delete, Backspace)
-bindkey '^[[H'  beginning-of-line      # Home
-bindkey '^[[F'  end-of-line            # End
-bindkey '^[[3~' delete-char            # Delete
-bindkey '^?'    backward-delete-char   # Backspace
+bindkey '^[[H'  beginning-of-line      # home
+bindkey '^[[F'  end-of-line            # end
+bindkey '^[[3~' delete-char            # delete
+bindkey '^?'    backward-delete-char   # backspace
 
-# Word skipping with Ctrl + Left / Right
-bindkey '^[[1;5D' backward-word        # Ctrl+Left
-bindkey '^[[1;5C' forward-word         # Ctrl+Right
+# ctrl + left/right to skip words at lightspeed
+bindkey '^[[1;5D' backward-word
+bindkey '^[[1;5C' forward-word
 
-# Command-line editing in $EDITOR with 'Ctrl + X, Ctrl + E'
+# emergency ctrl+x ctrl+e escape hatch into micro
 autoload -z edit-command-line
 zle -N edit-command-line
 bindkey "^X^E" edit-command-line

@@ -1,19 +1,17 @@
-# --- Everyday Shortcuts (aliases.zsh) ---
-
-# 1. Fast Arch System Maintenance
+# shortcuts because my fingers are lazy
 alias p="paru"
 alias update="paru -Syu"
 alias install="paru -S"
 alias remove="paru -Rns"
-alias cleanup="paru -Rns \$(paru -Qtdq)" # Instantly purge orphaned packages
+alias cleanup="paru -Rns \$(paru -Qtdq)" # purge orphaned packages before disk cries
 
-# 2. Micro Editor Shortcut
+# text editor escape hatch
 alias mc="micro"
 
-# 3. GUI Nautilus Shortcut (Opens Nautilus in the current folder)
+# launch nautilus without it hijacking stdout
 alias fm="nautilus . >/dev/null 2>&1 &"
 
-# 4. Yazi CLI File Manager with auto-cd wrapper
+# yazi wrapper so exiting drops me in the current folder
 yz() {
     local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
     yazi "$@" --cwd-file="$tmp"
@@ -23,7 +21,7 @@ yz() {
     rm -f -- "$tmp"
 }
 
-# 5. Git & Github Shortcuts (featuring Lazygit)
+# git shortcuts so i can commit crimes faster
 if (( $+commands[lazygit] )); then
     alias lg="lazygit"
 fi
@@ -33,26 +31,26 @@ alias gp="git push"
 alias gc="git commit -m"
 alias ga="git add"
 
-# 6. Rice Utilities
-alias color="hyprpicker -a" # Grabs hex color from screen and copies to clipboard
+# steal color hex off screen
+alias color="hyprpicker -a"
 
-# 7. Suffix Aliases (typing a file name opens directly in editor)
+# type file name to edit it directly
 alias -s {qml,lua,conf,toml,json,zsh,sh,css,md,txt,yaml,yml}=${EDITOR:-micro}
 
-# 8. Global Pipe Aliases (e.g. pacman -Q G hypr)
+# pipe magic
 alias -g G='| grep -i'
 alias -g L='| less'
 alias -g F='| fzf'
 alias -g B='| bat'
 
-# 9. Fast Navigation
+# fast jumps
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 alias .....='cd ../../../..'
 alias -- -='cd -'
 
-# 10. Named Directory Bookmarks (~dots, ~hypr, ~qs, ~wp)
+# directory warps
 hash -d dots="$HOME/my-hyprland-dots"
 hash -d hypr="$HOME/my-hyprland-dots/hypr"
 hash -d qs="$HOME/my-hyprland-dots/quickshell"

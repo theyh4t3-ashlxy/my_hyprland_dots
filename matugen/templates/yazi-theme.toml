@@ -101,24 +101,24 @@ title_info  = { fg = "{{colors.primary.default.hex}}" }
 title_warn  = { fg = "{{colors.secondary.default.hex}}" }
 title_error = { fg = "{{colors.error.default.hex}}" }
 
-# --- Override Yazi's hardcoded blue folder/text colors ---
+# yazi colors recolored from wallpaper
 [filetype]
 rules = [
-    # Directories (Fixed: Swapped mime rule to native Yazi 'is = "dir"' key!)
+    # directories that dont use default blue
     { url = "*/", fg = "{{colors.primary.default.hex}}", bold = true },
 
-    # Media and Documents
+    # media and documents
     { mime = "image/*", fg = "{{colors.tertiary.default.hex}}" },
     { mime = "video/*", fg = "{{colors.tertiary.default.hex}}" },
     { mime = "audio/*", fg = "{{colors.tertiary.default.hex}}" },
     { mime = "application/{tar,g-tar,bzip*,gzip,zip,compress*,7z*,rar}", fg = "{{colors.secondary.default.hex}}" },
     { mime = "application/pdf", fg = "{{colors.secondary.default.hex}}" },
 
-    # Fallback text
+    # fallback text
     { url = "*", fg = "{{colors.on_surface.default.hex}}" }
 ]
 
-# --- Dynamic Matugen Folder Icons ---
+# custom folder icons
 [icon]
 prepend_dirs = [
     { name = "Desktop",   text = "", fg = "{{colors.primary.default.hex}}" },
@@ -130,6 +130,5 @@ prepend_dirs = [
     { name = "Projects",  text = "", fg = "{{colors.primary.default.hex}}" },
     { name = "Public",    text = "", fg = "{{colors.primary.default.hex}}" },
     { name = "Templates", text = "", fg = "{{colors.primary.default.hex}}" },
-    # Fallback standard folder icon for any other custom directory
     { name = "*",         text = "", fg = "{{colors.primary.default.hex}}" }
 ]

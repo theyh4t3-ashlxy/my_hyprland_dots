@@ -1,26 +1,21 @@
-# --- Modern CLI Tool Overrides (tools.zsh) ---
-
-# 1. Zoxide (Smart directory jumper, replaces 'cd' with 'z')
+# modern tools that replaced ancient gnu relics
 if (( $+commands[zoxide] )); then
     eval "$(zoxide init zsh)"
-    alias cd="z"
+    alias cd="z" # teleports me across the filesystem before my brain finishes loading
 fi
 
-# 2. Eza (Beautiful, colorful 'ls' replacement with Nerdfont icons)
 if (( $+commands[eza] )); then
-    alias ls="eza --color=always --group-directories-first --icons"
+    alias ls="eza --color=always --group-directories-first --icons" # ls with icons because aesthetics > everything
     alias la="eza -a --color=always --group-directories-first --icons"
     alias ll="eza -l --color=always --group-directories-first --icons"
-    alias lt="eza --tree --level=2 --icons" # Shows directory tree 2 levels deep
+    alias lt="eza --tree --level=2 --icons"
 fi
 
-# 3. Bat (Better 'cat' with syntax highlighting and line numbers)
 if (( $+commands[bat] )); then
-    alias cat="bat --style=plain"
-    alias preview="bat" # Keeps full formatting/git gutters
+    alias cat="bat --style=plain" # cat with syntax highlighting so i can actually read
+    alias preview="bat"
 fi
 
-# 4. FZF shell integrations & preview bindings
 if (( $+commands[fzf] )); then
     eval "$(fzf --zsh 2>/dev/null || fzf --shell=zsh 2>/dev/null || true)"
     export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :50 {} 2>/dev/null || eza --tree --level=2 --icons {} 2>/dev/null || head -200 {}' --bind 'ctrl-/:toggle-preview'"

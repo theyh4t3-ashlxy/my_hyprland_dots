@@ -1,22 +1,20 @@
-# --- System Editor & Defaults ---
+# micro because vim trapped me for 4 hours once
 export EDITOR="micro"
 export VISUAL="micro"
 export PAGER="less"
 export LANG="en_US.UTF-8"
 
-# --- Cleaner less/PAGER behavior ---
-# -R: Colors, -F: Exit if one screen, -X: Keep screen contents, -i: Case-insensitive search
+# less that doesnt leave ghost text all over my screen
 export LESS="-R -F -X -i"
 
-# --- XDG Base Directory Specification (keeps your home directory clean) ---
+# stop dumping garbage in my home folder challenge (impossible)
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 
-# --- PATH Adjustments ---
-# Construct PATH safely, checking if directories exist before adding them
-typeset -U path # Keep only unique paths
+# where the binaries live
+typeset -U path
 path=(
     "$HOME/.local/bin"
     "$HOME/bin"
