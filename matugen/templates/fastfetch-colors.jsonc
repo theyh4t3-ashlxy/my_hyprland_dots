@@ -1,0 +1,50 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "display": {
+    "color": {
+      "title": "38;2;{{ colors.primary.default.red }};{{ colors.primary.default.green }};{{ colors.primary.default.blue }}",
+      "keys": "38;2;{{ colors.secondary.default.red }};{{ colors.secondary.default.green }};{{ colors.secondary.default.blue }}",
+      "separator": "38;2;{{ colors.outline_variant.default.red }};{{ colors.outline_variant.default.green }};{{ colors.outline_variant.default.blue }}",
+      "output": "38;2;{{ colors.on_surface_variant.default.red }};{{ colors.on_surface_variant.default.green }};{{ colors.on_surface_variant.default.blue }}"
+    },
+    "separator": " 󰅂 ",
+    "key": {
+      "width": 14
+    }
+  },
+  "logo": {
+    "source": "auto",
+    "color": {
+      "1": "38;2;{{ colors.primary.default.red }};{{ colors.primary.default.green }};{{ colors.primary.default.blue }}",
+      "2": "38;2;{{ colors.secondary.default.red }};{{ colors.secondary.default.green }};{{ colors.secondary.default.blue }}",
+      "3": "38;2;{{ colors.tertiary.default.red }};{{ colors.tertiary.default.green }};{{ colors.tertiary.default.blue }}",
+      "4": "38;2;{{ colors.primary_container.default.red }};{{ colors.primary_container.default.green }};{{ colors.primary_container.default.blue }}",
+      "5": "38;2;{{ colors.secondary_container.default.red }};{{ colors.secondary_container.default.green }};{{ colors.secondary_container.default.blue }}",
+      "6": "38;2;{{ colors.tertiary_container.default.red }};{{ colors.tertiary_container.default.green }};{{ colors.tertiary_container.default.blue }}",
+      "7": "38;2;{{ colors.surface_variant.default.red }};{{ colors.surface_variant.default.green }};{{ colors.surface_variant.default.blue }}",
+      "8": "38;2;{{ colors.surface_container_high.default.red }};{{ colors.surface_container_high.default.green }};{{ colors.surface_container_high.default.blue }}",
+      "9": "38;2;{{ colors.outline.default.red }};{{ colors.outline.default.green }};{{ colors.outline.default.blue }}"
+    },
+    "padding": {
+      "right": 4
+    }
+  },
+  "modules": [
+    { "type": "title" },
+    "separator",
+    { "type": "os", "key": " os" },
+    { "type": "host", "key": "󰌢 host", "format": "{version}" },
+    { "type": "kernel", "key": "󰌽 kernel" },
+    { "type": "uptime", "key": "󰅐 uptime" },
+    { "type": "packages", "key": "󰏖 pkgs" },
+    { "type": "shell", "key": "󰞷 shell" },
+    { "type": "wm", "key": "󱂬 wm" },
+    { "type": "terminal", "key": "󰞍 term" },
+    { "type": "cpu", "key": "󰍛 cpu" },
+    { "type": "memory", "key": "󰘚 mem" },
+    { "type": "disk", "key": "󰋊 disk" },
+    { "type": "battery", "key": "󰂄 bat", "format": "{capacity} [{status}]" },
+    "break",
+    { "type": "colors", "symbol": "circle" }
+  ]
+}

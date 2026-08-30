@@ -1,0 +1,17 @@
+# dynamic wallpaper outputs (rebuilt by matugen on wallpaper switch)
+hypr/colors.lua
+kitty/colors.conf
+fastfetch/config.jsonc
+zsh/matugen.zsh
+gtk-3.0/colors.css
+gtk-4.0/colors.css
+quickshell/Theme.qml
+quickshell/palette.css
+yazi/theme.toml
+
+# runtime state & caches
+quickshell/launcher-frecency.json
+*.log
+*.tmp
+*.bak
+.DS_Store

@@ -1,0 +1,38 @@
+module quickshell
+# singletons
+singleton Theme          Theme.qml
+singleton Settings       services/Settings.qml
+singleton WallpaperService services/WallpaperService.qml
+singleton NetworkService   services/NetworkService.qml
+
+# bar & corners
+StatusBar                bar/StatusBar.qml
+ScreenCorners            corners/ScreenCorners.qml
+ConcaveCorner            corners/ConcaveCorner.qml
+
+# controls
+IconButton               controls/IconButton.qml
+ToggleSwitch             controls/ToggleSwitch.qml
+PopupPanel               controls/PopupPanel.qml
+FlickList                controls/FlickList.qml
+BarPreview               controls/BarPreview.qml
+
+# widgets
+Workspaces               widgets/Workspaces.qml
+WindowTitle              widgets/WindowTitle.qml
+Clock                    widgets/Clock.qml
+Battery                  widgets/Battery.qml
+SystemTray               widgets/SystemTray.qml
+VolumeControl            widgets/VolumeControl.qml
+AppLauncher              widgets/AppLauncher.qml
+WallpaperBrowser         widgets/WallpaperBrowser.qml
+Notifications            widgets/Notifications.qml
+NowPlaying               widgets/NowPlaying.qml
+PowerMenu                widgets/PowerMenu.qml
+IdleInhibitor            widgets/IdleInhibitor.qml
+NetworkStatus            widgets/NetworkStatus.qml
+NetworkPopup             widgets/NetworkPopup.qml
+NetworkEntry             widgets/NetworkEntry.qml
+Bluetooth                widgets/Bluetooth.qml
+Clipboard                widgets/Clipboard.qml
+QuickSettings            widgets/QuickSettings.qml
