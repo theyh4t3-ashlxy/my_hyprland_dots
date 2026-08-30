@@ -35,3 +35,25 @@ alias ga="git add"
 
 # 6. Rice Utilities
 alias color="hyprpicker -a" # Grabs hex color from screen and copies to clipboard
+
+# 7. Suffix Aliases (typing a file name opens directly in editor)
+alias -s {qml,lua,conf,toml,json,zsh,sh,css,md,txt,yaml,yml}=${EDITOR:-micro}
+
+# 8. Global Pipe Aliases (e.g. pacman -Q G hypr)
+alias -g G='| grep -i'
+alias -g L='| less'
+alias -g F='| fzf'
+alias -g B='| bat'
+
+# 9. Fast Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias -- -='cd -'
+
+# 10. Named Directory Bookmarks (~dots, ~hypr, ~qs, ~wp)
+hash -d dots="$HOME/my-hyprland-dots"
+hash -d hypr="$HOME/my-hyprland-dots/hypr"
+hash -d qs="$HOME/my-hyprland-dots/quickshell"
+hash -d wp="$HOME/.wallpapers"

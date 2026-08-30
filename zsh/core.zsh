@@ -15,16 +15,36 @@ setopt HIST_REDUCE_BLANKS   # Remove superfluous blanks before recording
 setopt SHARE_HISTORY        # Share command history instantly across all open tabs
 setopt HIST_VERIFY          # Show history command before executing (like !!)
 
-# --- Fast Autocomplete & Menu Selection ---
-# Cache completions for a massive speedup
+# --- completion engine with colored category headers ---
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+zstyle ':completion:*' rehash true
 
-# Enable interactive selection menu with arrow keys
-zstyle ':completion:*' menu select
+# group completion results by category with colored headers
+zstyle ':completion:*:*:*:*:descriptions' format '%F{cyan}󰅂 %d%f'
+zstyle ':completion:*:messages' format '%F{yellow}󰅂 %d%f'
+zstyle ':completion:*:warnings' format '%F{red}󰅂 no matches found: %d%f'
+zstyle ':completion:*:corrections' format '%F{green}󰅂 %d (errors: %e)%f'
+zstyle ':completion:*' group-name ''
 
-# Case-insensitive autocomplete (typing 'g' matches 'Git', etc.)
+# colorize completion entries using ls colors
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# case-insensitive + partial word + substring matching
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|='
+
+# enable interactive selection menu with arrow keys & vim motion
+zstyle ':completion:*' menu select
+zmodload zsh/complist
+bindkey -M menuselect 'h' backward-char
+bindkey -M menuselect 'k' up-line-or-history
+bindkey -M menuselect 'l' forward-char
+bindkey -M menuselect 'j' down-line-or-history
+bindkey -M menuselect '^[[Z' reverse-menu-complete
+
+# process list formatting for kill
+zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,%cpu,%mem,command -w"
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 
 # Initialize completion system (checks cache to avoid slowing down shell startup)
 autoload -Uz compinit

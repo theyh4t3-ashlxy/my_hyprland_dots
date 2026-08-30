@@ -77,6 +77,31 @@ set_prompt_qol() {
 }
 add-zsh-hook precmd set_prompt_qol
 
+# Execution duration timer for commands taking >= 1s
+_cmd_timer_start() {
+    _CMD_START_TIME=$SECONDS
+}
+add-zsh-hook preexec _cmd_timer_start
+
+_cmd_timer_stop() {
+    if [[ -n "$_CMD_START_TIME" ]]; then
+        local elapsed=$(( SECONDS - _CMD_START_TIME ))
+        unset _CMD_START_TIME
+        if (( elapsed >= 1 )); then
+            local mins=$(( elapsed / 60 ))
+            local secs=$(( elapsed % 60 ))
+            if (( mins > 0 )); then
+                MY_ELAPSED="${M_SEC}${mins}m${secs}s${M_RST} "
+            else
+                MY_ELAPSED="${M_SEC}${secs}s${M_RST} "
+            fi
+            return
+        fi
+    fi
+    MY_ELAPSED=""
+}
+add-zsh-hook precmd _cmd_timer_stop
+
 # Default prompt arrow color fallback
 : ${PROMPT_ARROW:="${M_PRI}❯${M_RST}"}
 
