@@ -6,6 +6,8 @@ import Quickshell.Networking
 
 PopupPanel {
     id: root
+    cardWidth: 420
+    cardHeight: 440
 
     content: ColumnLayout {
         anchors.fill: parent

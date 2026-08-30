@@ -44,6 +44,8 @@ Rectangle {
 
     PopupPanel {
         id: popup
+        cardWidth: 420
+        cardHeight: 440
 
         content: ColumnLayout {
             anchors.fill: parent
@@ -106,10 +108,13 @@ Rectangle {
                         required property var modelData
                         width: parent.width
                         height: 48
-                        color: dMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
-                        radius: Theme.widgetRadius
+                        color: modelData.connected ? Theme.primary_overlay : (dMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
+                        radius: Theme.radiusMd
+                        border.color: modelData.connected ? Theme.primary : "transparent"
+                        border.width: 1
 
                         Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                         RowLayout {
                             anchors.fill: parent

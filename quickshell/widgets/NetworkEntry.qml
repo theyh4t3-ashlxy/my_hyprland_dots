@@ -13,11 +13,14 @@ Rectangle {
     signal clicked()
 
     width: parent.width
-    height: 44
-    color: mouseArea.pressed ? Theme.widgetActive : mouseArea.containsMouse ? Theme.widgetHover : Theme.surface_container_highest
-    radius: Theme.widgetRadius
+    height: 46
+    color: root.isConnected ? Theme.primary_overlay : (mouseArea.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
+    radius: Theme.radiusMd
+    border.color: root.isConnected ? Theme.primary : "transparent"
+    border.width: 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     RowLayout {
         anchors.fill: parent
