@@ -1,21 +1,15 @@
--- superSnappy: snappy overshoot with zero-velocity landing so windows glide smoothly into rest
+-- superSnappy: keeping the exact 0.1/1.1 punch from the old curve, but smoothed the tail landing so it doesnt clunk at the last frame
 hl.curve("superSnappy", {
     type = "bezier",
-    points = { { 0.2, 1.08 }, { 0.35, 1.0 } },
+    points = { { 0.1, 1.1 }, { 0.2, 1.0 } },
 })
 
--- smoothOut: clean ease-out curve for workspaces and layers (no rubber-band jitter)
-hl.curve("smoothOut", {
-    type = "bezier",
-    points = { { 0.16, 1.0 }, { 0.3, 1.0 } },
-})
-
--- global fallback
+-- global: speed of light
 hl.animation({
     leaf = "global",
     enabled = true,
-    speed = 5.0,
-    bezier = "smoothOut",
+    speed = 5.5,
+    bezier = "superSnappy",
 })
 
 -- windows pop in like bubbles popping on a premium screen
@@ -24,24 +18,24 @@ hl.animation({
     enabled = true,
     speed = 4.5,
     bezier = "superSnappy",
-    style = "popin 85%",
+    style = "popin 90%",
 })
 
--- sliding workspaces that glide without abrupt stops
+-- sliding workspaces
 hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 4.0,
-    bezier = "smoothOut",
-    style = "slidefade 15%",
+    bezier = "superSnappy",
+    style = "slidefade 10%",
 })
 
 -- layers (launcher, bar, overlays) fading in like they belong
 hl.animation({
     leaf = "layers",
     enabled = true,
-    speed = 3.2,
-    bezier = "smoothOut",
+    speed = 3.0,
+    bezier = "superSnappy",
     style = "fade",
 })
 
@@ -50,7 +44,7 @@ hl.animation({
     leaf = "border",
     enabled = true,
     speed = 4.0,
-    bezier = "smoothOut",
+    bezier = "superSnappy",
 })
 
 -- border angle rotation speed
