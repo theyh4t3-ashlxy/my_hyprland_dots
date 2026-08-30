@@ -169,3 +169,78 @@ separator {
   min-height: 1px;
 }
 
+/* nautilus list/grid row hover & selected state */
+listview > row:selected,
+gridview > child:selected,
+flowbox > child:selected,
+row:selected {
+  background-color: alpha(@accent_bg_color, 0.28);
+  color: @window_fg_color;
+  border-radius: 8px;
+}
+
+listview > row:hover,
+gridview > child:hover,
+flowbox > child:hover {
+  background-color: alpha(@accent_bg_color, 0.12);
+  border-radius: 8px;
+}
+
+/* suggested action buttons that pop */
+button.suggested-action,
+button.accent {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+button.suggested-action:hover,
+button.accent:hover {
+  background-color: alpha(@accent_bg_color, 0.88);
+}
+
+button.destructive-action {
+  background-color: @destructive_bg_color;
+  color: @destructive_fg_color;
+}
+
+/* searchbars and text inputs that dont look washed out */
+entry,
+searchbar entry {
+  background-color: alpha(@window_fg_color, 0.05);
+  border: 1px solid alpha({{colors.outline_variant.default.hex}}, 0.5);
+  border-radius: 8px;
+}
+
+entry:focus-within,
+searchbar entry:focus-within {
+  border-color: @accent_bg_color;
+  background-color: alpha(@window_fg_color, 0.08);
+}
+
+/* tab bar active indicator */
+tabbar tab:checked {
+  background-color: alpha(@accent_bg_color, 0.15);
+  border-bottom: 2px solid @accent_bg_color;
+}
+
+/* progress and level bars */
+progressbar progress {
+  background-color: @accent_bg_color;
+  border-radius: 9999px;
+}
+
+progressbar trough {
+  background-color: alpha(@window_fg_color, 0.12);
+  border-radius: 9999px;
+}
+
+/* tooltips with dark background and crisp border */
+tooltip > * {
+  background-color: @popover_bg_color;
+  color: @popover_fg_color;
+  border: 1px solid @popover_border_color;
+  border-radius: 8px;
+  padding: 4px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
