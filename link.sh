@@ -30,6 +30,17 @@ for folder in "${FOLDERS[@]}"; do
         continue
     fi
 
+    # flatpak sandbox bwrap breaks if gtk-3.0 / gtk-4.0 are directory symlinks
+    if [[ "$folder" == "gtk-3.0" || "$folder" == "gtk-4.0" ]]; then
+        [[ -L "$target" ]] && rm -f "$target"
+        mkdir -p "$target"
+        for file in "$src"/*; do
+            [[ -f "$file" ]] && ln -sf "$file" "$target/"
+        done
+        echo "linked $folder files -> $target (flatpak bwrap safe)"
+        continue
+    fi
+
     # if real folder exists, back it up so we dont destroy anything
     if [[ -d "$target" && ! -L "$target" ]]; then
         backup="${target}.bak.$(date +%s)"
