@@ -123,17 +123,14 @@ _cmd_timer_stop() {
 }
 add-zsh-hook precmd _cmd_timer_stop
 
-# Dynamic two-tone arrow
-PROMPT_ARROW="${M_PRI}❯${M_SEC}❯${M_RST}"
-
-# Main prompt layout (sleek icons, matugen palette)
-PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${PROMPT_ARROW} '
+# Main prompt layout (clean single arrow in matugen primary color)
+PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_PRI}❯${M_RST} '
 
 # Right prompt (shows failure exit code + execution duration + time)
 RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )\${MY_ELAPSED}${M_OUT}%T${M_RST}"
 
 # Root prompt mode (angry red accent)
 if [[ $UID -eq 0 ]]; then
-    PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${M_ERR}❯❯${M_RST} '
+    PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_ERR}❯${M_RST} '
     RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don'\''t nuke root${M_RST} \${MY_ELAPSED}${M_OUT}%T${M_RST}"
 fi
