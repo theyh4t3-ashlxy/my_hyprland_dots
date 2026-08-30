@@ -126,23 +126,57 @@ QtObject {
         loadObject(data);
     }
 
+    function loadFromFile() {
+        confFile.reload();
+        let str = confFile.text();
+        if (str && str.trim() !== "") {
+            root.loadConf(str);
+        }
+    }
+
     // nuke the stale cache or every save reverts itself
     property FileView confFile: FileView {
         path: "/home/ashley/.config/quickshell/settings.conf"
         watchChanges: true
         printErrors: false
         onFileChanged: {
-            reload();
-            let str = text();
-            if (!str || str.trim() === "") return;
-            root.loadConf(str);
+            loadTimer.restart();
         }
     }
 
+    Timer {
+        id: loadTimer
+        interval: 50
+        repeat: false
+        onTriggered: root.loadFromFile()
+    }
+
+    Timer {
+        id: startupTimer1
+        interval: 10
+        repeat: false
+        onTriggered: root.loadFromFile()
+    }
+
+    Timer {
+        id: startupTimer2
+        interval: 150
+        repeat: false
+        onTriggered: root.loadFromFile()
+    }
+
+    Timer {
+        id: startupTimer3
+        interval: 500
+        repeat: false
+        onTriggered: root.loadFromFile()
+    }
+
     Component.onCompleted: {
-        confFile.reload();
-        let str = confFile.text();
-        if (str && str.trim() !== "") loadConf(str);
+        root.loadFromFile();
+        startupTimer1.restart();
+        startupTimer2.restart();
+        startupTimer3.restart();
     }
 
     function toConf() {

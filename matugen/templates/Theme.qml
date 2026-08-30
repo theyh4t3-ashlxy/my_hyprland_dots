@@ -67,8 +67,8 @@ QtObject {
     readonly property color textShadow:             "#000000"
 
     // fonts so text doesn't look like enchantment table hieroglyphs
-    readonly property string fontSans:              Settings.fontFamily ? (Settings.fontFamily + ", Noto Sans, DejaVu Sans, sans-serif") : "Noto Sans, DejaVu Sans, sans-serif"
-    readonly property string fontMono:              Settings.fontMono ? (Settings.fontMono + ", JetBrainsMono Nerd Font, monospace") : "JetBrainsMono Nerd Font, monospace"
+    readonly property string fontSans:              Settings.fontFamily ? Settings.fontFamily : "Noto Sans"
+    readonly property string fontMono:              Settings.fontMono ? Settings.fontMono : "JetBrainsMono Nerd Font"
     readonly property string fontDisplay:           fontSans
     readonly property string fontFamily:            fontSans
 
