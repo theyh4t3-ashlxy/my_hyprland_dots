@@ -13,14 +13,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
-    NotificationServer {
-        id: server
-        onNotification: (notification) => {
-            notification.tracked = true
-        }
-    }
-
-    readonly property int notifCount: server.trackedNotifications.values?.length ?? 0
+    readonly property int notifCount: NotificationService.trackedNotifications.values?.length ?? 0
 
     Row {
         id: notifRow
@@ -80,10 +73,7 @@ Rectangle {
                     iconSize: Theme.fontSizeMd
                     tooltip: "Clear All"
                     onClicked: {
-                        let notifs = (server.trackedNotifications.values || []).slice()
-                        notifs.forEach(n => {
-                            if (n && typeof n.dismiss === "function") n.dismiss()
-                        })
+                        NotificationService.clearAll()
                         popup.open = false
                     }
                 }
@@ -101,7 +91,7 @@ Rectangle {
                 clip: true
 
                 Repeater {
-                    model: server.trackedNotifications
+                    model: NotificationService.trackedNotifications
 
                     delegate: Rectangle {
                         required property var modelData

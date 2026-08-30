@@ -4,11 +4,14 @@ singleton Theme          Theme.qml
 singleton Settings       services/Settings.qml
 singleton WallpaperService services/WallpaperService.qml
 singleton NetworkService   services/NetworkService.qml
+singleton NotificationService services/NotificationService.qml
 
-# bar & corners
+# bar, corners & overlays
 StatusBar                bar/StatusBar.qml
 ScreenCorners            corners/ScreenCorners.qml
 ConcaveCorner            corners/ConcaveCorner.qml
+NotificationToasts       notifications/NotificationToasts.qml
+NotificationCard         notifications/NotificationCard.qml
 
 # controls
 IconButton               controls/IconButton.qml

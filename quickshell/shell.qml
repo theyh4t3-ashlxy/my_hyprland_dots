@@ -10,4 +10,9 @@ ShellRoot {
         model: Quickshell.screens
         ScreenCorners {}
     }
+
+    Variants {
+        model: Quickshell.screens
+        NotificationToasts {}
+    }
 }
