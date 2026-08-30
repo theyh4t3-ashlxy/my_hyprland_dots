@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
+import Quickshell.Hyprland
 import ".."
 
 PopupWindow {
@@ -27,6 +28,9 @@ PopupWindow {
 
     visible: open || morphAnim.running
     color: "transparent"
+    
+    // so wayland stops eating my keystrokes
+    grabFocus: true
 
     implicitWidth: root.cardWidth + (root.isVertical ? 0 : (root.scoopW * 2))
     implicitHeight: root.cardHeight
@@ -39,6 +43,13 @@ PopupWindow {
 
     mask: Region {
         item: launcherBody
+    }
+
+    // click outside dismiss without tearing my hair out
+    HyprlandFocusGrab {
+        active: root.open
+        windows: [root]
+        onCleared: root.open = false
     }
 
     property real morphProgress: 0.0
@@ -58,10 +69,13 @@ PopupWindow {
         if (open) {
             query = "";
             searchInput.text = "";
-            searchInput.forceActiveFocus();
-            appList.currentIndex = 0;
             numAnim.to = 1.0;
             morphAnim.restart();
+            // qt hates instant focus before window maps, delay it or die
+            Qt.callLater(() => {
+                searchInput.forceActiveFocus();
+                appList.currentIndex = 0;
+            });
         } else {
             numAnim.to = 0.0;
             morphAnim.restart();
@@ -72,7 +86,6 @@ PopupWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // left transition scoop
         ConcaveCorner {
             x: 0
             y: root.isTop ? 0 : root.cardHeight - root.scoopH
@@ -83,7 +96,6 @@ PopupWindow {
             visible: !root.isVertical
         }
 
-        // right transition scoop
         ConcaveCorner {
             x: root.scoopW + root.cardWidth
             y: root.isTop ? 0 : root.cardHeight - root.scoopH
@@ -94,7 +106,6 @@ PopupWindow {
             visible: !root.isVertical
         }
 
-        // main card body
         Rectangle {
             id: launcherBody
             x: root.isVertical ? 0 : root.scoopW
@@ -120,7 +131,6 @@ PopupWindow {
                     anchors.margins: Theme.popupPadding
                     spacing: Theme.popupSpacing
 
-                    // search box container
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: 42
@@ -155,6 +165,7 @@ PopupWindow {
                                 font.pixelSize: Theme.fontSizeSm
                                 color: Theme.on_surface
                                 selectByMouse: true
+                                focus: true
 
                                 Text {
                                     text: "search apps..."
@@ -169,17 +180,20 @@ PopupWindow {
                                 onTextChanged: {
                                     root.query = text;
                                     appList.currentIndex = 0;
+                                    appList.positionViewAtBeginning();
                                 }
 
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Escape) {
                                         root.open = false;
                                         event.accepted = true;
-                                    } else if (event.key === Qt.Key_Down) {
+                                    } else if (event.key === Qt.Key_Down || (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier))) {
                                         appList.incrementCurrentIndex();
+                                        appList.positionViewAtIndex(appList.currentIndex, ListView.Contain);
                                         event.accepted = true;
-                                    } else if (event.key === Qt.Key_Up) {
+                                    } else if (event.key === Qt.Key_Up || (event.key === Qt.Key_Backtab) || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
                                         appList.decrementCurrentIndex();
+                                        appList.positionViewAtIndex(appList.currentIndex, ListView.Contain);
                                         event.accepted = true;
                                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                                         if (appList.currentItem) {
@@ -190,7 +204,6 @@ PopupWindow {
                                 }
                             }
 
-                            // clear query button
                             Rectangle {
                                 width: 20
                                 height: 20
@@ -220,14 +233,12 @@ PopupWindow {
                         }
                     }
 
-                    // divider
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
                         color: Theme.widgetBorder
                     }
 
-                    // app list
                     ListView {
                         id: appList
                         Layout.fillWidth: true
@@ -236,19 +247,37 @@ PopupWindow {
                         spacing: 4
                         boundsBehavior: Flickable.StopAtBounds
 
+                        // ranking apps so actual matches dont get drowned in garbage
                         model: ScriptModel {
                             values: {
                                 const q = root.query.trim().toLowerCase();
-                                const apps = [...DesktopEntries.applications.values].filter(a => !a.noDisplay && a.name);
-                                if (q === "") {
+                                const apps = [...DesktopEntries.applications.values].filter(a => a && a.name);
+                                
+                                if (!q) {
                                     return apps.sort((a, b) => a.name.localeCompare(b.name));
                                 }
-                                return apps.filter(app =>
-                                    app.name.toLowerCase().includes(q) ||
-                                    (app.genericName && app.genericName.toLowerCase().includes(q)) ||
-                                    (app.comment && app.comment.toLowerCase().includes(q)) ||
-                                    (app.keywords && app.keywords.some(k => k.toLowerCase().includes(q)))
-                                ).sort((a, b) => a.name.localeCompare(b.name));
+
+                                return apps.map(app => {
+                                    let score = 0;
+                                    const name = (app.name || "").toLowerCase();
+                                    const gen = (app.genericName || "").toLowerCase();
+                                    const comment = (app.comment || "").toLowerCase();
+                                    const kw = app.keywords || [];
+
+                                    if (name.startsWith(q)) score += 100;
+                                    else if (name.includes(q)) score += 60;
+
+                                    if (gen.startsWith(q)) score += 40;
+                                    else if (gen.includes(q)) score += 25;
+
+                                    if (kw.some(k => k.toLowerCase().includes(q))) score += 15;
+                                    if (comment.includes(q)) score += 10;
+
+                                    return { app, score };
+                                })
+                                .filter(item => item.score > 0)
+                                .sort((a, b) => b.score !== a.score ? b.score - a.score : a.app.name.localeCompare(b.app.name))
+                                .map(item => item.app);
                             }
                         }
 
@@ -276,7 +305,9 @@ PopupWindow {
                             Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                             function launch() {
-                                modelData.execute();
+                                if (modelData?.execute) {
+                                    modelData.execute();
+                                }
                                 root.open = false;
                             }
 
@@ -286,31 +317,27 @@ PopupWindow {
                                 anchors.rightMargin: 12
                                 spacing: 10
 
-                                // squircle app icon badge
                                 Rectangle {
                                     Layout.preferredWidth: 34
                                     Layout.preferredHeight: 34
                                     radius: Theme.radiusSm
                                     color: Theme.surface_container_high
 
-                                    Image {
+                                    // bye bye broken square artifacts
+                                    IconImage {
                                         anchors.centerIn: parent
                                         width: 24
                                         height: 24
-                                        sourceSize: Qt.size(24, 24)
-                                        source: Quickshell.iconPath(modelData.icon, true)
-                                        fillMode: Image.PreserveAspectFit
-                                        asynchronous: true
+                                        source: Quickshell.iconPath(modelData?.icon || "", "application-x-executable")
                                     }
                                 }
 
-                                // app title and comment
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 1
 
                                     Text {
-                                        text: modelData.name
+                                        text: modelData?.name ?? ""
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
                                         font.weight: Font.Medium
@@ -322,7 +349,7 @@ PopupWindow {
                                     }
 
                                     Text {
-                                        text: modelData.genericName || modelData.comment || ""
+                                        text: modelData?.genericName || modelData?.comment || ""
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: Theme.on_surface_variant
@@ -332,7 +359,6 @@ PopupWindow {
                                     }
                                 }
 
-                                // return key launch badge on active item
                                 Rectangle {
                                     visible: isSelected
                                     implicitWidth: 22
@@ -356,12 +382,14 @@ PopupWindow {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: appDelegate.launch()
+                                onClicked: {
+                                    appList.currentIndex = index;
+                                    appDelegate.launch();
+                                }
                             }
                         }
                     }
 
-                    // empty fallback
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -389,7 +417,6 @@ PopupWindow {
                         }
                     }
 
-                    // footer shortcuts hint
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
@@ -403,7 +430,7 @@ PopupWindow {
                         }
 
                         Text {
-                            text: "↑↓ navigate  •  ↵ launch  •  esc close"
+                            text: "↑↓/tab navigate  •  ↵ launch  •  esc close"
                             font.family: Theme.fontMono
                             font.pixelSize: 9
                             color: Theme.on_surface_variant

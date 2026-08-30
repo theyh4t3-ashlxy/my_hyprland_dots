@@ -15,6 +15,7 @@ FOLDERS=(
     "fastfetch"
     "zsh"
     "yazi"
+    "nvim"
     "gtk-3.0"
     "gtk-4.0"
 )

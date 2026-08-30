@@ -44,3 +44,7 @@ post_hook = "$HOME/.config/matugen/post-hook-scripts/gtk-themes-reload.zsh 2>/de
 [templates.yazi]
 input_path = "~/.config/matugen/templates/yazi-theme.toml"
 output_path = "~/.config/yazi/theme.toml"
+
+[templates.nvim]
+input_path = "~/.config/matugen/templates/nvim-colors.lua"
+output_path = "~/.config/nvim/lua/config/colors.lua"

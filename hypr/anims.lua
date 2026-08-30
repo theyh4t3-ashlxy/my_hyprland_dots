@@ -1,56 +1,94 @@
--- superSnappy: keeping the exact 0.1/1.1 punch from the old curve, but smoothed the tail landing so it doesnt clunk at the last frame
-hl.curve("superSnappy", {
+-- stop teleporting in 2ms and freezing for the rest of eternity
+hl.curve("snappyPop", {
     type = "bezier",
-    points = { { 0.1, 1.1 }, { 0.2, 1.0 } },
+    points = { { 0.2, 1.15 }, { 0.35, 1.0 } },
 })
 
--- global: speed of light
+-- buttery decel so my eyes stop bleeding on fast workspace swaps
+hl.curve("smoothDecel", {
+    type = "bezier",
+    points = { { 0.16, 1.0 }, { 0.3, 1.0 } },
+})
+
+-- linear for the spinny shit
+hl.curve("linear", {
+    type = "bezier",
+    points = { { 0.0, 0.0 }, { 1.0, 1.0 } },
+})
+
+-- fallback so hyprland doesn't explode
 hl.animation({
     leaf = "global",
     enabled = true,
-    speed = 5.5,
-    bezier = "superSnappy",
+    speed = 4.0,
+    bezier = "smoothDecel",
 })
 
--- windows pop in like bubbles popping on a premium screen
+-- crisp pop without the weird molasses tail
 hl.animation({
-    leaf = "windows",
+    leaf = "windowsIn",
     enabled = true,
-    speed = 4.5,
-    bezier = "superSnappy",
-    style = "popin 90%",
+    speed = 3.5,
+    bezier = "snappyPop",
+    style = "popin 80%",
 })
 
--- sliding workspaces
+-- fast exit so closing shit doesn't linger
+hl.animation({
+    leaf = "windowsOut",
+    enabled = true,
+    speed = 2.5,
+    bezier = "smoothDecel",
+    style = "popin 85%",
+})
+
+-- moving/resizing windows shouldn't bounce like a trampoline
+hl.animation({
+    leaf = "windowsMove",
+    enabled = true,
+    speed = 3.5,
+    bezier = "smoothDecel",
+})
+
+-- clean workspace glide
 hl.animation({
     leaf = "workspaces",
     enabled = true,
-    speed = 4.0,
-    bezier = "superSnappy",
-    style = "slidefade 10%",
+    speed = 3.8,
+    bezier = "smoothDecel",
+    style = "slidefade 20%",
 })
 
--- layers (launcher, bar, overlays) fading in like they belong
+-- layers sliding and fading properly instead of flickering
 hl.animation({
     leaf = "layers",
     enabled = true,
     speed = 3.0,
-    bezier = "superSnappy",
+    bezier = "smoothDecel",
     style = "fade",
 })
 
--- border color transition speed
+-- fade shouldn't feel like a dying gpu artifact
+hl.animation({
+    leaf = "fade",
+    enabled = true,
+    speed = 2.5,
+    bezier = "smoothDecel",
+})
+
+-- border transition
 hl.animation({
     leaf = "border",
     enabled = true,
-    speed = 4.0,
-    bezier = "superSnappy",
+    speed = 3.0,
+    bezier = "smoothDecel",
 })
 
--- border angle rotation speed
+-- continuous spin so my brain gets dopamine
 hl.animation({
     leaf = "borderangle",
     enabled = true,
-    speed = 1.0,
-    bezier = "default",
+    speed = 25.0,
+    bezier = "linear",
+    style = "loop",
 })
