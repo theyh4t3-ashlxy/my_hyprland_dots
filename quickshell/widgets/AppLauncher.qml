@@ -45,13 +45,6 @@ PopupWindow {
         item: launcherBody
     }
 
-    // click outside dismiss without tearing my hair out
-    HyprlandFocusGrab {
-        active: root.open
-        windows: [root]
-        onCleared: root.open = false
-    }
-
     property real morphProgress: 0.0
 
     ParallelAnimation {
