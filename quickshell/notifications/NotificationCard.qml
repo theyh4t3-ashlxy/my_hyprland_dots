@@ -155,10 +155,24 @@ Item {
                         color: Theme.surface_container_high
 
                         IconImage {
+                            id: appIconImg
                             anchors.centerIn: parent
                             width: 14
                             height: 14
-                            source: Quickshell.iconPath(notifData?.icon || notifData?.appName || "", "dialog-information")
+                            source: {
+                                let ic = notifData?.icon || notifData?.appIcon || ""
+                                return (ic && ic.trim() !== "") ? Quickshell.iconPath(ic, "") : ""
+                            }
+                            visible: status === Image.Ready && source !== ""
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: cardRoot.isCritical ? "󰅚" : Theme.iconBell
+                            font.family: Theme.fontMono
+                            font.pixelSize: 11
+                            color: cardRoot.isCritical ? Theme.error : Theme.primary
+                            visible: !appIconImg.visible
                         }
                     }
 

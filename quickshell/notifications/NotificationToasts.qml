@@ -8,6 +8,9 @@ import Quickshell.Services.Notifications
 PanelWindow {
     id: toastWindow
 
+    required property var modelData
+    screen: modelData
+
     readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
     readonly property real scoopW: Theme?.scoopRadiusX ?? 16
 
