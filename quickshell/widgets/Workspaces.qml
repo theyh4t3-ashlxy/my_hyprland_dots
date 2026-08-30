@@ -55,9 +55,9 @@ Rectangle {
 
         onWheel: (wheel) => {
             if (wheel.angleDelta.y < 0) {
-                Hyprland.dispatch("workspace m+1")
+                Hyprland.dispatch('hl.dsp.focus({ workspace = "m+1" })')
             } else if (wheel.angleDelta.y > 0) {
-                Hyprland.dispatch("workspace m-1")
+                Hyprland.dispatch('hl.dsp.focus({ workspace = "m-1" })')
             }
         }
     }
@@ -215,7 +215,7 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                Hyprland.dispatch("workspace " + wsId);
+                                Hyprland.dispatch('hl.dsp.focus({ workspace = "' + wsId + '" })');
                                 popup.open = false;
                             }
                         }
@@ -264,7 +264,7 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Hyprland.dispatch("togglespecialworkspace");
+                            Hyprland.dispatch('hl.dsp.workspace.toggle_special("scratchpad")');
                             popup.open = false;
                         }
                     }
