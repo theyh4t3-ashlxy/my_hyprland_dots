@@ -8,13 +8,18 @@ import Quickshell.Services.Notifications
 PanelWindow {
     id: toastWindow
 
+    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
+    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
+
     anchors {
-        top: true
+        top: toastWindow.isTop
+        bottom: !toastWindow.isTop
         right: true
     }
 
     margins {
-        top: (Settings.barPosition === "top" ? (Theme.barHeight + 12) : 12)
+        top: toastWindow.isTop ? Theme.barHeight : 0
+        bottom: !toastWindow.isTop ? Theme.barHeight : 0
         right: 16
     }
 
@@ -23,7 +28,7 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:notifications"
     color: "transparent"
 
-    implicitWidth: 380
+    implicitWidth: 360 + (toastWindow.scoopW * 2)
     implicitHeight: Math.max(1, toastCol.implicitHeight + 20)
 
     mask: Region {
@@ -52,7 +57,6 @@ PanelWindow {
                 expireTimeout: duration,
                 actions: n.actions || []
             })
-            // don't flood the screen with 50 popups if an app goes feral
             if (toastModel.count > 5) {
                 toastModel.remove(5, toastModel.count - 5)
             }
@@ -61,10 +65,11 @@ PanelWindow {
 
     ColumnLayout {
         id: toastCol
-        anchors.top: parent.top
+        anchors.top: toastWindow.isTop ? parent.top : undefined
+        anchors.bottom: !toastWindow.isTop ? parent.bottom : undefined
         anchors.right: parent.right
-        width: 360
-        spacing: 8
+        width: parent.width
+        spacing: 6
 
         Repeater {
             model: toastModel
@@ -73,7 +78,7 @@ PanelWindow {
                 required property var modelData
                 required property int index
 
-                width: 360
+                cardIndex: index
                 notifData: modelData
                 onClosed: {
                     if (index >= 0 && index < toastModel.count) {
