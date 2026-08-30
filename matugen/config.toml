@@ -26,6 +26,8 @@ output_path = "~/.config/quickshell/palette.css"
 [templates.zsh]
 input_path = "~/.config/matugen/templates/zsh-colors.zsh"
 output_path = "~/.config/zsh/matugen.zsh"
+# notify live zsh sessions
+post_hook = "pkill -USR2 zsh 2>/dev/null || true"
 
 # dump gtk4 palette into colors.css
 [templates.gtk4]

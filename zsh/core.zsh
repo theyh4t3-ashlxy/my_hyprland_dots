@@ -33,13 +33,13 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 # case-insensitive + partial word + substring matching
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|='
 
-# enable interactive selection menu with arrow keys & vim motion
+# enable interactive selection menu with arrow keys & ijkl motion
 zstyle ':completion:*' menu select
 zmodload zsh/complist
-bindkey -M menuselect 'h' backward-char
-bindkey -M menuselect 'k' up-line-or-history
+bindkey -M menuselect 'i' up-line-or-history
+bindkey -M menuselect 'k' down-line-or-history
+bindkey -M menuselect 'j' backward-char
 bindkey -M menuselect 'l' forward-char
-bindkey -M menuselect 'j' down-line-or-history
 bindkey -M menuselect '^[[Z' reverse-menu-complete
 
 # process list formatting for kill

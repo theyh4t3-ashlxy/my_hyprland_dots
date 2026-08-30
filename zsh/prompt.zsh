@@ -14,6 +14,27 @@ set_prompt_colors() {
 }
 add-zsh-hook precmd set_prompt_colors
 
+# instant live reload when matugen dumps new wallpaper colors
+_check_matugen_refresh() {
+    local matugen_file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
+    if [[ -f "$matugen_file" ]]; then
+        local mtime=$(stat -c %Y "$matugen_file" 2>/dev/null || stat -f %m "$matugen_file" 2>/dev/null)
+        if [[ -n "$mtime" && "$mtime" != "$_LAST_MATUGEN_MTIME" ]]; then
+            _LAST_MATUGEN_MTIME="$mtime"
+            source "$matugen_file" 2>/dev/null || true
+            set_prompt_colors
+        fi
+    fi
+}
+add-zsh-hook precmd _check_matugen_refresh
+
+TRAPUSR2() {
+    local matugen_file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
+    [[ -f "$matugen_file" ]] && source "$matugen_file" 2>/dev/null || true
+    set_prompt_colors
+    zle && zle reset-prompt
+}
+
 # Subshell-free git tracker (branch + staged/unstaged/untracked indicators)
 git_status_detailed() {
     local branch
@@ -24,7 +45,7 @@ git_status_detailed() {
     raw_status=$(git status --porcelain=v1 2>/dev/null)
 
     if [[ -z "$raw_status" ]]; then
-        echo " ${M_OUT}(${M_RST}${M_TER}${branch}${M_RST}${M_OUT})${M_RST}"
+        echo " ${M_OUT}(${M_RST}${M_TER} ${branch}${M_RST}${M_OUT})${M_RST}"
         return
     fi
 
@@ -38,7 +59,7 @@ git_status_detailed() {
     (( unstaged > 0 )) && details+="${M_SEC}*${unstaged}${M_RST}"
     (( untracked > 0 )) && details+="${M_ERR}?${untracked}${M_RST}"
 
-    echo " ${M_OUT}(${M_RST}${M_PRI}${branch}${M_RST} ${details}${M_OUT})${M_RST}"
+    echo " ${M_OUT}(${M_RST}${M_PRI} ${branch}${M_RST} ${details}${M_OUT})${M_RST}"
 }
 
 set_prompt_git() { 
@@ -50,7 +71,7 @@ add-zsh-hook precmd set_prompt_git
 get_venv() {
     if [[ -n "$VIRTUAL_ENV" ]]; then
         local venv_name="${VIRTUAL_ENV:t}"
-        echo " ${M_OUT}[py:${M_RST}${M_SEC}${venv_name}${M_RST}${M_OUT}]${M_RST}"
+        echo " ${M_OUT}[󰌠 ${M_RST}${M_SEC}${venv_name}${M_RST}${M_OUT}]${M_RST}"
     fi
 }
 
@@ -102,17 +123,17 @@ _cmd_timer_stop() {
 }
 add-zsh-hook precmd _cmd_timer_stop
 
-# Default prompt arrow color fallback
-: ${PROMPT_ARROW:="${M_PRI}❯${M_RST}"}
+# Dynamic two-tone arrow
+PROMPT_ARROW="${M_PRI}❯${M_SEC}❯${M_RST}"
 
-# Main prompt layout (cleanly interpolates pre-rendered colors)
-PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI}%n${M_RST}${M_OUT}@${M_RST}${M_SEC}%m${M_RST} ${M_OUT}in${M_RST} ${M_TER}%~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${PROMPT_ARROW} '
+# Main prompt layout (sleek icons, matugen palette)
+PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${PROMPT_ARROW} '
 
-# Right prompt (shows command failure exit code + execution duration + time)
+# Right prompt (shows failure exit code + execution duration + time)
 RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )\${MY_ELAPSED}${M_OUT}%T${M_RST}"
 
 # Root prompt mode (angry red accent)
 if [[ $UID -eq 0 ]]; then
-    PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}%n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}%~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${M_ERR}❯${M_RST} '
-    RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don't nuke root${M_RST} \${MY_ELAPSED}${M_OUT}%T${M_RST}"
+    PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${M_ERR}❯❯${M_RST} '
+    RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don'\''t nuke root${M_RST} \${MY_ELAPSED}${M_OUT}%T${M_RST}"
 fi
