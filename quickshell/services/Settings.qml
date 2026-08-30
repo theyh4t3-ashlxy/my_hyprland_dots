@@ -120,6 +120,10 @@ QtObject {
             if (eqIdx !== -1) {
                 let key = line.substring(0, eqIdx).trim();
                 let val = line.substring(eqIdx + 1).trim();
+                // strip quotes if present e.g. "Noto Sans" or 'Noto Sans'
+                if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                    val = val.substring(1, val.length - 1);
+                }
                 data[key] = val;
             }
         }
@@ -144,29 +148,25 @@ QtObject {
         }
     }
 
-    Timer {
-        id: loadTimer
+    property Timer loadTimer: Timer {
         interval: 50
         repeat: false
         onTriggered: root.loadFromFile()
     }
 
-    Timer {
-        id: startupTimer1
+    property Timer startupTimer1: Timer {
         interval: 10
         repeat: false
         onTriggered: root.loadFromFile()
     }
 
-    Timer {
-        id: startupTimer2
+    property Timer startupTimer2: Timer {
         interval: 150
         repeat: false
         onTriggered: root.loadFromFile()
     }
 
-    Timer {
-        id: startupTimer3
+    property Timer startupTimer3: Timer {
         interval: 500
         repeat: false
         onTriggered: root.loadFromFile()
@@ -181,25 +181,25 @@ QtObject {
 
     function toConf() {
         let lines = [
-            "barPosition=" + barPosition,
+            'barPosition="' + barPosition + '"',
             "barMargin=" + barMargin,
             "barFloating=" + barFloating,
             "barHeight=" + barHeight,
             "scoopRadius=" + scoopRadius,
             "scoopTension=" + scoopTension,
             "screenCornerRadius=" + screenCornerRadius,
-            "screenCornerMode=" + screenCornerMode,
-            "cornerStyle=" + cornerStyle,
-            "cornerColorMode=" + cornerColorMode,
-            "matugenMode=" + matugenMode,
-            "matugenScheme=" + matugenScheme,
-            "awwwTransitionType=" + awwwTransitionType,
+            'screenCornerMode="' + screenCornerMode + '"',
+            'cornerStyle="' + cornerStyle + '"',
+            'cornerColorMode="' + cornerColorMode + '"',
+            'matugenMode="' + matugenMode + '"',
+            'matugenScheme="' + matugenScheme + '"',
+            'awwwTransitionType="' + awwwTransitionType + '"',
             "awwwTransitionAngle=" + awwwTransitionAngle,
             "awwwTransitionStep=" + awwwTransitionStep,
             "awwwTransitionDuration=" + awwwTransitionDuration,
             "awwwTransitionFps=" + awwwTransitionFps,
-            "awwwFilter=" + awwwFilter,
-            "animSpeed=" + animSpeed,
+            'awwwFilter="' + awwwFilter + '"',
+            'animSpeed="' + animSpeed + '"',
             "unhingedFlavor=" + unhingedFlavor,
             "showWorkspaces=" + showWorkspaces,
             "showWindowTitle=" + showWindowTitle,
@@ -217,13 +217,13 @@ QtObject {
             "showIdleInhibitor=" + showIdleInhibitor,
             "showQuickSettings=" + showQuickSettings,
             "showWallpaper=" + showWallpaper,
-            "clockFormat=" + clockFormat,
-            "dateFormat=" + dateFormat,
+            'clockFormat="' + clockFormat + '"',
+            'dateFormat="' + dateFormat + '"',
             "workspaceCount=" + workspaceCount,
-            "fontFamily=" + fontFamily,
-            "fontMono=" + fontMono,
+            'fontFamily="' + fontFamily + '"',
+            'fontMono="' + fontMono + '"',
             "fontScale=" + fontScale,
-            "fontWeight=" + fontWeight
+            'fontWeight="' + fontWeight + '"'
         ];
         return lines.join("\n");
     }
