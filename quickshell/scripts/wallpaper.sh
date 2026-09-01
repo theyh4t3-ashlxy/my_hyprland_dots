@@ -73,7 +73,7 @@ except Exception:
 
         # Monitor output args
         awww_out_args=()
-        mpv_out="*"
+        mpv_out="ALL"
         if [[ "$target_mon" != "all" && "$target_mon" != "*" && -n "$target_mon" ]]; then
             awww_out_args=("-o" "$target_mon")
             mpv_out="$target_mon"
@@ -89,8 +89,8 @@ except Exception:
                 matugen image /tmp/qs_video_thumb.jpg -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
             fi
             
-            # Launch mpvpaper with auto-pause and looping
-            mpvpaper -f -p -a FULL -o "no-audio loop loop-playlist" "$mpv_out" "$img_path" 2>/dev/null || true
+            # Launch mpvpaper with hardware acceleration, auto-pause, and looping
+            mpvpaper -f -p -a FULL -o "no-audio loop loop-playlist=inf --hwdec=auto" "$mpv_out" "$img_path" 2>/dev/null || true
         else
             # Static image or GIF: kill mpvpaper and use awww
             pkill -x mpvpaper 2>/dev/null || true
