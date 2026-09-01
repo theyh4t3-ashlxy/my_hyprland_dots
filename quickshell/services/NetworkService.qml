@@ -13,6 +13,7 @@ QtObject {
         if (net && net.wifiEnabled !== wifiEnabled) {
             net.wifiEnabled = wifiEnabled
         }
+        root.ensureScanner()
     }
 
     // find and track wifi device
@@ -68,7 +69,6 @@ QtObject {
     }
 
     onWifiDeviceChanged: ensureScanner()
-    onWifiEnabledChanged: ensureScanner()
     Component.onCompleted: ensureScanner()
 
     function toggleWifi() {

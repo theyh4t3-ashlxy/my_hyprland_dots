@@ -148,6 +148,30 @@ PanelWindow {
                 }
 
                 Loader {
+                    active: Settings.showBattery && !root.isVertical
+                    visible: active
+                    sourceComponent: Component { Battery {} }
+                }
+
+                Loader {
+                    active: Settings.showVolume && !root.isVertical
+                    visible: active
+                    sourceComponent: Component { VolumeControl {} }
+                }
+
+                Loader {
+                    active: Settings.showNetwork && !root.isVertical
+                    visible: active
+                    sourceComponent: Component { NetworkStatus {} }
+                }
+
+                Loader {
+                    active: Settings.showBluetooth && !root.isVertical
+                    visible: active
+                    sourceComponent: Component { Bluetooth {} }
+                }
+
+                Loader {
                     active: Settings.showSystemTray && !root.isVertical
                     visible: active
                     sourceComponent: Component { SystemTray {} }
@@ -160,9 +184,9 @@ PanelWindow {
                 }
 
                 Loader {
-                    active: Settings.showMedia && !root.isVertical
+                    active: Settings.showIdleInhibitor && !root.isVertical
                     visible: active
-                    sourceComponent: Component { NowPlaying {} }
+                    sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
@@ -172,33 +196,9 @@ PanelWindow {
                 }
 
                 Loader {
-                    active: Settings.showIdleInhibitor && !root.isVertical
+                    active: Settings.showMedia && !root.isVertical
                     visible: active
-                    sourceComponent: Component { IdleInhibitor {} }
-                }
-
-                Loader {
-                    active: Settings.showBluetooth && !root.isVertical
-                    visible: active
-                    sourceComponent: Component { Bluetooth {} }
-                }
-
-                Loader {
-                    active: Settings.showNetwork && !root.isVertical
-                    visible: active
-                    sourceComponent: Component { NetworkStatus {} }
-                }
-
-                Loader {
-                    active: Settings.showVolume && !root.isVertical
-                    visible: active
-                    sourceComponent: Component { VolumeControl {} }
-                }
-
-                Loader {
-                    active: Settings.showBattery && !root.isVertical
-                    visible: active
-                    sourceComponent: Component { Battery {} }
+                    sourceComponent: Component { NowPlaying {} }
                 }
             }
         }
@@ -276,33 +276,9 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
 
                 Loader {
-                    active: Settings.showBattery && root.isVertical
+                    active: Settings.showMedia && root.isVertical
                     visible: active
-                    sourceComponent: Component { Battery {} }
-                }
-
-                Loader {
-                    active: Settings.showVolume && root.isVertical
-                    visible: active
-                    sourceComponent: Component { VolumeControl {} }
-                }
-
-                Loader {
-                    active: Settings.showNetwork && root.isVertical
-                    visible: active
-                    sourceComponent: Component { NetworkStatus {} }
-                }
-
-                Loader {
-                    active: Settings.showBluetooth && root.isVertical
-                    visible: active
-                    sourceComponent: Component { Bluetooth {} }
-                }
-
-                Loader {
-                    active: Settings.showIdleInhibitor && root.isVertical
-                    visible: active
-                    sourceComponent: Component { IdleInhibitor {} }
+                    sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
@@ -312,9 +288,9 @@ PanelWindow {
                 }
 
                 Loader {
-                    active: Settings.showMedia && root.isVertical
+                    active: Settings.showIdleInhibitor && root.isVertical
                     visible: active
-                    sourceComponent: Component { NowPlaying {} }
+                    sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
@@ -327,6 +303,30 @@ PanelWindow {
                     active: Settings.showSystemTray && root.isVertical
                     visible: active
                     sourceComponent: Component { SystemTray {} }
+                }
+
+                Loader {
+                    active: Settings.showBluetooth && root.isVertical
+                    visible: active
+                    sourceComponent: Component { Bluetooth {} }
+                }
+
+                Loader {
+                    active: Settings.showNetwork && root.isVertical
+                    visible: active
+                    sourceComponent: Component { NetworkStatus {} }
+                }
+
+                Loader {
+                    active: Settings.showVolume && root.isVertical
+                    visible: active
+                    sourceComponent: Component { VolumeControl {} }
+                }
+
+                Loader {
+                    active: Settings.showBattery && root.isVertical
+                    visible: active
+                    sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
