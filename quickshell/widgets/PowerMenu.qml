@@ -21,7 +21,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: Theme.iconPower
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.error : Theme.on_surface
         }
@@ -165,7 +165,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconLock
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.primary
                             Layout.alignment: Qt.AlignHCenter
@@ -207,7 +207,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconSuspend
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.primary
                             Layout.alignment: Qt.AlignHCenter
@@ -249,7 +249,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconLogout
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.warn
                             Layout.alignment: Qt.AlignHCenter
@@ -292,7 +292,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconReboot
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: parent.parent.isConfirming ? Theme.on_warn_container : Theme.primary
                             Layout.alignment: Qt.AlignHCenter
@@ -336,7 +336,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconPower
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 24
                             color: Theme.error
                         }

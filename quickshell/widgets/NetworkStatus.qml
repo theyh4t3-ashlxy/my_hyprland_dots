@@ -28,7 +28,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.netIcon
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: NetworkService.isConnected ? Theme.primary : Theme.on_surface
         }

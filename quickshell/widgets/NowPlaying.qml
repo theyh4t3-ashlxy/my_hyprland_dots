@@ -32,7 +32,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.isPlaying ? Theme.iconMusic : (root.hasTrack ? Theme.iconPause : Theme.kaoMusic)
-            font.family: Theme.fontMono
+            font.family: (root.hasTrack || root.isPlaying) ? Theme.fontIcon : Theme.fontMono
             font.pixelSize: Theme.fontSizeSm
             color: root.isPlaying ? Theme.primary : Theme.on_surface_variant
 
@@ -293,7 +293,7 @@ Rectangle {
                             Text {
                                 anchors.centerIn: parent
                                 text: root.isPlaying ? Theme.iconPause : Theme.iconPlay
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeLg
                                 color: Theme.primary
                             }

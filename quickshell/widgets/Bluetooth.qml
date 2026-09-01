@@ -25,7 +25,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.isPowered ? (root.hasConnectedDevice ? Theme.iconBluetoothConnected : Theme.iconBluetooth) : Theme.iconBluetoothOff
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: root.hasConnectedDevice ? Theme.primary : Theme.on_surface
         }

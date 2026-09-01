@@ -84,7 +84,7 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent
                         text: Theme.iconArch
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeLg
                         color: launcherPopup.open ? Theme.primary : Theme.on_surface
                     }
@@ -232,7 +232,7 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent
                         text: Theme.iconArch
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeLg
                         color: launcherPopup.open ? Theme.primary : Theme.on_surface
                     }

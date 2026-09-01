@@ -35,7 +35,7 @@ Rectangle {
                 : container.pct >= 50  ? Theme.iconBatHalf
                 : container.pct >= 20  ? Theme.iconBatQuarter
                                        : Theme.iconBatEmpty
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: container.isLow ? Theme.error : Theme.on_surface
         }

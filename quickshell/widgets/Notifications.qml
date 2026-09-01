@@ -23,7 +23,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.notifCount > 0 ? Theme.iconBell : Theme.iconBellOutline
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: root.notifCount > 0 ? Theme.primary : Theme.on_surface
         }

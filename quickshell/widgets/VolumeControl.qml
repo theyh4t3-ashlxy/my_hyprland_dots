@@ -33,7 +33,7 @@ Rectangle {
                 : volRoot.vol < 0.33                 ? Theme.iconVolLow
                 : volRoot.vol < 0.66                 ? Theme.iconVolMid
                 : Theme.iconVolHigh
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : (volRoot.muted ? Theme.on_surface_disabled : Theme.on_surface)
         }
@@ -417,7 +417,7 @@ Rectangle {
 
                                     Text {
                                         text: isCurrent ? Theme.iconCheckCircle : Theme.iconHeadphones
-                                        font.family: Theme.fontMono
+                                        font.family: Theme.fontIcon
                                         font.pixelSize: Theme.fontSizeSm
                                         color: isCurrent ? Theme.primary : Theme.on_surface_variant
                                     }

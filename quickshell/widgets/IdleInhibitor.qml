@@ -45,7 +45,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: Theme.iconCoffee
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: root.active ? Theme.primary : Theme.on_surface
         }

@@ -66,7 +66,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: Theme.iconClipboard
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : Theme.on_surface
         }

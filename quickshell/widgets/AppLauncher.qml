@@ -50,7 +50,7 @@ PopupPanel {
 
                 Text {
                     text: Theme.iconSearch
-                    font.family: Theme.fontMono
+                    font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeMd
                     color: searchInput.activeFocus ? Theme.primary : Theme.on_surface_variant
 
