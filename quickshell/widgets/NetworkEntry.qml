@@ -37,7 +37,7 @@ Rectangle {
 
             Text {
                 text: root.isConnected ? Theme.iconWifiHigh : (root.signal > 0.65 ? Theme.iconWifiHigh : root.signal > 0.35 ? Theme.iconWifiMed : Theme.iconWifiLow)
-                font.family: Theme.fontMono
+                font.family: Theme.fontIcon
                 font.pixelSize: Theme.fontSizeMd
                 color: root.isConnected ? Theme.primary : Theme.on_surface
             }
@@ -65,8 +65,15 @@ Rectangle {
                         color: Theme.on_surface_variant
                     }
                     Text {
-                        text: "• secured "
+                        text: "• secured"
                         font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        color: Theme.on_surface_variant
+                        visible: root.isSecured && !root.isConnected
+                    }
+                    Text {
+                        text: Theme.iconLock
+                        font.family: Theme.fontIcon
                         font.pixelSize: 10
                         color: Theme.on_surface_variant
                         visible: root.isSecured && !root.isConnected

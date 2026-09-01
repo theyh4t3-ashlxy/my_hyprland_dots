@@ -94,7 +94,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: Theme.iconWallpaper
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : Theme.on_surface
         }
@@ -108,25 +108,21 @@ Rectangle {
         onClicked: {
             popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2)
             popup.open = !popup.open
-            if (popup.open) {
-                reloadLocalWallpapers()
-                if (onlineWpModel.count === 0) {
-                    fetchWallhaven(root.onlineQuery, root.onlineSorting, 1)
-                }
-            }
+            if (popup.open) reloadLocalWallpapers()
         }
     }
 
     PopupPanel {
         id: popup
-        cardWidth: 480
-        cardHeight: 640
+        cardWidth: 620
+        cardHeight: 520
+        targetRelativeX: root.width / 2
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 
-            // header tabs + actions
+            // Tabs
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
@@ -145,7 +141,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconFolder
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeXs
                             color: root.activeTab === "local" ? Theme.on_primary : Theme.on_surface
                         }
@@ -182,7 +178,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconGlobe
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeXs
                             color: root.activeTab === "online" ? Theme.on_primary : Theme.on_surface
                         }
@@ -219,7 +215,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconPalette
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeXs
                             color: root.activeTab === "theme" ? Theme.on_primary : Theme.on_surface
                         }

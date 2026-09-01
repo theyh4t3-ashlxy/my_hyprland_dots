@@ -60,7 +60,7 @@ PopupPanel {
 
                 Text {
                     text: NetworkService.isWiredConnected ? Theme.iconEthernet : (NetworkService.isWifiConnected ? Theme.iconWifiHigh : Theme.iconWifiOff)
-                    font.family: Theme.fontMono
+                    font.family: Theme.fontIcon
                     font.pixelSize: 22
                     color: NetworkService.isConnected ? Theme.primary : Theme.on_surface_variant
                 }

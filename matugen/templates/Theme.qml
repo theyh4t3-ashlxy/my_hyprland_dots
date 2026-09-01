@@ -158,7 +158,7 @@ QtObject {
     }
 
     // Core System Icons
-    readonly property string iconArch:              getIcon("󰣇", "\uE770", "")
+    readonly property string iconArch:              getIcon("󰣇", "\uE8A9", "")
     readonly property string iconAppLauncher:       iconArch
     readonly property string iconSearch:            getIcon("󰍉", "\uE721", "")
     readonly property string iconClose:             getIcon("󰅖", "\uE8BB", "")
@@ -218,14 +218,14 @@ QtObject {
     readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "󰑘")
 
     // Notifications & Wallpapers
-    readonly property string iconWallhaven:         getIcon("󰸉", "\uEB9F", "")
-    readonly property string iconWallpaper:         getIcon("󰸉", "\uEB9F", "")
+    readonly property string iconWallhaven:         getIcon("󰸉", "\uE91B", "")
+    readonly property string iconWallpaper:         getIcon("󰸉", "\uE91B", "")
     readonly property string iconBell:              getIcon("󰂚", "\uEA8F", "")
     readonly property string iconBellOutline:       getIcon("󰂚", "\uEA8F", "")
     readonly property string iconBellOff:           getIcon("󰂛", "\uEC42", "󰂲")
 
     // Connectivity
-    readonly property string iconEthernet:          getIcon("󰈀", "\uE839", "󰈀")
+    readonly property string iconEthernet:          getIcon("󰈀", "\uEB55", "󰈀")
     readonly property string iconWifi:              getIcon("󰤨", "\uE701", "")
     readonly property string iconWifiHigh:          getIcon("󰤨", "\uEC3E", "")
     readonly property string iconWifiMed:           getIcon("󰤥", "\uEC3C", "")
