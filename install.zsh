@@ -8,7 +8,7 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 WALLPAPER_DIR="$HOME/.wallpapers"
 BACKUP_DIR="$CACHE_DIR/dotfiles-backups"
 
-# colors for pretty terminal chaos
+# colors for clean terminal chaos
 typeset -A colors
 colors=(
     reset "\e[0m"
@@ -49,16 +49,16 @@ install_dependencies() {
     local helper=$(detect_aur_helper)
     log_info "detected package manager: ${colors[bold]}$helper${colors[reset]}"
 
-    # arch packages needed for full rice experience
+    # arch packages for our quickshell + hyprland rice stack
     local arch_pkgs=(
         hyprland
-        hypridle
-        hyprlock
         xdg-desktop-portal-hyprland
         xdg-desktop-portal-gtk
-        swww
-        matugen-bin
         quickshell-git
+        matugen-bin
+        awww
+        mpvpaper
+        ffmpeg
         kitty
         zsh
         fastfetch
@@ -72,7 +72,6 @@ install_dependencies() {
         playerctl
         brightnessctl
         wl-clipboard
-        pavucontrol
         pipewire
         wireplumber
         bluez
@@ -93,10 +92,10 @@ install_dependencies() {
             ;;
         pacman)
             log_warn "no aur helper found (paru/yay). installing official repo packages only..."
-            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin and quickshell-git"
+            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin, awww, mpvpaper, and quickshell-git"
             ;;
         *)
-            log_warn "distro not automatically mapped. install hyprland, quickshell, matugen, and swww manually."
+            log_warn "distro not automatically mapped. install hyprland, quickshell, matugen, awww, mpvpaper, and ffmpeg manually."
             ;;
     esac
 }
@@ -177,7 +176,7 @@ link_configurations() {
     # link zsh entrypoint to ~/.zshrc
     if [[ -f "$DOTS_DIR/zsh/sources.zsh" ]]; then
         local zshrc="$HOME/.zshrc"
-        if ! grep -qs "sources.zsh" "$zshrc" 2>/dev/null; then
+        if ! grep -s "sources.zsh" "$zshrc" >/dev/null 2>&1; then
             print "\n# source the master wiring\nsource ~/.config/zsh/sources.zsh" >> "$zshrc"
             log_ok "wired ~/.zshrc -> ~/.config/zsh/sources.zsh"
         fi
@@ -185,9 +184,12 @@ link_configurations() {
 }
 
 setup_directories_and_permissions() {
-    log_info "creating wallpaper and cache directories..."
-    mkdir -p "$WALLPAPER_DIR"
+    log_info "creating wallpaper, notes, and cache directories..."
+    mkdir -p "$WALLPAPER_DIR/live"
+    mkdir -p "$WALLPAPER_DIR/downloaded"
+    mkdir -p "$CACHE_DIR/quickshell/thumbnails"
     mkdir -p "$CACHE_DIR/quickshell/wallpapers"
+    mkdir -p "$HOME/.local/share/quickshell"
     mkdir -p "$BACKUP_DIR"
 
     # make all helper scripts executable
@@ -195,13 +197,14 @@ setup_directories_and_permissions() {
     chmod +x "$DOTS_DIR"/quickshell/scripts/*.sh(N)
     chmod +x "$DOTS_DIR"/quickshell/scripts/*.py(N)
     chmod +x "$DOTS_DIR"/matugen/post-hook-scripts/*.zsh(N)
+    chmod +x "$DOTS_DIR"/matugen/post-hook-scripts/*.sh(N)
     chmod +x "$DOTS_DIR"/install.zsh
     log_ok "script permissions set"
 }
 
 initial_theming() {
     log_info "checking wallpaper & running initial matugen palette..."
-    local sample_wp=( "$WALLPAPER_DIR"/*.(png|jpg|jpeg|webp)(N) )
+    local sample_wp=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N) )
 
     if (( ${#sample_wp[@]} > 0 )); then
         local first_wp="${sample_wp[1]}"
@@ -243,17 +246,17 @@ reload_shell() {
         log_ok "hyprland config reloaded"
     fi
 
-    # restart or reload quickshell
+    # restart quickshell daemon cleanly
     if pgrep -x "quickshell" >/dev/null; then
-        log_info "reloading quickshell..."
+        log_info "reloading quickshell daemon..."
         pkill -x "quickshell" || true
         sleep 0.5
         if (( $+commands[qs] )); then
-            ( qs >/dev/null 2>&1 & )
+            ( qs -d >/dev/null 2>&1 & )
         elif (( $+commands[quickshell] )); then
             ( quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 & )
         fi
-        log_ok "quickshell reloaded"
+        log_ok "quickshell reloaded in background"
     fi
 }
 
@@ -264,11 +267,12 @@ doctor_check() {
         "hyprland"
         "quickshell"
         "matugen"
-        "swww"
+        "awww"
+        "mpvpaper"
+        "ffmpeg"
         "kitty"
         "zsh"
         "wl-copy"
-        "pactl"
         "brightnessctl"
         "playerctl"
         "python3"
@@ -283,16 +287,16 @@ doctor_check() {
         fi
     done
 
-    # check fonts
+    # check fonts safely without pipefail sigpipe
     print ""
     log_info "checking essential fonts..."
-    if fc-list : family | grep -qi "JetBrainsMono Nerd Font"; then
+    if fc-list : family | grep -i "JetBrainsMono" >/dev/null 2>&1; then
         print -P "  ${colors[success]}󰄲${colors[reset]} JetBrainsMono Nerd Font found"
     else
         print -P "  ${colors[warn]}󰀦${colors[reset]} JetBrainsMono Nerd Font missing (nerd icons might look weird)"
     fi
 
-    if fc-list : family | grep -qi "Noto Sans"; then
+    if fc-list : family | grep -i "Noto Sans" >/dev/null 2>&1; then
         print -P "  ${colors[success]}󰄲${colors[reset]} Noto Sans font found"
     else
         print -P "  ${colors[warn]}󰀦${colors[reset]} Noto Sans missing"
@@ -301,7 +305,7 @@ doctor_check() {
     # check symlinks
     print ""
     log_info "verifying config symlinks..."
-    local check_links=("hypr" "quickshell" "matugen" "kitty")
+    local check_links=("hypr" "quickshell" "matugen" "kitty" "zsh" "yazi" "nvim" "fastfetch")
     for l in "${check_links[@]}"; do
         local target="$CONFIG_DIR/$l"
         if [[ -L "$target" ]]; then
@@ -313,12 +317,26 @@ doctor_check() {
         fi
     done
 
+    # verify quickshell configuration
+    print ""
+    log_info "testing quickshell syntax & config compilation..."
+    if (( $+commands[qs] )); then
+        if timeout 4s qs >/tmp/qs_install_test.log 2>&1 || [[ $? -eq 124 ]]; then
+            if grep -s "Configuration Loaded" /tmp/qs_install_test.log >/dev/null 2>&1; then
+                print -P "  ${colors[success]}󰄲${colors[reset]} quickshell configuration: ${colors[bold]}OK (0 errors)${colors[reset]}"
+            else
+                print -P "  ${colors[warn]}󰀦${colors[reset]} quickshell check log: $(tail -n 3 /tmp/qs_install_test.log | tr "\n" " ")"
+            fi
+        fi
+        rm -f /tmp/qs_install_test.log
+    fi
+
     print ""
     if (( ${#missing_bins[@]} > 0 )); then
         log_warn "missing ${#missing_bins[@]} dependencies: ${missing_bins[*]}"
         print -P "  run ${colors[primary]}./install.zsh --deps${colors[reset]} to install them"
     else
-        log_ok "all core tools and services are healthy"
+        log_ok "all core tools, fonts, and services are healthy"
     fi
 }
 
