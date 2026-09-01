@@ -53,6 +53,17 @@ PanelWindow {
             color: Theme.barBg
             border.width: 0
             radius: 0
+
+            // glowing neon accent line on the edge facing workspaces
+            Rectangle {
+                visible: Settings.barStyle === "accent-glow"
+                x: root.isLeft ? parent.width - 2 : 0
+                y: root.isTop ? parent.height - 2 : 0
+                width: root.isVertical ? 2 : parent.width
+                height: root.isVertical ? parent.height : 2
+                color: Theme.primary
+                opacity: 0.90
+            }
         }
 
         // horizontal bar layout (top / bottom) so it doesnt explode
