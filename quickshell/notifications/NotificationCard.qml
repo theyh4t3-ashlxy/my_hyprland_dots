@@ -13,15 +13,11 @@ Item {
     signal closed()
 
     readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property bool isVertical: Theme?.isVertical ?? false
     readonly property bool isCritical: (notifData?.urgency ?? 1) === NotificationUrgency.Critical
     readonly property bool hasTimer: (notifData?.expireTimeout ?? 5000) > 0 && !isCritical
     readonly property int timeoutMs: notifData?.expireTimeout > 0 ? notifData.expireTimeout : 5000
-    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
-    readonly property real scoopH: Theme?.scoopRadiusY ?? 16
-    readonly property bool isWeldedToBar: cardIndex === 0 && !isVertical
 
-    width: 360 + (scoopW * 2)
+    width: 360
     implicitHeight: cardBody.height
 
     property real morphProgress: 0.0
@@ -33,7 +29,7 @@ Item {
             property: "morphProgress"
             from: 0.0
             to: 1.0
-            duration: 260
+            duration: 240
             easing.type: Easing.OutCubic
         }
     }
@@ -41,61 +37,27 @@ Item {
     ParallelAnimation {
         id: dismissAnim
         NumberAnimation { target: cardRoot; property: "morphProgress"; to: 0.0; duration: 180; easing.type: Easing.InCubic }
-        onFinished: {
-            cardRoot.closed()
-        }
+        onFinished: cardRoot.closed()
     }
 
     Component.onCompleted: {
         morphAnim.restart()
-        if (hasTimer) {
-            progressAnim.start()
-        }
+        if (hasTimer) progressAnim.start()
     }
 
     function dismiss() {
-        if (!dismissAnim.running) {
-            dismissAnim.start()
-        }
+        if (!dismissAnim.running) dismissAnim.start()
     }
 
-    // left weld scoop into the status bar
-    ConcaveCorner {
-        x: cardBody.x - cardRoot.scoopW
-        y: cardRoot.isTop ? 0 : cardBody.height - cardRoot.scoopH
-        fillColor: cardRoot.isCritical ? Theme.error_container : Theme.surface_container_low
-        flipX: true
-        flipY: !cardRoot.isTop
-        opacity: Math.min(1.0, cardRoot.morphProgress * 3.5)
-        visible: cardRoot.isWeldedToBar
-    }
-
-    // right weld scoop into the status bar
-    ConcaveCorner {
-        x: cardBody.x + cardBody.width
-        y: cardRoot.isTop ? 0 : cardBody.height - cardRoot.scoopH
-        fillColor: cardRoot.isCritical ? Theme.error_container : Theme.surface_container_low
-        flipX: false
-        flipY: !cardRoot.isTop
-        opacity: Math.min(1.0, cardRoot.morphProgress * 3.5)
-        visible: cardRoot.isWeldedToBar
-    }
-
-    // physical expanding card body
+    // physical expanding card body with sleek rounded corners
     Rectangle {
         id: cardBody
-        x: cardRoot.scoopW
-        y: 0
+        anchors.horizontalCenter: parent.horizontalCenter
         width: 360
         height: Math.max(1, cardRoot.morphProgress * (contentLayout.implicitHeight + 24 + (cardRoot.hasTimer ? 2 : 0)))
+        radius: Theme.radiusLg
         color: cardRoot.isCritical ? Theme.error_container : Theme.surface_container_low
         clip: true
-
-        // seamless weld with bar edge on top card, rounded pill/box for secondary cards
-        topLeftRadius: (cardRoot.isWeldedToBar && cardRoot.isTop) ? 0 : Theme.popupRadius
-        topRightRadius: (cardRoot.isWeldedToBar && cardRoot.isTop) ? 0 : Theme.popupRadius
-        bottomLeftRadius: (cardRoot.isWeldedToBar && !cardRoot.isTop) ? 0 : Theme.popupRadius
-        bottomRightRadius: (cardRoot.isWeldedToBar && !cardRoot.isTop) ? 0 : Theme.popupRadius
 
         border.color: cardRoot.isCritical ? Theme.error : (cardMouse.containsMouse ? Theme.primary : Theme.widgetBorder)
         border.width: 1
@@ -128,11 +90,11 @@ Item {
             }
         }
 
-        // unrolling inner content with parallax translate
+        // unrolling inner content with parallax translate and staggered opacity
         Item {
             width: cardBody.width
             height: contentLayout.implicitHeight + 24
-            y: cardRoot.isTop ? (cardRoot.morphProgress - 1.0) * 18 : (1.0 - cardRoot.morphProgress) * 18
+            y: cardRoot.isTop ? (cardRoot.morphProgress - 1.0) * 16 : (1.0 - cardRoot.morphProgress) * 16
             opacity: Math.max(0.0, (cardRoot.morphProgress - 0.2) / 0.8)
 
             ColumnLayout {

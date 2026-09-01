@@ -12,7 +12,6 @@ PanelWindow {
     screen: modelData
 
     readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
 
     anchors {
         top: toastWindow.isTop
@@ -21,8 +20,8 @@ PanelWindow {
     }
 
     margins {
-        top: toastWindow.isTop ? Theme.barHeight : 0
-        bottom: !toastWindow.isTop ? Theme.barHeight : 0
+        top: toastWindow.isTop ? (Theme.barHeight + 8) : 0
+        bottom: !toastWindow.isTop ? (Theme.barHeight + 8) : 0
         right: 16
     }
 
@@ -31,11 +30,11 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:notifications"
     color: "transparent"
 
-    implicitWidth: 360 + (toastWindow.scoopW * 2)
-    implicitHeight: Math.max(1, toastCol.implicitHeight + 20)
+    implicitWidth: 380
+    implicitHeight: Math.max(1, toastList.contentHeight + 16)
 
     mask: Region {
-        item: toastCol
+        item: toastList
     }
 
     ListModel {
@@ -66,28 +65,56 @@ PanelWindow {
         }
     }
 
-    ColumnLayout {
-        id: toastCol
-        anchors.top: toastWindow.isTop ? parent.top : undefined
-        anchors.bottom: !toastWindow.isTop ? parent.bottom : undefined
-        anchors.right: parent.right
-        width: parent.width
-        spacing: 6
+    ListView {
+        id: toastList
+        anchors.fill: parent
+        spacing: 8
+        interactive: false
+        model: toastModel
 
-        Repeater {
-            model: toastModel
+        delegate: NotificationCard {
+            required property var modelData
+            required property int index
 
-            delegate: NotificationCard {
-                required property var modelData
-                required property int index
-
-                cardIndex: index
-                notifData: modelData
-                onClosed: {
-                    if (index >= 0 && index < toastModel.count) {
-                        toastModel.remove(index)
-                    }
+            cardIndex: index
+            notifData: modelData
+            onClosed: {
+                if (index >= 0 && index < toastModel.count) {
+                    toastModel.remove(index)
                 }
+            }
+        }
+
+        add: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 0.0
+                to: 1.0
+                duration: Theme.animNormal
+                easing.type: Theme.animEasing
+            }
+            NumberAnimation {
+                property: "y"
+                from: toastWindow.isTop ? -30 : 30
+                duration: Theme.animNormal
+                easing.type: Theme.animEasing
+            }
+        }
+
+        displaced: Transition {
+            NumberAnimation {
+                property: "y"
+                duration: Theme.animNormal
+                easing.type: Theme.animEasing
+            }
+        }
+
+        remove: Transition {
+            NumberAnimation {
+                property: "opacity"
+                to: 0.0
+                duration: Theme.animFast
+                easing.type: Easing.InCubic
             }
         }
     }
