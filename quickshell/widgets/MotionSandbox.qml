@@ -19,7 +19,7 @@ PanelWindow {
     readonly property bool isRight: dockPosition === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    property bool springMode: false // false = free drag & stay, true = spring return
+    property bool springMode: false // false = free drag & momentum, true = spring return
 
     anchors {
         top: root.isTop || root.isVertical
@@ -165,7 +165,7 @@ PanelWindow {
                     spacing: 8
 
                     Text {
-                        text: Theme.kaoDJ + " physics & corner playground"
+                        text: Theme.kaoDJ + " physics & momentum playground"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSm
                         font.weight: Font.Bold
@@ -173,7 +173,7 @@ PanelWindow {
                         Layout.fillWidth: true
                     }
 
-                    // Mode Toggle (Stay vs Spring Return)
+                    // Mode Toggle (Flick Momentum vs Spring Return)
                     Rectangle {
                         height: 24
                         implicitWidth: modeRow.implicitWidth + 14
@@ -185,7 +185,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             spacing: 4
                             Text {
-                                text: root.springMode ? "spring return" : "free drag & stay"
+                                text: root.springMode ? "spring snapback" : "momentum flick"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
@@ -206,9 +206,9 @@ PanelWindow {
                         iconSize: Theme.fontSizeXs
                         tooltip: "reset card positions"
                         onClicked: {
-                            dragCard1.x = 10; dragCard1.y = 10;
-                            dragCard2.x = 145; dragCard2.y = 10;
-                            dragCard3.x = 280; dragCard3.y = 10;
+                            dragCard1.animateTo(10, 10);
+                            dragCard2.animateTo(145, 10);
+                            dragCard3.animateTo(280, 10);
                         }
                     }
 
@@ -272,7 +272,7 @@ PanelWindow {
                     Layout.fillHeight: true
                     clip: true
 
-                    // Free Draggable Card 1 (Vibe)
+                    // Momentum Draggable Card 1 (Vibe)
                     Rectangle {
                         id: dragCard1
                         x: 10
@@ -285,13 +285,22 @@ PanelWindow {
                         border.width: 1
                         z: dragArea1.drag.active ? 10 : 1
 
-                        Behavior on x {
-                            enabled: root.springMode && !dragArea1.drag.active
-                            NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                        property real lastX: 0
+                        property real lastY: 0
+                        property real lastTime: 0
+                        property real velX: 0
+                        property real velY: 0
+
+                        function animateTo(targetX, targetY) {
+                            animX1.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
+                            animY1.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
+                            momentumAnim1.restart();
                         }
-                        Behavior on y {
-                            enabled: root.springMode && !dragArea1.drag.active
-                            NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+
+                        ParallelAnimation {
+                            id: momentumAnim1
+                            NumberAnimation { id: animX1; target: dragCard1; property: "x"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
+                            NumberAnimation { id: animY1; target: dragCard1; property: "y"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
                         }
 
                         ColumnLayout {
@@ -306,7 +315,7 @@ PanelWindow {
                                 Layout.alignment: Qt.AlignHCenter
                             }
                             Text {
-                                text: "drag & place"
+                                text: "flick momentum"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
@@ -332,16 +341,38 @@ PanelWindow {
                             drag.minimumY: 0
                             drag.maximumY: canvasArea.height - dragCard1.height
                             cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+                            onPressed: (mouse) => {
+                                momentumAnim1.stop();
+                                dragCard1.lastX = mouse.x;
+                                dragCard1.lastY = mouse.y;
+                                dragCard1.lastTime = Date.now();
+                                dragCard1.velX = 0;
+                                dragCard1.velY = 0;
+                            }
+
+                            onPositionChanged: (mouse) => {
+                                let now = Date.now();
+                                let dt = Math.max(1, now - dragCard1.lastTime);
+                                dragCard1.velX = (mouse.x - dragCard1.lastX) / dt * 60;
+                                dragCard1.velY = (mouse.y - dragCard1.lastY) / dt * 60;
+                                dragCard1.lastX = mouse.x;
+                                dragCard1.lastY = mouse.y;
+                                dragCard1.lastTime = now;
+                            }
+
                             onReleased: {
                                 if (root.springMode) {
-                                    dragCard1.x = 10;
-                                    dragCard1.y = 10;
+                                    dragCard1.animateTo(10, 10);
+                                } else {
+                                    // Glide with calculated velocity momentum
+                                    dragCard1.animateTo(dragCard1.x + dragCard1.velX * 4, dragCard1.y + dragCard1.velY * 4);
                                 }
                             }
                         }
                     }
 
-                    // Free Draggable Card 2 (DJ)
+                    // Momentum Draggable Card 2 (DJ)
                     Rectangle {
                         id: dragCard2
                         x: 145
@@ -354,13 +385,22 @@ PanelWindow {
                         border.width: 1
                         z: dragArea2.drag.active ? 10 : 1
 
-                        Behavior on x {
-                            enabled: root.springMode && !dragArea2.drag.active
-                            NumberAnimation { duration: Theme.animSlow; easing.type: Theme.animEasing }
+                        property real lastX: 0
+                        property real lastY: 0
+                        property real lastTime: 0
+                        property real velX: 0
+                        property real velY: 0
+
+                        function animateTo(targetX, targetY) {
+                            animX2.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
+                            animY2.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
+                            momentumAnim2.restart();
                         }
-                        Behavior on y {
-                            enabled: root.springMode && !dragArea2.drag.active
-                            NumberAnimation { duration: Theme.animSlow; easing.type: Theme.animEasing }
+
+                        ParallelAnimation {
+                            id: momentumAnim2
+                            NumberAnimation { id: animX2; target: dragCard2; property: "x"; duration: Theme.animSlow; easing.type: Easing.OutQuad }
+                            NumberAnimation { id: animY2; target: dragCard2; property: "y"; duration: Theme.animSlow; easing.type: Easing.OutQuad }
                         }
 
                         ColumnLayout {
@@ -401,16 +441,37 @@ PanelWindow {
                             drag.minimumY: 0
                             drag.maximumY: canvasArea.height - dragCard2.height
                             cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+                            onPressed: (mouse) => {
+                                momentumAnim2.stop();
+                                dragCard2.lastX = mouse.x;
+                                dragCard2.lastY = mouse.y;
+                                dragCard2.lastTime = Date.now();
+                                dragCard2.velX = 0;
+                                dragCard2.velY = 0;
+                            }
+
+                            onPositionChanged: (mouse) => {
+                                let now = Date.now();
+                                let dt = Math.max(1, now - dragCard2.lastTime);
+                                dragCard2.velX = (mouse.x - dragCard2.lastX) / dt * 60;
+                                dragCard2.velY = (mouse.y - dragCard2.lastY) / dt * 60;
+                                dragCard2.lastX = mouse.x;
+                                dragCard2.lastY = mouse.y;
+                                dragCard2.lastTime = now;
+                            }
+
                             onReleased: {
                                 if (root.springMode) {
-                                    dragCard2.x = 145;
-                                    dragCard2.y = 10;
+                                    dragCard2.animateTo(145, 10);
+                                } else {
+                                    dragCard2.animateTo(dragCard2.x + dragCard2.velX * 5, dragCard2.y + dragCard2.velY * 5);
                                 }
                             }
                         }
                     }
 
-                    // Free Draggable Card 3 (Media Pill)
+                    // Momentum Draggable Card 3 (Media Pill)
                     Rectangle {
                         id: dragCard3
                         x: 280
@@ -423,13 +484,22 @@ PanelWindow {
                         border.width: 1
                         z: dragArea3.drag.active ? 10 : 1
 
-                        Behavior on x {
-                            enabled: root.springMode && !dragArea3.drag.active
-                            NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                        property real lastX: 0
+                        property real lastY: 0
+                        property real lastTime: 0
+                        property real velX: 0
+                        property real velY: 0
+
+                        function animateTo(targetX, targetY) {
+                            animX3.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
+                            animY3.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
+                            momentumAnim3.restart();
                         }
-                        Behavior on y {
-                            enabled: root.springMode && !dragArea3.drag.active
-                            NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+
+                        ParallelAnimation {
+                            id: momentumAnim3
+                            NumberAnimation { id: animX3; target: dragCard3; property: "x"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
+                            NumberAnimation { id: animY3; target: dragCard3; property: "y"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
                         }
 
                         ColumnLayout {
@@ -470,10 +540,31 @@ PanelWindow {
                             drag.minimumY: 0
                             drag.maximumY: canvasArea.height - dragCard3.height
                             cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+                            onPressed: (mouse) => {
+                                momentumAnim3.stop();
+                                dragCard3.lastX = mouse.x;
+                                dragCard3.lastY = mouse.y;
+                                dragCard3.lastTime = Date.now();
+                                dragCard3.velX = 0;
+                                dragCard3.velY = 0;
+                            }
+
+                            onPositionChanged: (mouse) => {
+                                let now = Date.now();
+                                let dt = Math.max(1, now - dragCard3.lastTime);
+                                dragCard3.velX = (mouse.x - dragCard3.lastX) / dt * 60;
+                                dragCard3.velY = (mouse.y - dragCard3.lastY) / dt * 60;
+                                dragCard3.lastX = mouse.x;
+                                dragCard3.lastY = mouse.y;
+                                dragCard3.lastTime = now;
+                            }
+
                             onReleased: {
                                 if (root.springMode) {
-                                    dragCard3.x = 280;
-                                    dragCard3.y = 10;
+                                    dragCard3.animateTo(280, 10);
+                                } else {
+                                    dragCard3.animateTo(dragCard3.x + dragCard3.velX * 4, dragCard3.y + dragCard3.velY * 4);
                                 }
                             }
                         }
