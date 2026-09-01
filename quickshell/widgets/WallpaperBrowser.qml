@@ -524,8 +524,13 @@ Rectangle {
                     delegate: Item {
                         required property var modelData
                         property string path: modelData.path
+                        property string thumb: modelData.thumb || modelData.path
                         property string name: modelData.name
                         property string category: modelData.category
+                        property bool isLive: modelData.isLive ?? false
+                        property bool isVideo: modelData.isVideo ?? false
+                        property bool isGif: modelData.isGif ?? false
+                        property string ext: modelData.ext ?? ""
 
                         width: localGrid.cellWidth
                         height: localGrid.cellHeight
@@ -541,7 +546,7 @@ Rectangle {
 
                             Image {
                                 anchors.fill: parent
-                                source: "file://" + path
+                                source: "file://" + thumb
                                 sourceSize: Qt.size(240, 156)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
@@ -563,6 +568,28 @@ Rectangle {
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 8
                                     color: "#ffffff"
+                                    anchors.centerIn: parent
+                                }
+                            }
+
+                            // live / format badge
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                height: 16
+                                width: formatBadgeText.implicitWidth + 8
+                                radius: 4
+                                color: isLive ? Theme.primary : Qt.rgba(0, 0, 0, 0.65)
+                                visible: isLive || (ext !== "png" && ext !== "jpg" && ext !== "")
+
+                                Text {
+                                    id: formatBadgeText
+                                    text: isVideo ? "LIVE" : (isGif ? "GIF" : ext.toUpperCase())
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    font.weight: Font.Bold
+                                    color: isLive ? Theme.on_primary : "#ffffff"
                                     anchors.centerIn: parent
                                 }
                             }

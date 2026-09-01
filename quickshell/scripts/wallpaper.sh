@@ -75,6 +75,9 @@ except Exception:
         scheme="${10:-scheme-tonal-spot}"
 
         echo "$img_path" > "$CUR_WP_FILE"
+        ext="${img_path##*.}"
+        ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+
         awww img "$img_path" \
             --transition-type "$transition" \
             --transition-angle "$angle" \
@@ -83,7 +86,14 @@ except Exception:
             --transition-fps "$fps" \
             --filter "$filter" 2>/dev/null || true
 
-        matugen image "$img_path" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+        if [[ "$ext_lower" =~ ^(mp4|webm|mkv|mov)$ ]]; then
+            ffmpeg -y -ss 00:00:01 -i "$img_path" -vframes 1 -q:v 2 /tmp/qs_video_thumb.jpg 2>/dev/null || true
+            if [[ -f /tmp/qs_video_thumb.jpg ]]; then
+                matugen image /tmp/qs_video_thumb.jpg -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+            fi
+        else
+            matugen image "$img_path" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+        fi
         ;;
 
     color)
