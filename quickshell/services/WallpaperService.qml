@@ -26,6 +26,8 @@ QtObject {
         reapplyTheme()
     }
 
+    property string targetMonitor: "all"
+
     property FileView localWpListFile: FileView {
         path: "/tmp/qs_wallpapers.json"
         watchChanges: true
@@ -39,7 +41,7 @@ QtObject {
         Quickshell.execDetached([scriptPath, "scan"])
     }
 
-    function applyLocalWallpaper(filePath) {
+    function applyLocalWallpaper(filePath, monitor) {
         currentWallpaperPath = filePath
         let tType = Settings.awwwTransitionType ?? "wipe"
         let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
@@ -49,11 +51,12 @@ QtObject {
         let tFilter = Settings.awwwFilter ?? "Lanczos3"
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
+        let mon = monitor || targetMonitor || "all"
 
-        Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme])
+        Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
     }
 
-    function applyRandomWallpaper(category) {
+    function applyRandomWallpaper(category, monitor) {
         let cat = category ?? "all"
         let tType = Settings.awwwTransitionType ?? "wipe"
         let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
@@ -63,11 +66,12 @@ QtObject {
         let tFilter = Settings.awwwFilter ?? "Lanczos3"
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
+        let mon = monitor || targetMonitor || "all"
 
-        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme])
+        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
     }
 
-    function setWallpaper(url) {
+    function setWallpaper(url, monitor) {
         let tType = Settings.awwwTransitionType ?? "wipe"
         let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
         let tStep = "" + (Settings.awwwTransitionStep ?? 90)
@@ -76,8 +80,9 @@ QtObject {
         let tFilter = Settings.awwwFilter ?? "Lanczos3"
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
+        let mon = monitor || targetMonitor || "all"
 
-        Quickshell.execDetached([scriptPath, "download", url, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme])
+        Quickshell.execDetached([scriptPath, "download", url, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
     }
 
     function applyColor(hex) {

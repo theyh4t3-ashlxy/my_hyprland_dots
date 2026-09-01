@@ -355,13 +355,84 @@ Rectangle {
                 }
             }
 
+            // Monitor Selector Chip Row
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    text: "monitor:"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                    color: Theme.on_surface_variant
+                }
+
+                // All monitors chip
+                Rectangle {
+                    height: 22
+                    width: allMonText.implicitWidth + 14
+                    radius: Theme.radiusPill
+                    color: WallpaperService.targetMonitor === "all" ? Theme.primary : Theme.cardBg
+                    border.color: Theme.cardBorder
+                    border.width: 1
+
+                    Text {
+                        id: allMonText
+                        text: "all monitors 󰍹"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.Medium
+                        color: WallpaperService.targetMonitor === "all" ? Theme.on_primary : Theme.on_surface
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: WallpaperService.targetMonitor = "all"
+                    }
+                }
+
+                // Individual connected monitor chips
+                Repeater {
+                    model: Quickshell.screens
+                    delegate: Rectangle {
+                        required property var modelData
+                        height: 22
+                        width: monChipText.implicitWidth + 14
+                        radius: Theme.radiusPill
+                        color: WallpaperService.targetMonitor === modelData.name ? Theme.primary : Theme.cardBg
+                        border.color: Theme.cardBorder
+                        border.width: 1
+
+                        Text {
+                            id: monChipText
+                            text: modelData.name
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                            font.weight: Font.Medium
+                            color: WallpaperService.targetMonitor === modelData.name ? Theme.on_primary : Theme.on_surface
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: WallpaperService.targetMonitor = modelData.name
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 height: 1
                 color: Theme.widgetBorder
             }
 
-            
             // LIVE TAB VIEW
             ColumnLayout {
                 id: liveView

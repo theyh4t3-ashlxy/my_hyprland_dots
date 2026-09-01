@@ -21,6 +21,7 @@ case "$action" in
         filt="${8:-Lanczos3}"
         mode="${9:-dark}"
         scheme="${10:-scheme-tonal-spot}"
+        target_mon="${11:-all}"
 
         python3 "$SCRIPT_DIR/scan_wallpapers.py"
         selected_wp=$(python3 -c '
@@ -41,16 +42,7 @@ except Exception:
 ' "$filter_cat")
 
         if [[ -n "$selected_wp" && -f "$selected_wp" ]]; then
-            echo "$selected_wp" > "$CUR_WP_FILE"
-            awww img "$selected_wp" \
-                --transition-type "$transition" \
-                --transition-angle "$angle" \
-                --transition-step "$step" \
-                --transition-duration "$duration" \
-                --transition-fps "$fps" \
-                --filter "$filt" 2>/dev/null || true
-
-            matugen image "$selected_wp" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+            "$0" set "$selected_wp" "$transition" "$angle" "$step" "$duration" "$fps" "$filt" "$mode" "$scheme" "$target_mon"
         fi
         ;;
 
@@ -73,25 +65,38 @@ except Exception:
         filter="${8:-Lanczos3}"
         mode="${9:-dark}"
         scheme="${10:-scheme-tonal-spot}"
+        target_mon="${11:-all}"
 
         echo "$img_path" > "$CUR_WP_FILE"
         ext="${img_path##*.}"
         ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
 
-        awww img "$img_path" \
-            --transition-type "$transition" \
-            --transition-angle "$angle" \
-            --transition-step "$step" \
-            --transition-duration "$duration" \
-            --transition-fps "$fps" \
-            --filter "$filter" 2>/dev/null || true
+        # Monitor output args
+        awww_out_args=()
+        mpv_out="*"
+        if [[ "$target_mon" != "all" && "$target_mon" != "*" && -n "$target_mon" ]]; then
+            awww_out_args=("-o" "$target_mon")
+            mpv_out="$target_mon"
+        fi
 
         if [[ "$ext_lower" =~ ^(mp4|webm|mkv|mov)$ ]]; then
+            # Video live wallpaper: use mpvpaper
+            pkill -x mpvpaper 2>/dev/null || true
+            
+            # Generate thumbnail for Matugen palette
             ffmpeg -y -ss 00:00:01 -i "$img_path" -vframes 1 -q:v 2 /tmp/qs_video_thumb.jpg 2>/dev/null || true
             if [[ -f /tmp/qs_video_thumb.jpg ]]; then
                 matugen image /tmp/qs_video_thumb.jpg -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
             fi
+            
+            # Launch mpvpaper with auto-pause and looping
+            mpvpaper -f -p -a FULL -o "no-audio loop loop-playlist" "$mpv_out" "$img_path" 2>/dev/null || true
         else
+            # Static image or GIF: kill mpvpaper and use awww
+            pkill -x mpvpaper 2>/dev/null || true
+            
+            awww img "${awww_out_args[@]}" "$img_path"                 --transition-type "$transition"                 --transition-angle "$angle"                 --transition-step "$step"                 --transition-duration "$duration"                 --transition-fps "$fps"                 --filter "$filter" 2>/dev/null || true
+
             matugen image "$img_path" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
         fi
         ;;
@@ -101,6 +106,7 @@ except Exception:
         mode="${3:-dark}"
         scheme="${4:-scheme-tonal-spot}"
 
+        pkill -x mpvpaper 2>/dev/null || true
         matugen color hex "$hex_color" -m "$mode" -t "$scheme" 2>/dev/null || true
         ;;
 
@@ -113,7 +119,7 @@ except Exception:
         fi
 
         if [[ -n "$cur_wp" && -f "$cur_wp" ]]; then
-            matugen image "$cur_wp" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+            "$0" set "$cur_wp" "wipe" "30" "90" "3" "60" "Lanczos3" "$mode" "$scheme" "all"
         else
             matugen color hex "#787756" -m "$mode" -t "$scheme" 2>/dev/null || true
         fi
