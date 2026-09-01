@@ -24,8 +24,8 @@ local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
 # the actual prompt
 [[ -f "$zdir/prompt.zsh" ]]    && source "$zdir/prompt.zsh"
 
-if (( $+commands[fastfetch] )); then
+if [[ -o interactive && -t 0 && -t 1 ]] && (( $+commands[fastfetch] )); then
     fastfetch
-else
+elif [[ -o interactive && -t 0 && -t 1 ]]; then
     echo "fastfetch not found. how will anyone know you use arch?"
 fi

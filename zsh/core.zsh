@@ -46,13 +46,24 @@ bindkey -M menuselect '^[[Z' reverse-menu-complete
 zstyle ':completion:*:*:*:*:processes' command "ps -u $USER -o pid,user,%cpu,%mem,command -w"
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 
-# cache compdump so opening tabs doesn't lag
+# lightning fast compdump caching & background bytecode compilation
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.m-1) ]]; then
+local zcomp="${ZDOTDIR:-$HOME}/.zcompdump"
+if [[ -n ${zcomp}(#qN.mh-24) ]]; then
     compinit -C
 else
     compinit
+    { zcompile -R "${zcomp}" } >/dev/null 2>&1 &!
 fi
+
+# recompile all zsh dotfiles to .zwc bytecode on demand
+zrecompile() {
+    local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
+    for f in "$zdir"/*.zsh(N); do
+        zcompile -R "$f"
+    done
+    print -P "%F{green}󰄲 recompiled all zsh configs to .zwc bytecode%f"
+}
 
 # keys that actually work when i press them
 bindkey -e
