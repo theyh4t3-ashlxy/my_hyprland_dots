@@ -23,9 +23,13 @@ Shape {
 
     readonly property real w: width
     readonly property real h: height
-    readonly property real t: 1.0 - tension
+    readonly property real effTension: style === "chamfer" ? 0.5
+                                     : style === "flared"  ? 0.92
+                                     : style === "stepped" ? 1.0
+                                     : tension
+    readonly property real k: 1.0 - effTension
 
-    // direct 4-quadrant continuous closed loop bezier coordinates
+    // mathematically exact closed-loop 4-quadrant bezier coordinates
     readonly property real startPtX: flipX ? w : 0
     readonly property real startPtY: flipY ? h : 0
 
@@ -35,11 +39,11 @@ Shape {
     readonly property real endPtX: flipX ? w : 0
     readonly property real endPtY: flipY ? 0 : h
 
-    readonly property real ctrl1X: flipX ? (w * tension) : (w * t)
+    readonly property real ctrl1X: flipX ? (w * k) : (w * effTension)
     readonly property real ctrl1Y: flipY ? h : 0
 
     readonly property real ctrl2X: flipX ? w : 0
-    readonly property real ctrl2Y: flipY ? (h * tension) : (h * t)
+    readonly property real ctrl2Y: flipY ? (h * k) : (h * effTension)
 
     ShapePath {
         fillColor: root.fillColor
