@@ -58,6 +58,10 @@ QtObject {
     readonly property color secondary_overlay:      alpha(secondary, 0.18)
     readonly property color tertiary_overlay:       alpha(tertiary, 0.18)
     readonly property color error_overlay:          alpha(error, 0.22)
+    readonly property color warn:                   tertiary
+    readonly property color warn_container:         tertiary_container
+    readonly property color on_warn_container:      on_tertiary_container
+    readonly property color warn_overlay:           tertiary_overlay
 
     // so disabled buttons actually look dead
     readonly property color on_surface_disabled:    alpha(on_surface, 0.38)
