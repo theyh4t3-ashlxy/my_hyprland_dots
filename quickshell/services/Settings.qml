@@ -52,6 +52,7 @@ QtObject {
     property bool showIdleInhibitor: true
     property bool showQuickSettings: true
     property bool showWallpaper: true
+    property bool showQuickNotes: true
     property bool showMotionSandbox: false
 
     // formatting & typography
@@ -122,6 +123,7 @@ QtObject {
     onShowIdleInhibitorChanged: queueSave()
     onShowQuickSettingsChanged: queueSave()
     onShowWallpaperChanged: queueSave()
+    onShowQuickNotesChanged: queueSave()
     onShowMotionSandboxChanged: queueSave()
     onClockFormatChanged: queueSave()
     onDateFormatChanged: queueSave()
@@ -170,6 +172,7 @@ QtObject {
         if (data.showIdleInhibitor !== undefined) root.showIdleInhibitor = (data.showIdleInhibitor === true || data.showIdleInhibitor === "true");
         if (data.showQuickSettings !== undefined) root.showQuickSettings = (data.showQuickSettings === true || data.showQuickSettings === "true");
         if (data.showWallpaper !== undefined) root.showWallpaper = (data.showWallpaper === true || data.showWallpaper === "true");
+        if (data.showQuickNotes !== undefined) root.showQuickNotes = (data.showQuickNotes === true || data.showQuickNotes === "true");
         if (data.clockFormat !== undefined && root.clockFormat !== data.clockFormat) root.clockFormat = data.clockFormat;
         if (data.dateFormat !== undefined && root.dateFormat !== data.dateFormat) root.dateFormat = data.dateFormat;
         if (data.workspaceCount !== undefined && root.workspaceCount !== parseInt(data.workspaceCount)) root.workspaceCount = parseInt(data.workspaceCount);
@@ -299,6 +302,8 @@ QtObject {
             "showIdleInhibitor=" + showIdleInhibitor,
             "showQuickSettings=" + showQuickSettings,
             "showWallpaper=" + showWallpaper,
+            "showQuickNotes=" + showQuickNotes,
+            'iconSet="' + iconSet + '"',
             'clockFormat="' + clockFormat + '"',
             'dateFormat="' + dateFormat + '"',
             "workspaceCount=" + workspaceCount,

@@ -415,6 +415,7 @@ Rectangle {
                             { prop: "showNotifications", label: "notifications center" },
                             { prop: "showIdleInhibitor", label: "caffeine / idle inhibitor" },
                             { prop: "showClipboard", label: "clipboard history" },
+                            { prop: "showQuickNotes", label: "quick notes & scratchpad" },
                             { prop: "showPowerMenu", label: "power session menu" }
                         ]
 

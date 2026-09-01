@@ -210,6 +210,12 @@ PanelWindow {
                 }
 
                 Loader {
+                    active: Settings.showQuickNotes && !root.isVertical
+                    visible: active
+                    sourceComponent: Component { QuickNotes {} }
+                }
+
+                Loader {
                     active: Settings.showMedia && !root.isVertical
                     visible: active
                     sourceComponent: Component { NowPlaying {} }
@@ -351,6 +357,12 @@ PanelWindow {
                     active: Settings.showQuickSettings && root.isVertical
                     visible: active
                     sourceComponent: Component { QuickSettings {} }
+                }
+
+                Loader {
+                    active: Settings.showQuickNotes && root.isVertical
+                    visible: active
+                    sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {

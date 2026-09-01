@@ -23,4 +23,8 @@ ShellRoot {
             open: Settings.showMotionSandbox
         }
     }
+
+    LockScreen {
+        id: globalLockScreen
+    }
 }

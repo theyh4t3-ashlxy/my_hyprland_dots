@@ -19,7 +19,10 @@ PanelWindow {
     readonly property bool isRight: dockPosition === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    property bool springMode: false // false = free drag & momentum, true = spring return
+    property bool springMode: false
+    property string activeSandboxMode: "toy" // "toy" or "cards"
+    property int bounceScore: 0
+    property string gravityMode: "normal" // "normal", "zero", "reverse", "chaos"
 
     anchors {
         top: root.isTop || root.isVertical
@@ -171,6 +174,43 @@ PanelWindow {
                         font.weight: Font.Bold
                         color: Theme.primary
                         Layout.fillWidth: true
+                    }
+
+                    
+                    // Sandbox mode toggle
+                    RowLayout {
+                        spacing: 4
+                        Repeater {
+                            model: [
+                                { id: "toy", label: "pinball toy" },
+                                { id: "cards", label: "cards" }
+                            ]
+                            delegate: Rectangle {
+                                required property var modelData
+                                height: 24
+                                width: modeText.implicitWidth + 14
+                                radius: Theme.radiusPill
+                                color: root.activeSandboxMode === modelData.id ? Theme.primary : Theme.cardBg
+                                border.color: Theme.cardBorder
+                                border.width: 1
+
+                                Text {
+                                    id: modeText
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: root.activeSandboxMode === modelData.id ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.activeSandboxMode = modelData.id
+                                }
+                            }
+                        }
                     }
 
                     // Mode Toggle (Flick Momentum vs Spring Return)

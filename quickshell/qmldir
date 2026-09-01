@@ -39,3 +39,5 @@ NetworkEntry             widgets/NetworkEntry.qml
 Bluetooth                widgets/Bluetooth.qml
 Clipboard                widgets/Clipboard.qml
 QuickSettings            widgets/QuickSettings.qml
+QuickNotes               widgets/QuickNotes.qml
+LockScreen               lockscreen/LockScreen.qml

@@ -48,3 +48,7 @@ output_path = "~/.config/yazi/theme.toml"
 [templates.nvim]
 input_path = "~/.config/matugen/templates/nvim-colors.lua"
 output_path = "~/.config/nvim/lua/config/colors.lua"
+
+[templates.hyprlock]
+input_path = "~/.config/matugen/templates/hyprlock-colors.conf"
+output_path = "~/.config/hypr/hyprlock-colors.conf"

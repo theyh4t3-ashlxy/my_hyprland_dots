@@ -6,6 +6,7 @@ Rectangle {
 
     property string icon: ""
     property int iconSize: Theme.fontSizeMd
+    property color iconColor: Theme.on_surface
     property string tooltip: ""
     property bool highlighted: false
 
@@ -29,7 +30,7 @@ Rectangle {
         text: root.icon
         font.family: Theme.fontIcon
         font.pixelSize: root.iconSize
-        color: Theme.on_surface
+        color: root.iconColor
         anchors.centerIn: parent
     }
 
