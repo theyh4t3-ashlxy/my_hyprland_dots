@@ -61,7 +61,7 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    text: "Notifications"
+                    text: "notifications"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
                     font.weight: Font.Bold
@@ -71,7 +71,7 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconTrash
                     iconSize: Theme.fontSizeMd
-                    tooltip: "Clear All"
+                    tooltip: "clear all"
                     onClicked: {
                         NotificationService.clearAll()
                         popup.open = false

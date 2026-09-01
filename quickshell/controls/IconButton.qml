@@ -27,7 +27,7 @@ Rectangle {
 
     Text {
         text: root.icon
-        font.family: Theme.fontMono
+        font.family: Theme.fontIcon
         font.pixelSize: root.iconSize
         color: Theme.on_surface
         anchors.centerIn: parent

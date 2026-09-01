@@ -57,7 +57,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: "Bluetooth"
+                    text: "bluetooth"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
                     font.weight: Font.Bold
@@ -68,7 +68,7 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconRefresh
                     iconSize: Theme.fontSizeMd
-                    tooltip: "Scan Devices"
+                    tooltip: "scan devices"
                     visible: root.isPowered && root.adapter
                     onClicked: {
                         if (root.adapter) {

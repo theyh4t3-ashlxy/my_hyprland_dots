@@ -102,7 +102,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: "Clipboard"
+                    text: "clipboard"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
                     font.weight: Font.Bold
@@ -113,7 +113,7 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconTrash
                     iconSize: Theme.fontSizeMd
-                    tooltip: "Clear History"
+                    tooltip: "clear history"
                     onClicked: clipModel.clear()
                 }
             }

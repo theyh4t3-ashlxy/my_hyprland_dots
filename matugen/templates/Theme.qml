@@ -147,105 +147,113 @@ QtObject {
     readonly property int    animSlow:              Math.round(350 * animSpeedMult)
     readonly property var    animEasing:            Easing.OutCubic
 
-    // classic FontAwesome nerd font icons
-    readonly property string iconArch:              ""
-    readonly property string iconCpu:               ""
-    readonly property string iconMem:               ""
-    readonly property string iconThermo:            ""
-    readonly property string iconCoffee:            ""
-    readonly property string iconClock:             ""
-    readonly property string iconAppLauncher:       ""
-    readonly property string iconGrid:              ""
-    readonly property string iconNote:              ""
-    readonly property string iconClipboard:         ""
-    readonly property string iconSearch:            ""
-    readonly property string iconClose:             ""
-    readonly property string iconCheck:             ""
-    readonly property string iconCheckCircle:       ""
-    readonly property string iconTrash:             ""
-    readonly property string iconSettings:          ""
+    // Icon Set Selection & Dynamic Font
+    readonly property string iconSet:               Settings?.iconSet ?? "material"
+    readonly property string fontIcon:              (iconSet === "windows") ? "Segoe Fluent Icons" : fontMono
+
+    function getIcon(mat: string, win: string, fa: string): string {
+        if (iconSet === "windows") return win;
+        if (iconSet === "awesome") return fa;
+        return mat;
+    }
+
+    // Core System Icons
+    readonly property string iconArch:              getIcon("󰣇", "\uE770", "")
+    readonly property string iconAppLauncher:       iconArch
+    readonly property string iconSearch:            getIcon("󰍉", "\uE721", "")
+    readonly property string iconClose:             getIcon("󰅖", "\uE8BB", "")
+    readonly property string iconCheck:             getIcon("󰄲", "\uE73E", "")
+    readonly property string iconCheckCircle:       getIcon("󰄲", "\uE73E", "")
+    readonly property string iconSettings:          getIcon("󰒓", "\uE713", "")
     readonly property string iconGear:              iconSettings
-    readonly property string iconSave:              ""
-    readonly property string iconRefresh:           ""
-    readonly property string iconEye:               ""
-    readonly property string iconEyeOff:            ""
-    readonly property string iconHeart:             ""
-    readonly property string iconHeartbeat:         ""
-    readonly property string iconDownload:          ""
-    readonly property string iconFolder:            ""
-    readonly property string iconGlobe:             ""
-    readonly property string iconForward:           ""
+    readonly property string iconSave:              getIcon("󰆓", "\uE74E", "")
+    readonly property string iconRefresh:           getIcon("󰑐", "\uE72C", "")
+    readonly property string iconTrash:             getIcon("󰩹", "\uE74D", "")
+    readonly property string iconClipboard:         getIcon("󰅌", "\uE8C8", "")
+    readonly property string iconGrid:              getIcon("󰕰", "\uE80A", "")
+    readonly property string iconNote:              getIcon("󰏫", "\uE70F", "")
+    readonly property string iconCoffee:            getIcon("󰅐", "\uE703", "")
+    readonly property string iconClock:             getIcon("󰅐", "\uE823", "")
+    readonly property string iconCpu:               getIcon("󰍛", "\uE950", "")
+    readonly property string iconMem:               getIcon("󰘚", "\uE950", "")
+    readonly property string iconThermo:            getIcon("󰔏", "\uE9CA", "")
+    readonly property string iconEye:               getIcon("󰈈", "\uE890", "")
+    readonly property string iconEyeOff:            getIcon("󰈉", "\uE891", "")
+    readonly property string iconHeart:             getIcon("󰋑", "\uEB51", "")
+    readonly property string iconDownload:          getIcon("󰇚", "\uE896", "")
+    readonly property string iconFolder:            getIcon("󰉋", "\uE8B7", "")
+    readonly property string iconGlobe:             getIcon("󰖟", "\uE774", "")
 
     // Volume & Audio
-    readonly property string iconVolMute:           "󰝟"
-    readonly property string iconVolLow:            ""
-    readonly property string iconVolMid:            ""
-    readonly property string iconVolHigh:           ""
-    readonly property string iconMic:               ""
-    readonly property string iconMicMute:           ""
-    readonly property string iconPalette:           ""
+    readonly property string iconVolMute:           getIcon("󰝟", "\uE74F", "")
+    readonly property string iconVolLow:            getIcon("󰕿", "\uE992", "")
+    readonly property string iconVolMid:            getIcon("󰖀", "\uE994", "")
+    readonly property string iconVolHigh:           getIcon("󰕾", "\uE767", "")
+    readonly property string iconMic:               getIcon("󰍬", "\uE720", "")
+    readonly property string iconMicMute:           getIcon("󰍭", "\uE720", "")
+    readonly property string iconPalette:           getIcon("󰏘", "\uE790", "")
+    readonly property string iconHeadphones:        getIcon("󰋋", "\uE7F6", "")
+    readonly property string iconEqualizer:         getIcon("󰎎", "\uE9E9", "󰎎")
 
     // Battery
-    readonly property string iconBatFull:           ""
-    readonly property string iconBatHalf:           ""
-    readonly property string iconBatQuarter:        ""
-    readonly property string iconBatEmpty:          ""
-    readonly property string iconBatCharge:         ""
+    readonly property string iconBatFull:           getIcon("󰁹", "\uE839", "")
+    readonly property string iconBatHalf:           getIcon("󰁾", "\uE859", "")
+    readonly property string iconBatQuarter:        getIcon("󰁼", "\uE855", "")
+    readonly property string iconBatEmpty:          getIcon("󰁺", "\uE850", "")
+    readonly property string iconBatCharge:         getIcon("󰂄", "\uE839", "")
 
     // Display & Brightness
-    readonly property string iconSun:               ""
-    readonly property string iconMoon:              ""
+    readonly property string iconSun:               getIcon("󰃠", "\uE706", "")
+    readonly property string iconMoon:              getIcon("󰃞", "\uE708", "")
     readonly property string iconBrightness:        iconSun
 
     // Media & Music
-    readonly property string iconMusic:             ""
-    readonly property string iconPlay:              ""
-    readonly property string iconPause:             ""
-    readonly property string iconNext:              ""
-    readonly property string iconPrev:              ""
-    readonly property string iconShuffle:           ""
-    readonly property string iconRepeat:            ""
-    readonly property string iconRepeatOne:         "󰑘"
+    readonly property string iconMusic:             getIcon("󰝚", "\uE8D6", "")
+    readonly property string iconPlay:              getIcon("󰐊", "\uE768", "")
+    readonly property string iconPause:             getIcon("󰏤", "\uE769", "")
+    readonly property string iconNext:              getIcon("󰒭", "\uE893", "")
+    readonly property string iconPrev:              getIcon("󰒮", "\uE892", "")
+    readonly property string iconShuffle:           getIcon("󰒝", "\uE8B1", "")
+    readonly property string iconRepeat:            getIcon("󰑖", "\uE8EE", "")
+    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "󰑘")
 
     // Notifications & Wallpapers
-    readonly property string iconWallhaven:         ""
-    readonly property string iconWallpaper:         ""
-    readonly property string iconBell:              ""
-    readonly property string iconBellOutline:       ""
-    readonly property string iconBellOff:           "󰂲"
+    readonly property string iconWallhaven:         getIcon("󰸉", "\uEB9F", "")
+    readonly property string iconWallpaper:         getIcon("󰸉", "\uEB9F", "")
+    readonly property string iconBell:              getIcon("󰂚", "\uEA8F", "")
+    readonly property string iconBellOutline:       getIcon("󰂚", "\uEA8F", "")
+    readonly property string iconBellOff:           getIcon("󰂛", "\uEC42", "󰂲")
 
     // Connectivity
-    readonly property string iconEthernet:          "󰈀"
-    readonly property string iconWifi:              ""
-    readonly property string iconWifiHigh:          ""
-    readonly property string iconWifiMed:           ""
-    readonly property string iconWifiLow:           ""
-    readonly property string iconWifiOff:           "󰤮"
-    readonly property string iconBluetooth:         ""
-    readonly property string iconBluetoothConnected:"󰂱"
-    readonly property string iconBluetoothOff:      "󰂲"
+    readonly property string iconEthernet:          getIcon("󰈀", "\uE839", "󰈀")
+    readonly property string iconWifi:              getIcon("󰤨", "\uE701", "")
+    readonly property string iconWifiHigh:          getIcon("󰤨", "\uEC3E", "")
+    readonly property string iconWifiMed:           getIcon("󰤥", "\uEC3C", "")
+    readonly property string iconWifiLow:           getIcon("󰤢", "\uEC3A", "")
+    readonly property string iconWifiOff:           getIcon("󰤮", "\uEB5E", "󰤮")
+    readonly property string iconBluetooth:         getIcon("󰂯", "\uE702", "")
+    readonly property string iconBluetoothConnected:getIcon("󰂱", "\uE702", "󰂱")
+    readonly property string iconBluetoothOff:      getIcon("󰂲", "\uE702", "󰂲")
 
     // Power & Session
-    readonly property string iconPower:             ""
+    readonly property string iconPower:             getIcon("󰐥", "\uE7E8", "")
     readonly property string iconShutdown:          iconPower
-    readonly property string iconLock:              ""
-    readonly property string iconLogout:            ""
-    readonly property string iconReboot:            ""
-    readonly property string iconSuspend:           ""
-    readonly property string iconHibernate:         ""
+    readonly property string iconLock:              getIcon("󰌾", "\uE72E", "")
+    readonly property string iconLogout:            getIcon("󰍃", "\uF3B1", "")
+    readonly property string iconReboot:            getIcon("󰑐", "\uE72C", "")
+    readonly property string iconSuspend:           getIcon("󰤄", "\uE708", "")
+    readonly property string iconHibernate:         getIcon("󰒲", "\uE708", "")
 
     // Navigation & Chevrons
-    readonly property string iconChevronRight:      ""
-    readonly property string iconChevronLeft:       ""
-    readonly property string iconChevronDown:       ""
-    readonly property string iconChevronUp:         ""
-    readonly property string iconHeadphones:        "󰋋"
-    readonly property string iconEqualizer:         "󰎎"
-    readonly property string iconFlame:             "󰈸"
-    readonly property string iconSparkles:          "󰓏"
-    readonly property string iconRadio:             "󰐹"
-    readonly property string iconSliders:           "󰝚"
-    readonly property string iconTerminal:          ""
+    readonly property string iconChevronRight:      getIcon("󰅂", "\uE76C", "")
+    readonly property string iconChevronLeft:       getIcon("󰅁", "\uE76B", "")
+    readonly property string iconChevronDown:       getIcon("󰅀", "\uE70D", "")
+    readonly property string iconChevronUp:         getIcon("󰅃", "\uE70E", "")
+    readonly property string iconFlame:             getIcon("󰈸", "\uE7E8", "")
+    readonly property string iconSparkles:          getIcon("󰓏", "\uE7C5", "󰓏")
+    readonly property string iconRadio:             getIcon("󰐹", "\uE8D6", "󰐹")
+    readonly property string iconSliders:           getIcon("󰝚", "\uE9E9", "󰝚")
+    readonly property string iconTerminal:          getIcon("", "\uE756", "")
 
     // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"

@@ -58,6 +58,7 @@ QtObject {
     property string clockFormat: "HH:mm"
     property string dateFormat: "ddd, MMM d"
     property int workspaceCount: 10
+    property string iconSet: "material" // "material", "windows", "awesome"
     property string fontFamily: "Noto Sans"
     property string fontMono: "JetBrainsMono Nerd Font"
     property real fontScale: 1.0
@@ -125,6 +126,7 @@ QtObject {
     onClockFormatChanged: queueSave()
     onDateFormatChanged: queueSave()
     onWorkspaceCountChanged: queueSave()
+    onIconSetChanged: queueSave()
     onFontFamilyChanged: queueSave()
     onFontMonoChanged: queueSave()
     onFontScaleChanged: queueSave()

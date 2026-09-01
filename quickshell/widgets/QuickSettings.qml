@@ -987,8 +987,51 @@ Rectangle {
 
                                 MouseArea {
                                     anchors.fill: parent
+                                }
+                            }
+                        }
+                    }
+
+                    // Icon Glyph Set
+                    Text {
+                        text: "icon glyph pack: " + Settings.iconSet
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "material", id: "material" },
+                                { label: "windows segoe", id: "windows" },
+                                { label: "font awesome", id: "awesome" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 30
+                                radius: Theme.radiusSm
+                                color: Settings.iconSet === modelData.id ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: Settings.iconSet === modelData.id ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.workspaceCount = modelData
+                                    onClicked: Settings.iconSet = modelData.id
                                 }
                             }
                         }
