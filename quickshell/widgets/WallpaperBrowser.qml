@@ -360,81 +360,226 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.activeTab === "live"
-                spacing: 8
+                spacing: 10
 
-                // Search Bar for Live Wallpapers
+                // Direct URL or local path input card
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 36
-                    color: Theme.surface_container_highest
+                    implicitHeight: liveInputCol.implicitHeight + 20
+                    color: Theme.cardBg
                     radius: Theme.widgetRadius
-                    border.color: liveSearchInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                    border.color: Theme.cardBorder
                     border.width: 1
 
-                    RowLayout {
+                    ColumnLayout {
+                        id: liveInputCol
                         anchors.fill: parent
-                        anchors.margins: Theme.widgetPaddingH
+                        anchors.margins: 10
                         spacing: 8
 
-                        Text {
-                            text: Theme.iconSearch
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface_variant
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            Text {
+                                text: Theme.iconFlame
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.primary
+                            }
+
+                            Text {
+                                text: "custom video / animated url or path"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSm
+                                font.weight: Font.Bold
+                                color: Theme.on_surface
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: ".mp4 · .webm · .gif · .webp"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                color: Theme.on_surface_disabled
+                            }
                         }
 
-                        TextInput {
-                            id: liveSearchInput
+                        RowLayout {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            verticalAlignment: TextInput.AlignVCenter
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface
-                            onAccepted: {
-                                root.liveSearchQuery = text.trim()
-                                fetchLiveWallpapers(root.liveSearchQuery)
+                            spacing: 6
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 36
+                                radius: Theme.radiusSm
+                                color: Theme.surface_container_highest
+                                border.color: liveUrlInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                                border.width: 1
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: Theme.widgetPaddingH
+                                    spacing: 6
+
+                                    TextInput {
+                                        id: liveUrlInput
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        verticalAlignment: TextInput.AlignVCenter
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        color: Theme.on_surface
+                                        selectByMouse: true
+                                        onAccepted: {
+                                            if (text.trim() !== "") {
+                                                WallpaperService.setWallpaper(text.trim());
+                                            }
+                                        }
+                                    }
+
+                                    IconButton {
+                                        icon: Theme.iconClose
+                                        tooltip: "clear input"
+                                        iconSize: 10
+                                        visible: liveUrlInput.text.length > 0
+                                        onClicked: liveUrlInput.text = ""
+                                    }
+                                }
+                            }
+
+                            // Paste from clipboard button
+                            IconButton {
+                                icon: Theme.iconClipboard
+                                tooltip: "paste url from clipboard"
+                                onClicked: {
+                                    let pasteProc = Qt.createQmlObject("import Quickshell.Io; Process { id: proc; command: [\"wl-paste\"]; stdout: SplitParser { onRead: data => { liveUrlInput.text = data.trim(); } } }", root, "pasteProc");
+                                    pasteProc.exited.connect(function() { pasteProc.destroy(); });
+                                    pasteProc.running = true;
+                                }
+                            }
+
+                            // Apply live wallpaper button
+                            Rectangle {
+                                height: 36
+                                width: applyLiveText.implicitWidth + 24
+                                radius: Theme.radiusSm
+                                color: Theme.primary
+                                opacity: liveUrlInput.text.trim() !== "" ? 1.0 : 0.6
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+
+                                    Text {
+                                        text: Theme.iconCheck
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_primary
+                                    }
+                                    Text {
+                                        id: applyLiveText
+                                        text: "apply live"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Font.Bold
+                                        color: Theme.on_primary
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (liveUrlInput.text.trim() !== "") {
+                                            WallpaperService.setWallpaper(liveUrlInput.text.trim());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Curated sample preset chips
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            Text {
+                                text: "sample presets:"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                color: Theme.on_surface_variant
+                            }
+
+                            Repeater {
+                                model: [
+                                    { label: "pixel rain", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdWU0MXhnbG05Mm11YWN5a2RmcGlkMGt1dXpnNnRpdDJva24ya3A2ayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKTDnUxE6uQja4U/giphy.gif" },
+                                    { label: "lofi room", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMHU2MnRhZW03NXpiOG1vd24xaWtvbTllYmg0cW81djE5OTl2YnBkayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LmNwrBhejkK9EFP504/giphy.gif" },
+                                    { label: "cyberpunk train", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmtvaDVqbzZ2dHB1YXZsNWF5dWp2b3hpd2g4ODNsd28xNXc1OTU4NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/giphy.gif" },
+                                    { label: "space nebula", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTR0NGh0d2R2dWd1dmZobnlvaHQ4MGoxbHRid2M4M21udmVvM3JmZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYEqEzwMWFCg8rm/giphy.gif" }
+                                ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    height: 22
+                                    width: pChipText.implicitWidth + 10
+                                    radius: Theme.radiusPill
+                                    color: Theme.pillBg
+                                    border.color: Theme.pillBorder
+                                    border.width: 1
+
+                                    Text {
+                                        id: pChipText
+                                        text: modelData.label
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                        color: Theme.on_surface
+                                        anchors.centerIn: parent
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            liveUrlInput.text = modelData.url;
+                                            WallpaperService.setWallpaper(modelData.url);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                // Category chips for quick preset exploration
+                // Filtered local live wallpapers list
+                readonly property var localLiveWps: {
+                    let res = [];
+                    for (let i = 0; i < localWpModel.count; i++) {
+                        let item = localWpModel.get(i);
+                        if (item.isVideo || item.isGif || item.isLive || item.ext === "gif" || item.ext === "mp4" || item.ext === "webm") {
+                            res.push(item);
+                        }
+                    }
+                    return res;
+                }
+
+                // Subheader for local live collection
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 6
 
-                    Repeater {
-                        model: ["all", "pixel art", "lo-fi", "cyberpunk", "anime", "space", "synthwave"]
-                        delegate: Rectangle {
-                            required property string modelData
-                            height: 24
-                            width: liveChipText.implicitWidth + 14
-                            radius: Theme.radiusPill
-                            color: (root.liveSearchQuery === modelData || (root.liveSearchQuery === "" && modelData === "all")) ? Theme.primary : Theme.cardBg
-                            border.color: Theme.cardBorder
-                            border.width: 1
+                    Text {
+                        text: "your local live wallpapers (" + (liveView.localLiveWps ? liveView.localLiveWps.length : 0) + ")"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                        Layout.fillWidth: true
+                    }
 
-                            Text {
-                                id: liveChipText
-                                text: modelData
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.weight: Font.Medium
-                                color: (root.liveSearchQuery === modelData || (root.liveSearchQuery === "" && modelData === "all")) ? Theme.on_primary : Theme.on_surface
-                                anchors.centerIn: parent
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.liveSearchQuery = modelData === "all" ? "" : modelData
-                                    liveSearchInput.text = root.liveSearchQuery
-                                    fetchLiveWallpapers(root.liveSearchQuery)
-                                }
-                            }
-                        }
+                    Text {
+                        text: "auto-extracted matugen palette"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        color: Theme.on_surface_disabled
                     }
                 }
 
@@ -445,14 +590,16 @@ Rectangle {
                     clip: true
                     cellWidth: width / 2
                     cellHeight: cellWidth * 0.65
-                    model: liveWpModel
+                    model: liveView.localLiveWps
 
                     delegate: Item {
                         required property var modelData
-                        property string url: modelData.url
-                        property string thumb: modelData.thumb || modelData.url
-                        property string title: modelData.title
-                        property string category: modelData.category
+                        property string path: modelData.path
+                        property string thumb: modelData.thumb || modelData.path
+                        property string name: modelData.name
+                        property string ext: modelData.ext ?? "live"
+                        property bool isVideo: modelData.isVideo ?? false
+                        property bool isGif: modelData.isGif ?? false
 
                         width: liveGrid.cellWidth
                         height: liveGrid.cellHeight
@@ -463,12 +610,12 @@ Rectangle {
                             color: Theme.surface_container_high
                             radius: Theme.widgetRadius
                             clip: true
-                            border.color: liveItemMouse.containsMouse ? Theme.primary : "transparent"
+                            border.color: liveLocMouse.containsMouse ? Theme.primary : "transparent"
                             border.width: 1
 
                             Image {
                                 anchors.fill: parent
-                                source: thumb
+                                source: "file://" + thumb
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                             }
@@ -478,12 +625,13 @@ Rectangle {
                                 anchors.right: parent.right
                                 anchors.margins: 6
                                 height: 16
-                                width: 34
+                                width: lBadgeText.implicitWidth + 8
                                 radius: 4
                                 color: Theme.primary
 
                                 Text {
-                                    text: "LIVE"
+                                    id: lBadgeText
+                                    text: isVideo ? "LIVE VIDEO" : (isGif ? "ANIMATED GIF" : ext.toUpperCase())
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 8
                                     font.weight: Font.Bold
@@ -499,10 +647,10 @@ Rectangle {
                                 anchors.right: parent.right
                                 height: 24
                                 color: Qt.rgba(0, 0, 0, 0.75)
-                                visible: liveItemMouse.containsMouse
+                                visible: liveLocMouse.containsMouse
 
                                 Text {
-                                    text: title
+                                    text: name
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeXs
                                     color: "#ffffff"
@@ -514,12 +662,12 @@ Rectangle {
                             }
 
                             MouseArea {
-                                id: liveItemMouse
+                                id: liveLocMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    WallpaperService.setWallpaper(url)
+                                    WallpaperService.applyLocalWallpaper(path);
                                 }
                             }
                         }
