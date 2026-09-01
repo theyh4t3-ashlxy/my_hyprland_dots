@@ -12,6 +12,7 @@ QtObject {
     property int barMargin: 0
     property bool barFloating: false
     property int barHeight: 32
+    property string barStyle: "glass" // "glass", "pure-black", "translucent", "accent-glow", "monochrome"
     property int scoopRadius: 16
     property real scoopTension: 0.55228475
     // screen corners & concave styles
@@ -87,6 +88,7 @@ QtObject {
     onBarMarginChanged: queueSave()
     onBarFloatingChanged: queueSave()
     onBarHeightChanged: queueSave()
+    onBarStyleChanged: queueSave()
     onScoopRadiusChanged: queueSave()
     onScoopTensionChanged: queueSave()
     onScreenCornerRadiusChanged: queueSave()

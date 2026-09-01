@@ -38,7 +38,6 @@ PanelWindow {
 
     AppLauncher {
         id: launcherPopup
-        parentWindow: root
     }
 
     Item {
@@ -51,7 +50,9 @@ PanelWindow {
             y: root.isBottom ? Theme.scoopRadiusY : 0
             width: root.isVertical ? Theme.barHeight : parent.width
             height: root.isVertical ? parent.height : Theme.barHeight
-            color: Theme.surface_container_low
+            color: Theme.barBg
+            border.color: Theme.barBorderColor
+            border.width: Settings.barStyle === "accent-glow" || Settings.barStyle === "pure-black" ? 1 : 0
             radius: 0
         }
 
@@ -242,6 +243,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
+                            launcherPopup.targetRelativeY = launcherBtnV.mapToItem(null, 0, 0).y + (launcherBtnV.height / 2)
                             launcherPopup.open = !launcherPopup.open
                         }
                     }

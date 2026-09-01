@@ -994,7 +994,56 @@ Rectangle {
                         }
                     }
 
-                    // Screen Corner Style & Color Mode
+                    // Bar Style & Aesthetic Theme
+                    Text {
+                        text: "bar aesthetic style"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        columns: 2
+                        rowSpacing: 6
+                        columnSpacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "glass theme", s: "glass" },
+                                { label: "pure black (oled)", s: "pure-black" },
+                                { label: "translucent (glass)", s: "translucent" },
+                                { label: "accent glow (cyber)", s: "accent-glow" },
+                                { label: "monochrome", s: "monochrome" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Settings.barStyle === modelData.s ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: Settings.barStyle === modelData.s ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.barStyle = modelData.s
+                                }
+                            }
+                        }
+                    }
+
+                    // Screen Corner Curvature Style
                     Text {
                         text: "screen corner curvature style"
                         font.family: Theme.fontFamily
@@ -1034,50 +1083,6 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: Settings.cornerStyle = modelData.s
-                                }
-                            }
-                        }
-                    }
-
-                    Text {
-                        text: "screen corner fill color"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Repeater {
-                            model: [
-                                { label: "theme dark", c: "theme" },
-                                { label: "pure black (oled)", c: "pure-black" },
-                                { label: "bar match", c: "bar" },
-                                { label: "accent glow", c: "accent" }
-                            ]
-
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                height: 28
-                                radius: Theme.radiusSm
-                                color: Settings.cornerColorMode === modelData.c ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    color: Settings.cornerColorMode === modelData.c ? Theme.on_primary : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.cornerColorMode = modelData.c
                                 }
                             }
                         }

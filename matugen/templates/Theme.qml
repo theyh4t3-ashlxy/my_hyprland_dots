@@ -103,9 +103,30 @@ QtObject {
     readonly property real   scoopTension:          Settings?.scoopTension ?? 0.5522847498307936
     readonly property string scoopStyle:            Settings?.cornerStyle ?? "cubic"
     readonly property int    screenCornerRadius:    Settings?.screenCornerRadius ?? 16
-    readonly property string screenCornerMode:      Settings?.screenCornerMode ?? "all"
-    readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "theme"
-    readonly property color  cornerFill:            cornerColorMode === "pure-black" ? "#000000" : (cornerColorMode === "bar" ? surface_container_low : (cornerColorMode === "accent" ? primary : background))
+    readonly property string barStyle:              Settings?.barStyle ?? "glass"
+    readonly property color  barBg: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#000000";
+        if (bs === "translucent") return alpha(surface_container_low, 0.72);
+        if (bs === "accent-glow") return alpha(primary_container, 0.90);
+        if (bs === "monochrome") return surface_container_highest;
+        return surface_container_low;
+    }
+    readonly property color  barBorderColor: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#282828";
+        if (bs === "accent-glow") return primary;
+        if (bs === "translucent") return alpha(outline_variant, 0.35);
+        return widgetBorder;
+    }
+
+    readonly property color  cornerFill: {
+        let cm = Settings?.cornerColorMode ?? "theme";
+        if (cm === "pure-black") return "#000000";
+        if (cm === "accent") return primary;
+        if (cm === "bar") return barBg;
+        return background;
+    }
 
     readonly property color  widgetBg:              surface_container_low
     readonly property color  widgetHover:           surface_container_high
