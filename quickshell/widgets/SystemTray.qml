@@ -5,50 +5,56 @@ import Quickshell.Widgets
 import Quickshell.Services.SystemTray
 
 Rectangle {
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : trayRow.implicitWidth + 16
-    implicitHeight: Theme.barHeight - 8
+    id: trayRoot
+    readonly property int itemCount: SystemTray.items.values ? SystemTray.items.values.length : 0
+    visible: itemCount > 0
+
+    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : trayFlow.implicitWidth + 16
+    implicitHeight: Theme.isVertical ? trayFlow.implicitHeight + 16 : Theme.barHeight - 8
     radius: Theme.radiusPill
     color: Theme.surface_container_high
 
-    Row {
-        id: trayRow
+    Flow {
+        id: trayFlow
         anchors.centerIn: parent
         spacing: Theme.widgetSpacing
+        flow: Theme.isVertical ? Flow.TopToBottom : Flow.LeftToRight
 
-    Repeater {
-        model: SystemTray.items
+        Repeater {
+            model: SystemTray.items
 
-        Item {
-            // stowaways in the tray
-            required property var modelData
-            width: Theme.fontSizeMd + 6
-            height: Theme.fontSizeMd + 6
+            Item {
+                required property var modelData
+                width: 20
+                height: 20
 
-            Image {
-                source: modelData.icon
-                sourceSize: Qt.size(24, 24)
-                anchors.fill: parent
-                anchors.margins: 2
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-            }
+                IconImage {
+                    id: trayIcon
+                    source: Quickshell.iconPath(modelData.icon || "", "application-x-executable")
+                    anchors.centerIn: parent
+                    width: 16
+                    height: 16
+                }
 
-            QsMenuAnchor {
-                id: menuAnchor
-                menu: modelData.menu
-            }
+                QsMenuAnchor {
+                    id: menuAnchor
+                    menu: modelData.menu
+                }
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
-                onClicked: (mouse) => {
-                    if (mouse.button === Qt.RightButton || modelData.onlyMenu)
-                        menuAnchor.open();
-                    else
-                        modelData.activate();
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+
+                    onClicked: (mouse) => {
+                        if (mouse.button === Qt.RightButton || modelData.onlyMenu)
+                            menuAnchor.open();
+                        else
+                            modelData.activate();
+                    }
                 }
             }
         }
     }
-}
 }

@@ -101,19 +101,19 @@ PanelWindow {
                 }
 
                 Loader {
-                    active: Settings.showWallpaper
+                    active: Settings.showWallpaper && !root.isVertical
                     visible: active
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
-                    active: Settings.showWorkspaces
+                    active: Settings.showWorkspaces && !root.isVertical
                     visible: active
                     sourceComponent: Component { Workspaces {} }
                 }
 
                 Loader {
-                    active: Settings.showWindowTitle
+                    active: Settings.showWindowTitle && !root.isVertical
                     visible: active
                     sourceComponent: Component { WindowTitle {} }
                 }
@@ -121,7 +121,7 @@ PanelWindow {
 
             // clock in center
             Loader {
-                active: Settings.showClock
+                active: Settings.showClock && !root.isVertical
                 visible: active
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
@@ -136,67 +136,67 @@ PanelWindow {
                 layoutDirection: Qt.RightToLeft
 
                 Loader {
-                    active: Settings.showPowerMenu
+                    active: Settings.showPowerMenu && !root.isVertical
                     visible: active
                     sourceComponent: Component { PowerMenu {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickSettings
+                    active: Settings.showQuickSettings && !root.isVertical
                     visible: active
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
-                    active: Settings.showSystemTray
+                    active: Settings.showSystemTray && !root.isVertical
                     visible: active
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
-                    active: Settings.showNotifications
+                    active: Settings.showNotifications && !root.isVertical
                     visible: active
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
-                    active: Settings.showMedia
+                    active: Settings.showMedia && !root.isVertical
                     visible: active
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
-                    active: Settings.showClipboard
+                    active: Settings.showClipboard && !root.isVertical
                     visible: active
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
-                    active: Settings.showIdleInhibitor
+                    active: Settings.showIdleInhibitor && !root.isVertical
                     visible: active
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
-                    active: Settings.showBluetooth
+                    active: Settings.showBluetooth && !root.isVertical
                     visible: active
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
-                    active: Settings.showNetwork
+                    active: Settings.showNetwork && !root.isVertical
                     visible: active
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
-                    active: Settings.showVolume
+                    active: Settings.showVolume && !root.isVertical
                     visible: active
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
-                    active: Settings.showBattery
+                    active: Settings.showBattery && !root.isVertical
                     visible: active
                     sourceComponent: Component { Battery {} }
                 }
@@ -248,13 +248,13 @@ PanelWindow {
                 }
 
                 Loader {
-                    active: Settings.showWallpaper
+                    active: Settings.showWallpaper && root.isVertical
                     visible: active
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
-                    active: Settings.showWorkspaces
+                    active: Settings.showWorkspaces && root.isVertical
                     visible: active
                     sourceComponent: Component { Workspaces {} }
                 }
@@ -262,7 +262,7 @@ PanelWindow {
 
             // clock in center
             Loader {
-                active: Settings.showClock
+                active: Settings.showClock && root.isVertical
                 visible: active
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
@@ -276,67 +276,67 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
 
                 Loader {
-                    active: Settings.showBattery
+                    active: Settings.showBattery && root.isVertical
                     visible: active
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
-                    active: Settings.showVolume
+                    active: Settings.showVolume && root.isVertical
                     visible: active
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
-                    active: Settings.showNetwork
+                    active: Settings.showNetwork && root.isVertical
                     visible: active
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
-                    active: Settings.showBluetooth
+                    active: Settings.showBluetooth && root.isVertical
                     visible: active
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
-                    active: Settings.showIdleInhibitor
+                    active: Settings.showIdleInhibitor && root.isVertical
                     visible: active
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
-                    active: Settings.showClipboard
+                    active: Settings.showClipboard && root.isVertical
                     visible: active
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
-                    active: Settings.showMedia
+                    active: Settings.showMedia && root.isVertical
                     visible: active
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
-                    active: Settings.showNotifications
+                    active: Settings.showNotifications && root.isVertical
                     visible: active
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
-                    active: Settings.showSystemTray
+                    active: Settings.showSystemTray && root.isVertical
                     visible: active
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickSettings
+                    active: Settings.showQuickSettings && root.isVertical
                     visible: active
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
-                    active: Settings.showPowerMenu
+                    active: Settings.showPowerMenu && root.isVertical
                     visible: active
                     sourceComponent: Component { PowerMenu {} }
                 }
