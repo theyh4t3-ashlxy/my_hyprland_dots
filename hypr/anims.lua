@@ -1,94 +1,68 @@
--- stop teleporting in 2ms and freezing for the rest of eternity
-hl.curve("snappyPop", {
+-- snappy punch with an actual smooth decel so it doesn't hit a brick wall
+hl.curve("superSnappy", {
     type = "bezier",
-    points = { { 0.2, 1.15 }, { 0.35, 1.0 } },
+    points = { { 0.05, 0.9 }, { 0.1, 1.05 } },
 })
 
--- buttery decel so my eyes stop bleeding on fast workspace swaps
-hl.curve("smoothDecel", {
+-- clean decel without overshoot so the whole screen doesn't vibrate my retinas
+hl.curve("smoothOut", {
     type = "bezier",
     points = { { 0.16, 1.0 }, { 0.3, 1.0 } },
 })
 
--- linear for the spinny shit
+-- straight linear for spinning garbage
 hl.curve("linear", {
     type = "bezier",
     points = { { 0.0, 0.0 }, { 1.0, 1.0 } },
 })
 
--- fallback so hyprland doesn't explode
+-- global fallback baseline
 hl.animation({
     leaf = "global",
     enabled = true,
     speed = 4.0,
-    bezier = "smoothDecel",
+    bezier = "smoothOut",
 })
 
--- crisp pop without the weird molasses tail
+-- popin needs actual room to breathe or it just looks like a screen glitch
 hl.animation({
-    leaf = "windowsIn",
+    leaf = "windows",
     enabled = true,
     speed = 3.5,
-    bezier = "snappyPop",
+    bezier = "superSnappy",
     style = "popin 80%",
 })
 
--- fast exit so closing shit doesn't linger
-hl.animation({
-    leaf = "windowsOut",
-    enabled = true,
-    speed = 2.5,
-    bezier = "smoothDecel",
-    style = "popin 85%",
-})
-
--- moving/resizing windows shouldn't bounce like a trampoline
-hl.animation({
-    leaf = "windowsMove",
-    enabled = true,
-    speed = 3.5,
-    bezier = "smoothDecel",
-})
-
--- clean workspace glide
+-- workspaces gliding without snapping my neck
 hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 3.8,
-    bezier = "smoothDecel",
-    style = "slidefade 20%",
+    bezier = "smoothOut",
+    style = "slidefade 15%",
 })
 
--- layers sliding and fading properly instead of flickering
+-- layers fading cleanly instead of choking on alpha values
 hl.animation({
     leaf = "layers",
     enabled = true,
-    speed = 3.0,
-    bezier = "smoothDecel",
+    speed = 2.5,
+    bezier = "smoothOut",
     style = "fade",
 })
 
--- fade shouldn't feel like a dying gpu artifact
-hl.animation({
-    leaf = "fade",
-    enabled = true,
-    speed = 2.5,
-    bezier = "smoothDecel",
-})
-
--- border transition
+-- instant feedback so my click feels registered
 hl.animation({
     leaf = "border",
     enabled = true,
-    speed = 3.0,
-    bezier = "smoothDecel",
+    speed = 2.0,
+    bezier = "superSnappy",
 })
 
--- continuous spin so my brain gets dopamine
+-- if this hitches again im turning off borders forever
 hl.animation({
     leaf = "borderangle",
     enabled = true,
-    speed = 25.0,
+    speed = 30.0,
     bezier = "linear",
-    style = "loop",
 })
