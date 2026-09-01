@@ -299,7 +299,7 @@ Rectangle {
 
                         Text {
                             text: Theme.kaoSearch
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface_variant
                         }
@@ -627,7 +627,7 @@ Rectangle {
 
                         Text {
                             text: Theme.kaoSearch
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface_variant
                         }
@@ -938,7 +938,7 @@ Rectangle {
 
                                 Text {
                                     text: Theme.iconMoon
-                                    font.family: Theme.fontMono
+                                    font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeXs
                                     color: WallpaperService.currentMode === "dark" ? Theme.on_primary : Theme.on_surface
                                 }
@@ -970,7 +970,7 @@ Rectangle {
 
                                 Text {
                                     text: Theme.iconSun
-                                    font.family: Theme.fontMono
+                                    font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeXs
                                     color: WallpaperService.currentMode === "light" ? Theme.on_primary : Theme.on_surface
                                 }
@@ -1169,7 +1169,7 @@ Rectangle {
 
                             Text {
                                 text: Theme.iconRefresh
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeXs
                                 color: Theme.on_surface
                             }

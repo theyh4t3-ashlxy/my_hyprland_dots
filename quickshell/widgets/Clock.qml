@@ -125,7 +125,7 @@ Rectangle {
 
                         Text {
                             text: Theme.kaoVibe
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 11
                             color: Theme.primary
                             Layout.alignment: Qt.AlignRight

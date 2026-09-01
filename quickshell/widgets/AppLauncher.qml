@@ -115,7 +115,7 @@ PopupPanel {
                     Text {
                         anchors.centerIn: parent
                         text: Theme.iconClose
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: 10
                         color: Theme.on_surface_variant
                     }
@@ -160,7 +160,7 @@ PopupPanel {
                         spacing: 4
                         Text {
                             text: modelData.icon
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 10
                             color: root.activeCategory === modelData.id ? Theme.on_primary : Theme.on_surface_variant
                         }
@@ -369,7 +369,7 @@ PopupPanel {
 
                 Text {
                     text: Theme.kaoSad
-                    font.family: Theme.fontMono
+                    font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeXl
                     color: Theme.on_surface_variant
                     Layout.alignment: Qt.AlignHCenter

@@ -234,7 +234,7 @@ PanelWindow {
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.icon
-                                    font.family: Theme.fontMono
+                                    font.family: Theme.fontIcon
                                     font.pixelSize: 10
                                     color: root.dockPosition === modelData.pos ? Theme.on_primary : Theme.on_surface
                                 }
@@ -309,7 +309,7 @@ PanelWindow {
 
                             Text {
                                 text: Theme.kaoJam
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: 18
                                 color: Theme.primary
                                 Layout.alignment: Qt.AlignHCenter
@@ -409,7 +409,7 @@ PanelWindow {
 
                             Text {
                                 text: Theme.kaoDJ
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: 18
                                 color: Theme.warn
                                 Layout.alignment: Qt.AlignHCenter
@@ -508,7 +508,7 @@ PanelWindow {
 
                             Text {
                                 text: Theme.iconMusic
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: 18
                                 color: Theme.secondary
                                 Layout.alignment: Qt.AlignHCenter

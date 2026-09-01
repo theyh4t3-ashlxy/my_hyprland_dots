@@ -103,7 +103,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: Theme.kaoCool
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.primary
                     }

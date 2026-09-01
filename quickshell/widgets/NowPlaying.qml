@@ -160,7 +160,7 @@ Rectangle {
                             Text {
                                 anchors.centerIn: parent
                                 text: Theme.iconMusic
-                                font.family: Theme.fontMono
+                                font.family: Theme.fontIcon
                                 font.pixelSize: 28
                                 color: Theme.on_surface_variant
                                 visible: !(root.player?.trackArtUrl)
@@ -335,7 +335,7 @@ Rectangle {
 
                     Text {
                         text: Theme.kaoMusic
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: 32
                         color: Theme.primary
                         Layout.alignment: Qt.AlignHCenter

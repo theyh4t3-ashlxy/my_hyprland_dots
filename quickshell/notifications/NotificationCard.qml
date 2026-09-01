@@ -158,7 +158,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: Theme.iconClose
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 10
                             color: Theme.on_surface_variant
                         }

@@ -9,9 +9,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : qsRow.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: popup.open ? Theme.primary_overlay : (qsMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+    color: popup.open ? Theme.primary_overlay : (qsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     property string activeTab: "layout"
     property string fontTarget: "sans" // "sans" or "mono"
@@ -32,7 +35,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: Theme.iconSettings
-            font.family: Theme.fontMono
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : Theme.on_surface
         }
@@ -45,6 +48,7 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2)
+            popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2)
             popup.open = !popup.open
         }
     }
@@ -54,6 +58,7 @@ Rectangle {
         cardWidth: 480
         cardHeight: 640
         targetRelativeX: root.mapToItem(null, 0, 0).x + (root.width / 2)
+        targetRelativeY: root.mapToItem(null, 0, 0).y + (root.height / 2)
 
         content: ColumnLayout {
             anchors.fill: parent
@@ -87,7 +92,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconCheck
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: 10
                             color: Theme.primary
                         }
@@ -140,7 +145,7 @@ Rectangle {
 
                                 Text {
                                     text: modelData.icon
-                                    font.family: Theme.fontMono
+                                    font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeXs
                                     color: root.activeTab === modelData.id ? Theme.on_primary : Theme.on_surface
                                 }
@@ -418,7 +423,9 @@ Rectangle {
                             Layout.fillWidth: true
                             height: 38
                             radius: Theme.widgetRadius
-                            color: Theme.surface_container_highest
+                            color: Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
 
                             RowLayout {
                                 anchors.fill: parent
@@ -506,9 +513,9 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     height: 36
-                    color: Theme.surface_container_highest
+                    color: Theme.cardBg
                     radius: Theme.widgetRadius
-                    border.color: fontSearchInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                    border.color: fontSearchInput.activeFocus ? Theme.primary : Theme.cardBorder
                     border.width: 1
 
                     RowLayout {
@@ -518,7 +525,7 @@ Rectangle {
 
                         Text {
                             text: Theme.iconSearch
-                            font.family: Theme.fontMono
+                            font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface_variant
                         }
@@ -750,7 +757,7 @@ Rectangle {
                                 Text {
                                     anchors.centerIn: parent
                                     text: Theme.kaoDJ
-                                    font.family: Theme.fontMono
+                                    font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeMd
                                     color: Theme.primary
                                 }
@@ -824,7 +831,9 @@ Rectangle {
                         Layout.fillWidth: true
                         height: 52
                         radius: Theme.widgetRadius
-                        color: Theme.surface_container_highest
+                        color: Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
 
                         RowLayout {
                             anchors.fill: parent

@@ -7,12 +7,17 @@ import Quickshell.Services.SystemTray
 Rectangle {
     id: trayRoot
     readonly property int itemCount: SystemTray.items.values ? SystemTray.items.values.length : 0
-    visible: itemCount > 0
+    visible: Settings.showSystemTray && itemCount > 0
 
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : trayFlow.implicitWidth + 16
     implicitHeight: Theme.isVertical ? trayFlow.implicitHeight + 16 : Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: Theme.surface_container_high
+    color: Theme.pillBg
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+
+    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     Flow {
         id: trayFlow

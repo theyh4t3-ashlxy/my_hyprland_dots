@@ -145,7 +145,7 @@ Rectangle {
 
                     Text {
                         text: Theme.kaoSearch
-                        font.family: Theme.fontMono
+                        font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.on_surface_variant
                     }

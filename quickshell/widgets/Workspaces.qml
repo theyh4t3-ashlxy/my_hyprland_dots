@@ -103,7 +103,7 @@ Rectangle {
 
                 Text {
                     text: Theme.kaoCoffee
-                    font.family: Theme.fontMono
+                    font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.primary
                 }
