@@ -31,6 +31,10 @@ Rectangle {
     }
 
     ListModel {
+        id: localLiveWpModel
+    }
+
+    ListModel {
         id: onlineWpModel
     }
 
@@ -92,8 +96,12 @@ Rectangle {
             try {
                 let items = JSON.parse(str);
                 localWpModel.clear();
+                localLiveWpModel.clear();
                 for (let i = 0; i < items.length; i++) {
                     localWpModel.append(items[i]);
+                    if (items[i].isVideo || items[i].isGif || items[i].isLive || items[i].ext === "gif" || items[i].ext === "mp4" || items[i].ext === "webm") {
+                        localLiveWpModel.append(items[i]);
+                    }
                 }
             } catch(e) {}
         }
@@ -550,24 +558,12 @@ Rectangle {
                     }
                 }
 
-                // Filtered local live wallpapers list
-                readonly property var localLiveWps: {
-                    let res = [];
-                    for (let i = 0; i < localWpModel.count; i++) {
-                        let item = localWpModel.get(i);
-                        if (item.isVideo || item.isGif || item.isLive || item.ext === "gif" || item.ext === "mp4" || item.ext === "webm") {
-                            res.push(item);
-                        }
-                    }
-                    return res;
-                }
-
                 // Subheader for local live collection
                 RowLayout {
                     Layout.fillWidth: true
 
                     Text {
-                        text: "your local live wallpapers (" + (liveView.localLiveWps ? liveView.localLiveWps.length : 0) + ")"
+                        text: "your local live wallpapers (" + localLiveWpModel.count + ")"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSm
                         font.weight: Font.Bold
@@ -590,7 +586,7 @@ Rectangle {
                     clip: true
                     cellWidth: width / 2
                     cellHeight: cellWidth * 0.65
-                    model: liveView.localLiveWps
+                    model: localLiveWpModel
 
                     delegate: Item {
                         required property var modelData
