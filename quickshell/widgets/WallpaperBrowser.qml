@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import Quickshell
+import Quickshell.Io
 
 Rectangle {
     id: root
@@ -31,6 +32,48 @@ Rectangle {
 
     ListModel {
         id: onlineWpModel
+    }
+
+    ListModel {
+        id: liveWpModel
+    }
+
+    property string liveSearchQuery: ""
+
+    property FileView liveWpFile: FileView {
+        path: "/tmp/qs_live_wallpapers.json"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: {
+            reload();
+            root.loadLiveFromJson(text());
+        }
+    }
+
+    function fetchLiveWallpapers(q) {
+        Quickshell.execDetached(["python3", "/home/ashley/.config/quickshell/scripts/fetch_live_wallpapers.py", q || ""]);
+        liveParseTimer.restart();
+    }
+
+    Timer {
+        id: liveParseTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            liveWpFile.reload();
+            root.loadLiveFromJson(liveWpFile.text());
+        }
+    }
+
+    function loadLiveFromJson(raw) {
+        try {
+            liveWpModel.clear();
+            if (!raw || raw.trim() === "") return;
+            let list = JSON.parse(raw);
+            for (let i = 0; i < list.length; i++) {
+                liveWpModel.append(list[i]);
+            }
+        } catch(e) {}
     }
 
     function reloadLocalWallpapers() {
@@ -271,6 +314,180 @@ Rectangle {
                 Layout.fillWidth: true
                 height: 1
                 color: Theme.widgetBorder
+            }
+
+            
+            // LIVE TAB VIEW
+            ColumnLayout {
+                id: liveView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: root.activeTab === "live"
+                spacing: 8
+
+                // Search Bar for Live Wallpapers
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 36
+                    color: Theme.surface_container_highest
+                    radius: Theme.widgetRadius
+                    border.color: liveSearchInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: Theme.widgetPaddingH
+                        spacing: 8
+
+                        Text {
+                            text: Theme.iconSearch
+                            font.family: Theme.fontIcon
+                            font.pixelSize: Theme.fontSizeSm
+                            color: Theme.on_surface_variant
+                        }
+
+                        TextInput {
+                            id: liveSearchInput
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            verticalAlignment: TextInput.AlignVCenter
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSm
+                            color: Theme.on_surface
+                            onAccepted: {
+                                root.liveSearchQuery = text.trim()
+                                fetchLiveWallpapers(root.liveSearchQuery)
+                            }
+                        }
+                    }
+                }
+
+                // Category chips for quick preset exploration
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Repeater {
+                        model: ["all", "pixel art", "lo-fi", "cyberpunk", "anime", "space", "synthwave"]
+                        delegate: Rectangle {
+                            required property string modelData
+                            height: 24
+                            width: liveChipText.implicitWidth + 14
+                            radius: Theme.radiusPill
+                            color: (root.liveSearchQuery === modelData || (root.liveSearchQuery === "" && modelData === "all")) ? Theme.primary : Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            Text {
+                                id: liveChipText
+                                text: modelData
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                font.weight: Font.Medium
+                                color: (root.liveSearchQuery === modelData || (root.liveSearchQuery === "" && modelData === "all")) ? Theme.on_primary : Theme.on_surface
+                                anchors.centerIn: parent
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.liveSearchQuery = modelData === "all" ? "" : modelData
+                                    liveSearchInput.text = root.liveSearchQuery
+                                    fetchLiveWallpapers(root.liveSearchQuery)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                GridView {
+                    id: liveGrid
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    cellWidth: width / 2
+                    cellHeight: cellWidth * 0.65
+                    model: liveWpModel
+
+                    delegate: Item {
+                        required property var modelData
+                        property string url: modelData.url
+                        property string thumb: modelData.thumb || modelData.url
+                        property string title: modelData.title
+                        property string category: modelData.category
+
+                        width: liveGrid.cellWidth
+                        height: liveGrid.cellHeight
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            color: Theme.surface_container_high
+                            radius: Theme.widgetRadius
+                            clip: true
+                            border.color: liveItemMouse.containsMouse ? Theme.primary : "transparent"
+                            border.width: 1
+
+                            Image {
+                                anchors.fill: parent
+                                source: thumb
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                            }
+
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                height: 16
+                                width: 34
+                                radius: 4
+                                color: Theme.primary
+
+                                Text {
+                                    text: "LIVE"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    font.weight: Font.Bold
+                                    color: Theme.on_primary
+                                    anchors.centerIn: parent
+                                }
+                            }
+
+                            // title overlay on hover
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: 24
+                                color: Qt.rgba(0, 0, 0, 0.75)
+                                visible: liveItemMouse.containsMouse
+
+                                Text {
+                                    text: title
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: "#ffffff"
+                                    elide: Text.ElideRight
+                                    anchors.centerIn: parent
+                                    width: parent.width - 8
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+
+                            MouseArea {
+                                id: liveItemMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    WallpaperService.setWallpaper(url)
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // local tab view so it doesnt explode
