@@ -1,5 +1,6 @@
 import QtQuick
 import ".."
+import "../corners"
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -9,22 +10,40 @@ PanelWindow {
 
     property bool open: false
     property real targetRelativeX: 0
+    property real targetRelativeY: 0
     property int panelWidth: Theme.popupWidth
     property int panelHeight: Theme.popupHeight
     property alias cardWidth: root.panelWidth
     property alias cardHeight: root.panelHeight
 
     readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property bool isVertical: Theme?.isVertical ?? false
+    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
+    readonly property bool isLeft: (Settings?.barPosition ?? "top") === "left"
+    readonly property bool isRight: (Settings?.barPosition ?? "top") === "right"
+    readonly property bool isVertical: isLeft || isRight
+
     readonly property real scoopW: Theme?.scoopRadiusX ?? 16
     readonly property real scoopH: Theme?.scoopRadiusY ?? 16
-    readonly property real margin: scoopW + 8
-    readonly property real desiredBodyX: targetRelativeX - (panelWidth / 2)
-    readonly property real clampedBodyX: Math.max(margin, Math.min(root.width - margin - panelWidth, desiredBodyX))
+    readonly property real marginX: scoopW + 8
+    readonly property real marginY: scoopH + 8
+
+    // Clamped positions for horizontal vs vertical bar docking
+    readonly property real desiredBodyX: isVertical
+        ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - panelWidth))
+        : (targetRelativeX - (panelWidth / 2))
+    readonly property real clampedBodyX: isVertical
+        ? desiredBodyX
+        : Math.max(marginX, Math.min(root.width - marginX - panelWidth, desiredBodyX))
+
+    readonly property real desiredBodyY: isVertical
+        ? (targetRelativeY > 0 ? targetRelativeY - (panelHeight / 2) : (root.height / 2) - (panelHeight / 2))
+        : (isTop ? Theme.barHeight : (root.height - Theme.barHeight - panelHeight))
+    readonly property real clampedBodyY: isVertical
+        ? Math.max(marginY, Math.min(root.height - marginY - panelHeight, desiredBodyY))
+        : desiredBodyY
 
     default property alias content: contentItem.data
 
-    // don't murder the window until closing animation finishes
     visible: open || morphAnim.running
     color: "transparent"
 
@@ -50,7 +69,7 @@ PanelWindow {
             id: numAnim
             target: root
             property: "morphProgress"
-            duration: root.open ? 260 : 180
+            duration: root.open ? 240 : 160
             easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
@@ -60,7 +79,6 @@ PanelWindow {
         morphAnim.restart();
     }
 
-    // grab focus in hyprland so clicking outside or switching focus closes the popup
     HyprlandFocusGrab {
         id: focusGrab
         active: root.open
@@ -72,7 +90,6 @@ PanelWindow {
         }
     }
 
-    // full screen outside click catcher
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.ArrowCursor
@@ -86,59 +103,133 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // left weld scoop — only for horizontal bar
+        // === TOP BAR DUAL WELD SCOOPS ===
         ConcaveCorner {
             x: popupBody.x - root.scoopW
-            y: root.isTop ? Theme.barHeight : root.height - Theme.barHeight - root.scoopH
+            y: Theme.barHeight
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: Theme.surface_container_low
             flipX: true
-            flipY: !root.isTop
+            flipY: false
             opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: !root.isVertical
+            visible: root.isTop && Settings.scoopRadius > 0
         }
-
-        // right weld scoop — only for horizontal bar
         ConcaveCorner {
             x: popupBody.x + popupBody.width
-            y: root.isTop ? Theme.barHeight : root.height - Theme.barHeight - root.scoopH
+            y: Theme.barHeight
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: Theme.surface_container_low
             flipX: false
-            flipY: !root.isTop
+            flipY: false
             opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: !root.isVertical
+            visible: root.isTop && Settings.scoopRadius > 0
         }
 
-        // physical expanding shell
+        // === BOTTOM BAR DUAL WELD SCOOPS ===
+        ConcaveCorner {
+            x: popupBody.x - root.scoopW
+            y: root.height - Theme.barHeight - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: true
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isBottom && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: popupBody.x + popupBody.width
+            y: root.height - Theme.barHeight - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: true
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isBottom && Settings.scoopRadius > 0
+        }
+
+        // === LEFT BAR DUAL WELD SCOOPS ===
+        ConcaveCorner {
+            x: Theme.barHeight
+            y: popupBody.y - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: true
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isLeft && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: Theme.barHeight
+            y: popupBody.y + popupBody.height
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: false
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isLeft && Settings.scoopRadius > 0
+        }
+
+        // === RIGHT BAR DUAL WELD SCOOPS ===
+        ConcaveCorner {
+            x: root.width - Theme.barHeight - root.scoopW
+            y: popupBody.y - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: true
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isRight && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: root.width - Theme.barHeight - root.scoopW
+            y: popupBody.y + popupBody.height
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: false
+            opacity: Math.min(1.0, root.morphProgress * 3.5)
+            visible: root.isRight && Settings.scoopRadius > 0
+        }
+
+        // Physical expanding shell with 4-way directional welded joint radiuses
         Rectangle {
             id: popupBody
             x: root.clampedBodyX
-            y: root.isTop ? Theme.barHeight
-               : root.isVertical ? (root.height - height - 12)
-               : (root.height - Theme.barHeight - height)
+            y: root.clampedBodyY
             width: root.panelWidth
             height: Math.max(1, root.morphProgress * root.panelHeight)
             color: Theme.surface_container_low
             clip: true
 
-            // vertical bars get full rounded corners since theres no bar edge to weld to
-            topLeftRadius: (root.isTop && !root.isVertical) ? 0 : Theme.popupRadius
-            topRightRadius: (root.isTop && !root.isVertical) ? 0 : Theme.popupRadius
-            bottomLeftRadius: (!root.isTop && !root.isVertical) ? 0 : Theme.popupRadius
-            bottomRightRadius: (!root.isTop && !root.isVertical) ? 0 : Theme.popupRadius
+            topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.popupRadius
+            topRightRadius: (root.isTop || root.isRight) ? 0 : Theme.popupRadius
+            bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : Theme.popupRadius
+            bottomRightRadius: (root.isBottom || root.isRight) ? 0 : Theme.popupRadius
 
-            // prevent clicks inside the card from closing the popup
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.ArrowCursor
                 acceptedButtons: Qt.AllButtons
             }
 
-            // content unrolls with parallax translate and staggered opacity
             Item {
                 id: contentWrapper
                 width: root.panelWidth
                 height: root.panelHeight
-                y: root.isTop ? (root.morphProgress - 1.0) * 20 : (1.0 - root.morphProgress) * 20
+                y: root.isTop ? (root.morphProgress - 1.0) * 16
+                 : root.isBottom ? (1.0 - root.morphProgress) * 16
+                 : 0
+                x: root.isLeft ? (root.morphProgress - 1.0) * 16
+                 : root.isRight ? (1.0 - root.morphProgress) * 16
+                 : 0
                 opacity: Math.max(0.0, (root.morphProgress - 0.2) / 0.8)
 
                 Item {

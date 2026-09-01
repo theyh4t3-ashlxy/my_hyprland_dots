@@ -12,17 +12,25 @@ PanelWindow {
     screen: modelData
 
     property bool open: false
-    property string dockPosition: "bottom" // "bottom" or "right"
+    property string dockPosition: "bottom" // "top", "bottom", "left", "right"
     readonly property bool isBottom: dockPosition === "bottom"
+    readonly property bool isTop: dockPosition === "top"
+    readonly property bool isLeft: dockPosition === "left"
+    readonly property bool isRight: dockPosition === "right"
+    readonly property bool isVertical: isLeft || isRight
 
     anchors {
-        bottom: true
-        right: true
+        top: root.isTop || root.isVertical
+        bottom: root.isBottom || root.isVertical
+        left: root.isLeft || !root.isVertical
+        right: root.isRight || !root.isVertical
     }
 
     margins {
-        bottom: root.isBottom ? 0 : 32
-        right: root.isBottom ? 32 : 0
+        top: root.isTop ? 0 : (root.isVertical ? 40 : 0)
+        bottom: root.isBottom ? 0 : (root.isVertical ? 40 : 0)
+        left: root.isLeft ? 0 : (root.isBottom || root.isTop ? 40 : 0)
+        right: root.isRight ? 0 : (root.isBottom || root.isTop ? 40 : 0)
     }
 
     color: "transparent"
@@ -31,56 +39,125 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:motionsandbox"
 
     visible: open
-    implicitWidth: root.isBottom ? 520 : 320
-    implicitHeight: root.isBottom ? 260 : 480
+    implicitWidth: root.isVertical ? 340 : 540
+    implicitHeight: root.isVertical ? 480 : 270
 
     // Dual Concave Joint Welds into Screen Edge
     Item {
         anchors.fill: parent
 
-        // Left / Top scoop
+        // Top edge weld scoops
         ConcaveCorner {
-            x: root.isBottom ? 0 : 0
-            y: root.isBottom ? (parent.height - Theme.scoopRadiusY) : 0
+            x: 0
+            y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
             fillColor: Theme.surface_container_low
             flipX: true
-            flipY: !root.isBottom
-            visible: Settings.scoopRadius > 0
+            flipY: false
+            visible: root.isTop && Settings.scoopRadius > 0
         }
-
-        // Right / Bottom scoop
         ConcaveCorner {
-            x: root.isBottom ? (parent.width - Theme.scoopRadiusX) : 0
-            y: root.isBottom ? (parent.height - Theme.scoopRadiusY) : (parent.height - Theme.scoopRadiusY)
+            x: parent.width - Theme.scoopRadiusX
+            y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
             fillColor: Theme.surface_container_low
             flipX: false
-            flipY: !root.isBottom
-            visible: Settings.scoopRadius > 0
+            flipY: false
+            visible: root.isTop && Settings.scoopRadius > 0
+        }
+
+        // Bottom edge weld scoops
+        ConcaveCorner {
+            x: 0
+            y: parent.height - Theme.scoopRadiusY
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: true
+            visible: root.isBottom && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: parent.width - Theme.scoopRadiusX
+            y: parent.height - Theme.scoopRadiusY
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: true
+            visible: root.isBottom && Settings.scoopRadius > 0
+        }
+
+        // Left edge weld scoops
+        ConcaveCorner {
+            x: 0
+            y: 0
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: true
+            visible: root.isLeft && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: 0
+            y: parent.height - Theme.scoopRadiusY
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: false
+            flipY: false
+            visible: root.isLeft && Settings.scoopRadius > 0
+        }
+
+        // Right edge weld scoops
+        ConcaveCorner {
+            x: parent.width - Theme.scoopRadiusX
+            y: 0
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: true
+            visible: root.isRight && Settings.scoopRadius > 0
+        }
+        ConcaveCorner {
+            x: parent.width - Theme.scoopRadiusX
+            y: parent.height - Theme.scoopRadiusY
+            radiusX: Theme.scoopRadiusX
+            radiusY: Theme.scoopRadiusY
+            fillColor: Theme.surface_container_low
+            flipX: true
+            flipY: false
+            visible: root.isRight && Settings.scoopRadius > 0
         }
 
         // Card body
         Rectangle {
             id: body
             anchors.fill: parent
-            anchors.leftMargin: root.isBottom ? Theme.scoopRadiusX : 0
-            anchors.rightMargin: root.isBottom ? Theme.scoopRadiusX : 0
-            anchors.topMargin: root.isBottom ? 0 : Theme.scoopRadiusY
-            anchors.bottomMargin: root.isBottom ? 0 : Theme.scoopRadiusY
+            anchors.leftMargin: root.isBottom || root.isTop ? Theme.scoopRadiusX : 0
+            anchors.rightMargin: root.isBottom || root.isTop ? Theme.scoopRadiusX : 0
+            anchors.topMargin: root.isVertical ? Theme.scoopRadiusY : 0
+            anchors.bottomMargin: root.isVertical ? Theme.scoopRadiusY : 0
             radius: Theme.radiusMd
             color: Theme.surface_container_low
             border.color: Theme.widgetBorder
             border.width: 1
+
+            topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.radiusMd
+            topRightRadius: (root.isTop || root.isRight) ? 0 : Theme.radiusMd
+            bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : Theme.radiusMd
+            bottomRightRadius: (root.isBottom || root.isRight) ? 0 : Theme.radiusMd
 
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 14
                 spacing: 10
 
-                // Header
+                // Header & 4-Way Dock Switcher
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -94,26 +171,39 @@ PanelWindow {
                         Layout.fillWidth: true
                     }
 
-                    // Dock position switcher
-                    Rectangle {
-                        width: 72
-                        height: 24
-                        radius: Theme.radiusPill
-                        color: Theme.surface_container_high
+                    // 4-Way Dock Position Selector
+                    RowLayout {
+                        spacing: 3
 
-                        Text {
-                            anchors.centerIn: parent
-                            text: root.isBottom ? "bottom " : "right "
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 10
-                            font.weight: Font.Medium
-                            color: Theme.on_surface
-                        }
+                        Repeater {
+                            model: [
+                                { pos: "bottom", icon: "" },
+                                { pos: "top", icon: "" },
+                                { pos: "left", icon: "" },
+                                { pos: "right", icon: "" }
+                            ]
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.dockPosition = root.isBottom ? "right" : "bottom"
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: 28
+                                height: 24
+                                radius: Theme.radiusSm
+                                color: root.dockPosition === modelData.pos ? Theme.primary : Theme.surface_container_high
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.icon
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 10
+                                    color: root.dockPosition === modelData.pos ? Theme.on_primary : Theme.on_surface
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.dockPosition = modelData.pos
+                                }
+                            }
                         }
                     }
 
@@ -121,7 +211,10 @@ PanelWindow {
                         icon: Theme.iconClose
                         iconSize: Theme.fontSizeXs
                         tooltip: "close sandbox"
-                        onClicked: root.open = false
+                        onClicked: {
+                            root.open = false
+                            Settings.showMotionSandbox = false
+                        }
                     }
                 }
 
@@ -133,7 +226,7 @@ PanelWindow {
 
                 // Interactive Physics Playground (Draggable Cards)
                 Text {
-                    text: "drag & flick cards to test hyprland inertia physics"
+                    text: "drag & fling cards with live hyprland inertia physics"
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     color: Theme.on_surface_variant
@@ -153,9 +246,6 @@ PanelWindow {
                         color: Theme.surface_container_highest
                         border.color: dragArea1.drag.active ? Theme.primary : Theme.widgetBorder
                         border.width: 1
-
-                        property real targetX: 0
-                        property real targetY: 0
 
                         Behavior on x {
                             enabled: !dragArea1.drag.active
@@ -253,7 +343,7 @@ PanelWindow {
                         }
                     }
 
-                    // Curve Profile Quick Switcher
+                    // Active Motion Curve Switcher & Scoop Metric Badge
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -303,7 +393,6 @@ PanelWindow {
                             }
                         }
 
-                        // Live Tension & Radius info badge
                         Rectangle {
                             Layout.fillWidth: true
                             height: 28
