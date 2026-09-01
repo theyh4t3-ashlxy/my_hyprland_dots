@@ -7,7 +7,7 @@ from pathlib import Path
 
 def download_and_apply():
     if len(sys.argv) < 2:
-        print("Usage: download_wallpaper.py <url> [transition] [angle] [step] [duration] [fps] [filter] [mode] [scheme]")
+        print("Usage: download_wallpaper.py <url> [transition] [angle] [step] [duration] [fps] [filter] [mode] [scheme] [monitor] [panscan] [audio]")
         sys.exit(1)
         
     raw_url = sys.argv[1].strip()
@@ -19,6 +19,9 @@ def download_and_apply():
     filt = sys.argv[7] if len(sys.argv) > 7 else "Lanczos3"
     mode = sys.argv[8] if len(sys.argv) > 8 else "dark"
     scheme = sys.argv[9] if len(sys.argv) > 9 else "scheme-tonal-spot"
+    target_mon = sys.argv[10] if len(sys.argv) > 10 else "all"
+    panscan = sys.argv[11] if len(sys.argv) > 11 else "1.0"
+    mpv_audio = sys.argv[12] if len(sys.argv) > 12 else "false"
     
     script = Path.home() / ".config" / "quickshell" / "scripts" / "wallpaper.sh"
     scan_script = Path.home() / ".config" / "quickshell" / "scripts" / "scan_wallpapers.py"
@@ -29,7 +32,7 @@ def download_and_apply():
         if os.path.exists(local_path):
             subprocess.run([
                 str(script), "set", local_path,
-                transition, angle, step, duration, fps, filt, mode, scheme
+                transition, angle, step, duration, fps, filt, mode, scheme, target_mon, panscan, mpv_audio
             ], check=False)
             subprocess.run(["python3", str(scan_script)], check=False)
             sys.exit(0)
@@ -57,7 +60,7 @@ def download_and_apply():
     # Apply using wallpaper.sh
     subprocess.run([
         str(script), "set", str(dest),
-        transition, angle, step, duration, fps, filt, mode, scheme
+        transition, angle, step, duration, fps, filt, mode, scheme, target_mon, panscan, mpv_audio
     ], check=False)
 
 if __name__ == "__main__":

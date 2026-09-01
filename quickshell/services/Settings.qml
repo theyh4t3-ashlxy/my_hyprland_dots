@@ -30,6 +30,8 @@ QtObject {
     property int awwwTransitionDuration: 3
     property int awwwTransitionFps: 60
     property string awwwFilter: "Lanczos3"
+    property real mpvPanscan: 1.0
+    property bool mpvAudio: false
 
     // anim & chaos vibe
     property string animSpeed: "snappy"
@@ -133,6 +135,8 @@ QtObject {
     onFontMonoChanged: queueSave()
     onFontScaleChanged: queueSave()
     onFontWeightChanged: queueSave()
+    onMpvPanscanChanged: queueSave()
+    onMpvAudioChanged: queueSave()
 
     function loadObject(data) {
         if (!data) return;
@@ -154,6 +158,8 @@ QtObject {
         if (data.awwwTransitionDuration !== undefined && root.awwwTransitionDuration !== parseInt(data.awwwTransitionDuration)) root.awwwTransitionDuration = parseInt(data.awwwTransitionDuration);
         if (data.awwwTransitionFps !== undefined && root.awwwTransitionFps !== parseInt(data.awwwTransitionFps)) root.awwwTransitionFps = parseInt(data.awwwTransitionFps);
         if (data.awwwFilter !== undefined && root.awwwFilter !== data.awwwFilter) root.awwwFilter = data.awwwFilter;
+        if (data.mpvPanscan !== undefined && root.mpvPanscan !== parseFloat(data.mpvPanscan)) root.mpvPanscan = parseFloat(data.mpvPanscan);
+        if (data.mpvAudio !== undefined) root.mpvAudio = (data.mpvAudio === true || data.mpvAudio === "true");
         if (data.animSpeed !== undefined && root.animSpeed !== data.animSpeed) root.animSpeed = data.animSpeed;
         if (data.unhingedFlavor !== undefined) root.unhingedFlavor = (data.unhingedFlavor === true || data.unhingedFlavor === "true");
         if (data.showWorkspaces !== undefined) root.showWorkspaces = (data.showWorkspaces === true || data.showWorkspaces === "true");
@@ -284,6 +290,8 @@ QtObject {
             "awwwTransitionDuration=" + awwwTransitionDuration,
             "awwwTransitionFps=" + awwwTransitionFps,
             'awwwFilter="' + awwwFilter + '"',
+            "mpvPanscan=" + mpvPanscan,
+            "mpvAudio=" + mpvAudio,
             'animSpeed="' + animSpeed + '"',
             "unhingedFlavor=" + unhingedFlavor,
             "showWorkspaces=" + showWorkspaces,

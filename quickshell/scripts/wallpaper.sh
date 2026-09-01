@@ -22,6 +22,8 @@ case "$action" in
         mode="${9:-dark}"
         scheme="${10:-scheme-tonal-spot}"
         target_mon="${11:-all}"
+        panscan="${12:-1.0}"
+        mpv_audio="${13:-false}"
 
         python3 "$SCRIPT_DIR/scan_wallpapers.py"
         selected_wp=$(python3 -c '
@@ -42,7 +44,7 @@ except Exception:
 ' "$filter_cat")
 
         if [[ -n "$selected_wp" && -f "$selected_wp" ]]; then
-            "$0" set "$selected_wp" "$transition" "$angle" "$step" "$duration" "$fps" "$filt" "$mode" "$scheme" "$target_mon"
+            "$0" set "$selected_wp" "$transition" "$angle" "$step" "$duration" "$fps" "$filt" "$mode" "$scheme" "$target_mon" "$panscan" "$mpv_audio"
         fi
         ;;
 
@@ -66,6 +68,8 @@ except Exception:
         mode="${9:-dark}"
         scheme="${10:-scheme-tonal-spot}"
         target_mon="${11:-all}"
+        panscan="${12:-1.0}"
+        mpv_audio="${13:-false}"
 
         echo "$img_path" > "$CUR_WP_FILE"
         ext="${img_path##*.}"
@@ -89,8 +93,15 @@ except Exception:
                 matugen image /tmp/qs_video_thumb.jpg -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
             fi
             
-            # Launch mpvpaper with hardware acceleration, auto-pause, and looping
-            mpvpaper -f -p -a FULL -o "no-audio loop loop-playlist=inf --hwdec=auto" "$mpv_out" "$img_path" 2>/dev/null || true
+            # Audio flag
+            audio_flag="no-audio"
+            if [[ "$mpv_audio" == "true" ]]; then
+                audio_flag="volume=70"
+            fi
+            
+            # Launch mpvpaper with hardware acceleration, auto-pause, panscan full-screen crop, and looping
+            mpv_opts="loop-file=inf loop-playlist=inf panscan=$panscan $audio_flag --hwdec=auto-safe --keep-open=yes"
+            mpvpaper -f -p -a FULL -o "$mpv_opts" "$mpv_out" "$img_path" 2>/dev/null || true
         else
             # Static image or GIF: kill mpvpaper and use awww
             pkill -x mpvpaper 2>/dev/null || true
@@ -119,7 +130,7 @@ except Exception:
         fi
 
         if [[ -n "$cur_wp" && -f "$cur_wp" ]]; then
-            "$0" set "$cur_wp" "wipe" "30" "90" "3" "60" "Lanczos3" "$mode" "$scheme" "all"
+            "$0" set "$cur_wp" "wipe" "30" "90" "3" "60" "Lanczos3" "$mode" "$scheme" "all" "1.0" "false"
         else
             matugen color hex "#787756" -m "$mode" -t "$scheme" 2>/dev/null || true
         fi

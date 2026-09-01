@@ -52,8 +52,10 @@ QtObject {
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
         let mon = monitor || targetMonitor || "all"
+        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
+        let audio = Settings.mpvAudio ? "true" : "false"
 
-        Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
+        Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
     }
 
     function applyRandomWallpaper(category, monitor) {
@@ -67,8 +69,10 @@ QtObject {
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
         let mon = monitor || targetMonitor || "all"
+        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
+        let audio = Settings.mpvAudio ? "true" : "false"
 
-        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
+        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
     }
 
     function setWallpaper(url, monitor) {
@@ -81,8 +85,10 @@ QtObject {
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
         let mon = monitor || targetMonitor || "all"
+        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
+        let audio = Settings.mpvAudio ? "true" : "false"
 
-        Quickshell.execDetached([scriptPath, "download", url, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon])
+        Quickshell.execDetached([scriptPath, "download", url, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
     }
 
     function applyColor(hex) {

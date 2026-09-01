@@ -1889,6 +1889,151 @@ Rectangle {
                             }
                         }
                     }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: Theme.widgetBorder
+                    }
+
+                    // mpvpaper Live Video Settings
+                    Text {
+                        text: "mpvpaper live video controls"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                    }
+
+                    Text {
+                        text: "video scaling & crop mode (panscan)"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "crop to fill (no black bars)", val: 1.0 },
+                                { label: "fit / letterbox", val: 0.0 },
+                                { label: "balanced zoom", val: 0.5 }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 26
+                                radius: Theme.radiusSm
+                                color: Math.abs(Settings.mpvPanscan - modelData.val) < 0.05 ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: Math.abs(Settings.mpvPanscan - modelData.val) < 0.05 ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        Settings.mpvPanscan = modelData.val;
+                                        Settings.save();
+                                        WallpaperService.reapplyTheme();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "video audio"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 28
+                            radius: Theme.radiusSm
+                            color: !Settings.mpvAudio ? Theme.primary : Theme.surface_container_highest
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    text: Theme.iconVolMute
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: !Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                }
+                                Text {
+                                    text: "mute audio (silent)"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Medium
+                                    color: !Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Settings.mpvAudio = false;
+                                    Settings.save();
+                                    WallpaperService.reapplyTheme();
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 28
+                            radius: Theme.radiusSm
+                            color: Settings.mpvAudio ? Theme.primary : Theme.surface_container_highest
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    text: Theme.iconVolHigh
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                }
+                                Text {
+                                    text: "play ambient sound"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Medium
+                                    color: Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Settings.mpvAudio = true;
+                                    Settings.save();
+                                    WallpaperService.reapplyTheme();
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
