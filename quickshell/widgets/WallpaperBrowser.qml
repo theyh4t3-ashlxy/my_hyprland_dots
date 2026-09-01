@@ -251,6 +251,43 @@ Rectangle {
                     Layout.fillWidth: true
                     height: 34
                     radius: Theme.widgetRadius
+                    color: root.activeTab === "live" ? Theme.primary : Theme.surface_container_highest
+
+                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            text: Theme.iconFlame
+                            font.family: Theme.fontIcon
+                            font.pixelSize: Theme.fontSizeXs
+                            color: root.activeTab === "live" ? Theme.on_primary : Theme.on_surface
+                        }
+                        Text {
+                            text: "live"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            font.weight: Font.Bold
+                            color: root.activeTab === "live" ? Theme.on_primary : Theme.on_surface
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.activeTab = "live"
+                            if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 34
+                    radius: Theme.widgetRadius
                     color: root.activeTab === "theme" ? Theme.primary : Theme.surface_container_highest
 
                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
