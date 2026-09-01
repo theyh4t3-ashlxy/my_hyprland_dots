@@ -53,7 +53,7 @@ install_dependencies() {
         hyprlock
         xdg-desktop-portal-hyprland
         xdg-desktop-portal-gtk
-        swww
+        awww
         matugen-bin
         quickshell-git
         kitty
