@@ -1,4 +1,5 @@
 import Quickshell
+import "widgets"
 
 ShellRoot {
     Variants {
@@ -14,5 +15,12 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         NotificationToasts {}
+    }
+
+    Variants {
+        model: Quickshell.screens
+        MotionSandbox {
+            open: Settings.showMotionSandbox
+        }
     }
 }

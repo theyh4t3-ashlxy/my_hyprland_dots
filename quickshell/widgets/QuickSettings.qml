@@ -790,6 +790,53 @@ Rectangle {
                             }
                         }
                     }
+
+                    // Open Full Drag Physics Sandbox Window
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 40
+                        radius: Theme.widgetRadius
+                        color: sandboxBtnMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                        border.color: Settings.showMotionSandbox ? Theme.primary : "transparent"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.widgetPaddingH
+                            spacing: 8
+
+                            Text {
+                                text: Theme.kaoDJ
+                                font.family: Theme.fontMono
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.primary
+                            }
+
+                            Text {
+                                text: Settings.showMotionSandbox ? "close motion sandbox window" : "open draggable physics sandbox"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeXs
+                                font.weight: Font.Bold
+                                color: Theme.on_surface
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: Settings.showMotionSandbox ? "active " : "launch "
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                color: Theme.primary
+                            }
+                        }
+
+                        MouseArea {
+                            id: sandboxBtnMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Settings.showMotionSandbox = !Settings.showMotionSandbox
+                        }
+                    }
                 }
             }
 

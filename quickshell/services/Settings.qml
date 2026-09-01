@@ -51,6 +51,7 @@ QtObject {
     property bool showIdleInhibitor: true
     property bool showQuickSettings: true
     property bool showWallpaper: true
+    property bool showMotionSandbox: false
 
     // formatting & typography
     property string clockFormat: "HH:mm"
@@ -118,6 +119,7 @@ QtObject {
     onShowIdleInhibitorChanged: queueSave()
     onShowQuickSettingsChanged: queueSave()
     onShowWallpaperChanged: queueSave()
+    onShowMotionSandboxChanged: queueSave()
     onClockFormatChanged: queueSave()
     onDateFormatChanged: queueSave()
     onWorkspaceCountChanged: queueSave()

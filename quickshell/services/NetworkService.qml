@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import ".."
+import Quickshell
 import Quickshell.Networking
 
 QtObject {
@@ -22,7 +23,7 @@ QtObject {
         let devs = net.devices.values || net.devices;
         for (let i = 0; i < devs.length; i++) {
             let dev = devs[i] || net.devices.at?.(i);
-            if (dev && (dev.deviceType === DeviceType.Wifi || dev.networks !== undefined)) {
+            if (dev && (dev.type === DeviceType.Wifi || dev.deviceType === DeviceType.Wifi || dev.networks !== undefined)) {
                 return dev;
             }
         }
@@ -35,33 +36,84 @@ QtObject {
         let devs = net.devices.values || net.devices;
         for (let i = 0; i < devs.length; i++) {
             let dev = devs[i] || net.devices.at?.(i);
-            if (dev && (dev.deviceType === DeviceType.Wired || dev.hasLink !== undefined)) {
+            if (dev && (dev.type === DeviceType.Wired || dev.deviceType === DeviceType.Wired || dev.hasLink !== undefined)) {
                 return dev;
             }
         }
         return null;
     }
 
+    // search for connected wifi network across device property and network list
+    readonly property var connectedWifiNetwork: {
+        if (!wifiDevice) return null;
+        if (wifiDevice.network && (wifiDevice.network.connected || wifiDevice.network.name)) {
+            return wifiDevice.network;
+        }
+        let nets = wifiDevice.networks?.values || wifiDevice.networks;
+        if (nets) {
+            for (let i = 0; i < nets.length; i++) {
+                let n = nets[i] || wifiDevice.networks.at?.(i);
+                if (n && n.connected) return n;
+            }
+        }
+        return null;
+    }
+
+    // fallback nmcli poller for instant 100% accurate SSID and status
+    property string _cliSsid: ""
+    property int _cliSignal: 0
+    property bool _cliConnected: false
+
+    Timer {
+        id: statusPoller
+        interval: 3000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            Quickshell.exec(["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION,SIGNAL", "dev"], (out) => {
+                let lines = (out || "").trim().split("\n");
+                let foundWifi = false;
+                for (let i = 0; i < lines.length; i++) {
+                    let parts = lines[i].split(":");
+                    if (parts[0] === "wifi" && parts[1] === "connected") {
+                        root._cliConnected = true;
+                        root._cliSsid = parts[2] || "Connected";
+                        root._cliSignal = parseInt(parts[3]) || 80;
+                        foundWifi = true;
+                        break;
+                    }
+                }
+                if (!foundWifi) {
+                    root._cliConnected = false;
+                    root._cliSsid = "";
+                    root._cliSignal = 0;
+                }
+            });
+        }
+    }
+
     readonly property bool isWiredConnected: wiredDevice ? (wiredDevice.hasLink ?? false) : false
-    readonly property bool isWifiConnected: wifiDevice ? (wifiDevice.state === ConnectionState.Connected || wifiDevice.network !== null) : false
+    readonly property bool isWifiConnected: (connectedWifiNetwork !== null) || _cliConnected
     readonly property bool isConnected: isWiredConnected || isWifiConnected
 
     readonly property string activeSsid: {
         if (isWiredConnected) return "Ethernet";
-        if (wifiDevice && wifiDevice.network) return wifiDevice.network.name || "Connected";
+        if (connectedWifiNetwork && connectedWifiNetwork.name) return connectedWifiNetwork.name;
+        if (_cliConnected && _cliSsid !== "") return _cliSsid;
         return isConnected ? "Online" : "Disconnected";
     }
 
     readonly property int signalStrength: {
         if (isWiredConnected) return 100;
-        if (wifiDevice && wifiDevice.network) {
-            let sig = wifiDevice.network.signalStrength ?? 0;
+        if (connectedWifiNetwork) {
+            let sig = connectedWifiNetwork.signalStrength ?? 0;
             return Math.round(sig <= 1.0 ? sig * 100 : sig);
         }
+        if (_cliConnected && _cliSignal > 0) return _cliSignal;
         return 0;
     }
 
-    // keep scanner active so networks don't disappear into the void
     function ensureScanner() {
         if (wifiDevice && wifiEnabled) {
             wifiDevice.scannerEnabled = true;
@@ -74,6 +126,8 @@ QtObject {
     function toggleWifi() {
         if (net) {
             net.wifiEnabled = !net.wifiEnabled;
+        } else {
+            Quickshell.execDetached(["nmcli", "radio", "wifi", wifiEnabled ? "off" : "on"]);
         }
     }
 
@@ -82,5 +136,7 @@ QtObject {
             wifiDevice.scannerEnabled = false;
             wifiDevice.scannerEnabled = true;
         }
+        Quickshell.execDetached(["nmcli", "dev", "wifi", "rescan"]);
+        statusPoller.restart();
     }
 }
