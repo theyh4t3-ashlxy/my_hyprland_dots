@@ -241,7 +241,7 @@ Rectangle {
 
                 // Random roll button
                 IconButton {
-                    icon: "󰒝"
+                    icon: Theme.iconShuffle
                     iconSize: Theme.fontSizeSm
                     tooltip: "roll random wallpaper"
                     onClicked: {
@@ -1009,11 +1009,14 @@ Rectangle {
                         Repeater {
                             model: [
                                 { label: "tonal spot", val: "scheme-tonal-spot" },
+                                { label: "vibrant", val: "scheme-vibrant" },
                                 { label: "expressive", val: "scheme-expressive" },
                                 { label: "content", val: "scheme-content" },
                                 { label: "fruit salad", val: "scheme-fruit-salad" },
                                 { label: "rainbow", val: "scheme-rainbow" },
-                                { label: "fidelity", val: "scheme-fidelity" }
+                                { label: "fidelity", val: "scheme-fidelity" },
+                                { label: "monochrome", val: "scheme-monochrome" },
+                                { label: "neutral", val: "scheme-neutral" }
                             ]
 
                             delegate: Rectangle {
@@ -1040,9 +1043,9 @@ Rectangle {
                         }
                     }
 
-                    // Accent Presets
+                    // Hex Color Picker & Palette Override
                     Text {
-                        text: "palette color override"
+                        text: "custom hex color override"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -1050,32 +1053,105 @@ Rectangle {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        spacing: 8
+
+                        Rectangle {
+                            width: 32
+                            height: 32
+                            radius: Theme.radiusSm
+                            color: {
+                                let h = hexInput.text.trim()
+                                return (h.startsWith("#") && (h.length === 7 || h.length === 9)) ? h : Theme.primary
+                            }
+                            border.color: Theme.on_surface
+                            border.width: 1
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 32
+                            radius: Theme.radiusSm
+                            color: Theme.surface_container_highest
+                            border.color: hexInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                            border.width: 1
+
+                            TextInput {
+                                id: hexInput
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                verticalAlignment: TextInput.AlignVCenter
+                                text: Theme.source_color || "#a8c8ff"
+                                font.family: Theme.fontMono
+                                font.pixelSize: Theme.fontSizeXs
+                                color: Theme.on_surface
+                                onAccepted: {
+                                    let h = text.trim()
+                                    if (h.startsWith("#") && (h.length === 7 || h.length === 9)) {
+                                        WallpaperService.applyColor(h)
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 64
+                            height: 32
+                            radius: Theme.radiusSm
+                            color: applyHexMouse.containsMouse ? Theme.primary_overlay : Theme.primary
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "apply"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeXs
+                                font.weight: Font.Bold
+                                color: applyHexMouse.containsMouse ? Theme.primary : Theme.on_primary
+                            }
+
+                            MouseArea {
+                                id: applyHexMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    let h = hexInput.text.trim()
+                                    if (h.startsWith("#") && (h.length === 7 || h.length === 9)) {
+                                        WallpaperService.applyColor(h)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Quick Color Swatches
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
 
                         Repeater {
                             model: [
-                                "#787756",
-                                "#7f4be8",
-                                "#ba1a1a",
-                                "#0061a4",
-                                "#006b54",
-                                "#825500",
-                                "#984061"
+                                "#a8c8ff", "#ffb4ab", "#c8bfff", "#8bf0ba",
+                                "#ffd700", "#ff7597", "#70d6ff", "#e7c6ff",
+                                "#ff9e00", "#50fa7b", "#bd93f9", "#ff79c6"
                             ]
 
                             delegate: Rectangle {
                                 required property string modelData
                                 Layout.fillWidth: true
-                                height: 24
+                                height: 22
                                 radius: Theme.radiusSm
                                 color: modelData
                                 border.color: Theme.on_surface
-                                border.width: Theme.source_color === modelData ? 2 : 0
+                                border.width: hexInput.text === modelData ? 2 : 0
 
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: WallpaperService.applyColor(modelData)
+                                    onClicked: {
+                                        hexInput.text = modelData
+                                        WallpaperService.applyColor(modelData)
+                                    }
                                 }
                             }
                         }

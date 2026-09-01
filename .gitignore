@@ -16,3 +16,4 @@ quickshell/launcher-frecency.json
 *.tmp
 *.bak
 .DS_Store
+__pycache__/
