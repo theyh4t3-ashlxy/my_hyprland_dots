@@ -275,9 +275,9 @@ QtObject {
     readonly property string iconVolHigh:           getIcon("󰕾", "\uE767", "")
     readonly property string iconMic:               getIcon("󰍬", "\uE720", "")
     readonly property string iconMicMute:           getIcon("󰍭", "\uE720", "")
-    readonly property string iconPalette:           getIcon("󰏘", "\uE790", "")
+    readonly property string iconPalette:           getIcon("󰏘", "\uE790", "")
     readonly property string iconHeadphones:        getIcon("󰋋", "\uE7F6", "")
-    readonly property string iconEqualizer:         getIcon("󰎎", "\uE9E9", "󰎎")
+    readonly property string iconEqualizer:         getIcon("󰎎", "\uE9E9", "")
 
     // Battery
     readonly property string iconBatFull:           getIcon("󰁹", "\uE839", "")
@@ -299,25 +299,25 @@ QtObject {
     readonly property string iconPrev:              getIcon("󰒮", "\uE892", "")
     readonly property string iconShuffle:           getIcon("󰒝", "\uE8B1", "")
     readonly property string iconRepeat:            getIcon("󰑖", "\uE8EE", "")
-    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "󰑘")
+    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "")
 
     // Notifications & Wallpapers
     readonly property string iconWallhaven:         getIcon("󰸉", "\uE91B", "")
     readonly property string iconWallpaper:         getIcon("󰸉", "\uE91B", "")
     readonly property string iconBell:              getIcon("󰂚", "\uEA8F", "")
     readonly property string iconBellOutline:       getIcon("󰂚", "\uEA8F", "")
-    readonly property string iconBellOff:           getIcon("󰂛", "\uEC42", "󰂲")
+    readonly property string iconBellOff:           getIcon("󰂛", "\uEC42", "")
 
     // Connectivity
-    readonly property string iconEthernet:          getIcon("󰈀", "\uEB55", "󰈀")
+    readonly property string iconEthernet:          getIcon("󰈀", "\uEB55", "")
     readonly property string iconWifi:              getIcon("󰤨", "\uE701", "")
     readonly property string iconWifiHigh:          getIcon("󰤨", "\uEC3E", "")
     readonly property string iconWifiMed:           getIcon("󰤥", "\uEC3C", "")
     readonly property string iconWifiLow:           getIcon("󰤢", "\uEC3A", "")
-    readonly property string iconWifiOff:           getIcon("󰤮", "\uEB5E", "󰤮")
+    readonly property string iconWifiOff:           getIcon("󰤮", "\uEB5E", "")
     readonly property string iconBluetooth:         getIcon("󰂯", "\uE702", "")
-    readonly property string iconBluetoothConnected:getIcon("󰂱", "\uE702", "󰂱")
-    readonly property string iconBluetoothOff:      getIcon("󰂲", "\uE702", "󰂲")
+    readonly property string iconBluetoothConnected:getIcon("󰂱", "\uE702", "")
+    readonly property string iconBluetoothOff:      getIcon("󰂲", "\uE702", "")
 
     // Power & Session
     readonly property string iconPower:             getIcon("󰐥", "\uE7E8", "")
@@ -334,9 +334,9 @@ QtObject {
     readonly property string iconChevronDown:       getIcon("󰅀", "\uE70D", "")
     readonly property string iconChevronUp:         getIcon("󰅃", "\uE70E", "")
     readonly property string iconFlame:             getIcon("󰈸", "\uE7E8", "")
-    readonly property string iconSparkles:          getIcon("󰓏", "\uE7C5", "󰓏")
-    readonly property string iconRadio:             getIcon("󰐹", "\uE8D6", "󰐹")
-    readonly property string iconSliders:           getIcon("󰝚", "\uE9E9", "󰝚")
+    readonly property string iconSparkles:          getIcon("󰓏", "\uE7C5", "")
+    readonly property string iconRadio:             getIcon("󰐹", "\uE8D6", "")
+    readonly property string iconSliders:           getIcon("󰝚", "\uE9E9", "")
     readonly property string iconTerminal:          getIcon("", "\uE756", "")
 
     // kaomojis without emoji junk

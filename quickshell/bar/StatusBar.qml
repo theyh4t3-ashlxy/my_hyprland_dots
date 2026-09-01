@@ -55,7 +55,7 @@ PanelWindow {
             radius: 0
         }
 
-        // === HORIZONTAL BAR LAYOUT (top / bottom) ===
+        // horizontal bar layout (top / bottom) so it doesnt explode
         Item {
             x: barBg.x
             y: barBg.y
@@ -206,7 +206,7 @@ PanelWindow {
             }
         }
 
-        // === VERTICAL BAR LAYOUT (left / right) ===
+        // vertical bar layout (left / right) so it doesnt explode
         Item {
             x: barBg.x
             y: barBg.y

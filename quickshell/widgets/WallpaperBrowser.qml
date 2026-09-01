@@ -273,7 +273,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // === LOCAL TAB VIEW ===
+            // local tab view so it doesnt explode
             ColumnLayout {
                 id: localView
                 Layout.fillWidth: true
@@ -602,7 +602,7 @@ Rectangle {
                 }
             }
 
-            // === ONLINE TAB VIEW (WALLHAVEN) ===
+            // online tab view (wallhaven) so it doesnt explode
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -898,7 +898,7 @@ Rectangle {
                 }
             }
 
-            // === EFFECTS & THEME TAB VIEW ===
+            // effects & theme tab view so it doesnt explode
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true

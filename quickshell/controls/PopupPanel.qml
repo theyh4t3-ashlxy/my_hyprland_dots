@@ -108,7 +108,7 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // === TOP BAR DYNAMIC MORPHING SCOOPS ===
+        // top docking scoops so my popups dont look detached
         ConcaveCorner {
             x: popupBody.x - root.curScoopW
             y: Theme.barHeight
@@ -130,7 +130,7 @@ PanelWindow {
             visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === BOTTOM BAR DYNAMIC MORPHING SCOOPS ===
+        // bottom docking scoops
         ConcaveCorner {
             x: popupBody.x - root.curScoopW
             y: root.height - Theme.barHeight - root.curScoopH
@@ -152,7 +152,7 @@ PanelWindow {
             visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === LEFT BAR DYNAMIC MORPHING SCOOPS ===
+        // left docking scoops
         ConcaveCorner {
             x: Theme.barHeight
             y: popupBody.y - root.curScoopH
@@ -174,7 +174,7 @@ PanelWindow {
             visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === RIGHT BAR DYNAMIC MORPHING SCOOPS ===
+        // right docking scoops
         ConcaveCorner {
             x: root.width - Theme.barHeight - root.curScoopW
             y: popupBody.y - root.curScoopH
@@ -196,7 +196,7 @@ PanelWindow {
             visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // Physical expanding shell with 4-way directional welded joint radiuses
+        // physical expanding shell with 4-way directional welded joint radiuses
         Rectangle {
             id: popupBody
             x: root.clampedBodyX
@@ -204,8 +204,7 @@ PanelWindow {
             width: root.panelWidth
             height: Math.max(1, root.morphProgress * root.panelHeight)
             color: Theme.popupBg
-            border.color: Theme.popupBorderColor
-            border.width: 1
+            border.width: 0
             clip: true
 
             topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.popupRadius
