@@ -724,33 +724,51 @@ Rectangle {
                         }
                     }
 
-                    // Interactive Motion Physics Test Box
+                    // Unified Motion & Physics Sandbox Card
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 64
+                        height: 72
                         radius: Theme.radiusMd
-                        color: Theme.surface_container_low
-                        border.color: Theme.widgetBorder
+                        color: sandboxBtnMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
+                        border.color: Settings.showMotionSandbox ? Theme.primary : Theme.widgetBorder
                         border.width: 1
+
+                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                         RowLayout {
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 12
 
+                            Rectangle {
+                                width: 44
+                                height: 44
+                                radius: Theme.radiusSm
+                                color: Settings.showMotionSandbox ? Theme.primary_overlay : Theme.surface_container_high
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: Theme.kaoDJ
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: Theme.fontSizeMd
+                                    color: Theme.primary
+                                }
+                            }
+
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
 
                                 Text {
-                                    text: "test motion physics"
+                                    text: "draggable physics sandbox"
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.pixelSize: Theme.fontSizeSm
                                     font.weight: Font.Bold
                                     color: Theme.on_surface
                                 }
                                 Text {
-                                    text: "click to trigger live curve test"
+                                    text: Settings.showMotionSandbox ? "sandbox active on screen edge (click to close)" : "open interactive canvas with 4-way docking & free dragging"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.on_surface_variant
@@ -758,74 +776,20 @@ Rectangle {
                             }
 
                             Rectangle {
-                                id: testBox
-                                width: 40
-                                height: 40
-                                radius: Theme.radiusSm
-                                color: testBoxMouse.pressed ? Theme.primary : Theme.surface_container_high
-
-                                property real testScale: 1.0
-                                scale: testScale
-
-                                Behavior on scale {
-                                    NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
-                                }
+                                height: 28
+                                implicitWidth: launchText.implicitWidth + 16
+                                radius: Theme.radiusPill
+                                color: Settings.showMotionSandbox ? Theme.primary : Theme.primary_overlay
 
                                 Text {
+                                    id: launchText
                                     anchors.centerIn: parent
-                                    text: Theme.kaoVibe
-                                    font.family: Theme.fontMono
-                                    font.pixelSize: 11
-                                    color: Theme.primary
+                                    text: Settings.showMotionSandbox ? "active " : "test physics "
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: Settings.showMotionSandbox ? Theme.on_primary : Theme.primary
                                 }
-
-                                MouseArea {
-                                    id: testBoxMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onPressed: testBox.testScale = 1.3
-                                    onReleased: testBox.testScale = 1.0
-                                }
-                            }
-                        }
-                    }
-
-                    // Open Full Drag Physics Sandbox Window
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 40
-                        radius: Theme.widgetRadius
-                        color: sandboxBtnMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
-                        border.color: Settings.showMotionSandbox ? Theme.primary : "transparent"
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: Theme.widgetPaddingH
-                            spacing: 8
-
-                            Text {
-                                text: Theme.kaoDJ
-                                font.family: Theme.fontMono
-                                font.pixelSize: Theme.fontSizeSm
-                                color: Theme.primary
-                            }
-
-                            Text {
-                                text: Settings.showMotionSandbox ? "close motion sandbox window" : "open draggable physics sandbox"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
-                                font.weight: Font.Bold
-                                color: Theme.on_surface
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: Settings.showMotionSandbox ? "active " : "launch "
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                color: Theme.primary
                             }
                         }
 

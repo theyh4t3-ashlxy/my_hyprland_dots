@@ -27,6 +27,11 @@ PanelWindow {
     readonly property real marginX: scoopW + 8
     readonly property real marginY: scoopH + 8
 
+    // Animated dynamic concave expansion factor
+    readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.01, root.morphProgress * 1.35))
+    readonly property real curScoopW: root.scoopW * root.scoopAnimFactor
+    readonly property real curScoopH: root.scoopH * root.scoopAnimFactor
+
     // Clamped positions for horizontal vs vertical bar docking
     readonly property real desiredBodyX: isVertical
         ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - panelWidth))
@@ -103,100 +108,92 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // === TOP BAR DUAL WELD SCOOPS ===
+        // === TOP BAR DYNAMIC MORPHING SCOOPS ===
         ConcaveCorner {
-            x: popupBody.x - root.scoopW
+            x: popupBody.x - root.curScoopW
             y: Theme.barHeight
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: true
             flipY: false
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isTop && Settings.scoopRadius > 0
+            visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
             y: Theme.barHeight
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: false
             flipY: false
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isTop && Settings.scoopRadius > 0
+            visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === BOTTOM BAR DUAL WELD SCOOPS ===
+        // === BOTTOM BAR DYNAMIC MORPHING SCOOPS ===
         ConcaveCorner {
-            x: popupBody.x - root.scoopW
-            y: root.height - Theme.barHeight - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            x: popupBody.x - root.curScoopW
+            y: root.height - Theme.barHeight - root.curScoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: true
             flipY: true
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isBottom && Settings.scoopRadius > 0
+            visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
-            y: root.height - Theme.barHeight - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            y: root.height - Theme.barHeight - root.curScoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: false
             flipY: true
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isBottom && Settings.scoopRadius > 0
+            visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === LEFT BAR DUAL WELD SCOOPS ===
+        // === LEFT BAR DYNAMIC MORPHING SCOOPS ===
         ConcaveCorner {
             x: Theme.barHeight
-            y: popupBody.y - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            y: popupBody.y - root.curScoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: false
             flipY: true
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isLeft && Settings.scoopRadius > 0
+            visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: Theme.barHeight
             y: popupBody.y + popupBody.height
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: false
             flipY: false
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isLeft && Settings.scoopRadius > 0
+            visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
-        // === RIGHT BAR DUAL WELD SCOOPS ===
+        // === RIGHT BAR DYNAMIC MORPHING SCOOPS ===
         ConcaveCorner {
-            x: root.width - Theme.barHeight - root.scoopW
-            y: popupBody.y - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            x: root.width - Theme.barHeight - root.curScoopW
+            y: popupBody.y - root.curScoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: true
             flipY: true
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isRight && Settings.scoopRadius > 0
+            visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
-            x: root.width - Theme.barHeight - root.scoopW
+            x: root.width - Theme.barHeight - root.curScoopW
             y: popupBody.y + popupBody.height
-            radiusX: root.scoopW
-            radiusY: root.scoopH
+            radiusX: root.curScoopW
+            radiusY: root.curScoopH
             fillColor: Theme.surface_container_low
             flipX: true
             flipY: false
-            opacity: Math.min(1.0, root.morphProgress * 3.5)
-            visible: root.isRight && Settings.scoopRadius > 0
+            visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
         }
 
         // Physical expanding shell with 4-way directional welded joint radiuses
