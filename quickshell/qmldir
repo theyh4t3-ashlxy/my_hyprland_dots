@@ -5,6 +5,7 @@ singleton Settings       services/Settings.qml
 singleton WallpaperService services/WallpaperService.qml
 singleton NetworkService   services/NetworkService.qml
 singleton NotificationService services/NotificationService.qml
+singleton IdleService       services/IdleService.qml
 
 # bar, corners & overlays
 StatusBar                bar/StatusBar.qml

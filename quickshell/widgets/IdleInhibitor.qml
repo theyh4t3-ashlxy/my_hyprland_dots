@@ -16,28 +16,12 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/caffeine.sh"
-    property bool active: false
-
-    property FileView pidFile: FileView {
-        path: "/tmp/qs_caffeine.pid"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: {
-            reload();
-            let pid = text().trim();
-            root.active = pid.length > 0;
-        }
-    }
-
-    Component.onCompleted: {
-        pidFile.reload();
-        let pid = pidFile.text().trim();
-        root.active = pid.length > 0;
-    }
+    property bool active: !IdleService.enabled
 
     function toggleInhibit() {
-        active = !active
-        Quickshell.execDetached([scriptPath, active ? "start" : "stop"])
+        IdleService.enabled = !IdleService.enabled;
+        active = !IdleService.enabled;
+        Quickshell.execDetached([scriptPath, active ? "start" : "stop"]);
     }
 
     Row {
