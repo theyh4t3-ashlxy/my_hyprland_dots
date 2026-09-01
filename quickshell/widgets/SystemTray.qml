@@ -30,7 +30,7 @@ Rectangle {
 
                 IconImage {
                     id: trayIcon
-                    source: Quickshell.iconPath(modelData.icon || "", "application-x-executable")
+                    source: modelData.icon || ""
                     anchors.centerIn: parent
                     width: 16
                     height: 16

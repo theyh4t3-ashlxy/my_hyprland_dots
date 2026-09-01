@@ -200,12 +200,24 @@ QtObject {
         }
     }
 
+    property bool _isSaving: false
+
+    property Timer resetSavingTimer: Timer {
+        interval: 400
+        repeat: false
+        onTriggered: {
+            root._isSaving = false;
+        }
+    }
+
     property FileView confFile: FileView {
         path: "/home/ashley/.config/quickshell/settings.conf"
         watchChanges: true
         printErrors: false
         onFileChanged: {
-            loadTimer.restart();
+            if (!root._isSaving) {
+                loadTimer.restart();
+            }
         }
     }
 
@@ -293,7 +305,9 @@ QtObject {
     }
 
     function save() {
+        root._isSaving = true;
         let confStr = toConf();
         Quickshell.execDetached([saveScriptPath, confStr]);
+        resetSavingTimer.restart();
     }
 }
