@@ -9,9 +9,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : pwrRow.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: popup.open ? Theme.error_overlay : (pwrMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+    color: popup.open ? Theme.error_overlay : (pwrMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     Row {
         id: pwrRow

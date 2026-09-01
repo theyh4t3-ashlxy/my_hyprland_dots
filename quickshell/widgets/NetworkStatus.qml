@@ -6,9 +6,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : netRow.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: popup.open ? Theme.primary_overlay : (netMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+    color: popup.open ? Theme.primary_overlay : (netMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     readonly property string netIcon: {
         if (NetworkService.isWiredConnected) return Theme.iconEthernet;

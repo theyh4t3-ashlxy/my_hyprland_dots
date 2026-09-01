@@ -9,9 +9,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : row.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: popup.open ? Theme.primary_overlay : (volRoot.muted ? Theme.surface_container : (vMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high))
+    color: popup.open ? Theme.primary_overlay : (volRoot.muted ? Theme.widgetBg : (vMouse.containsMouse ? Theme.pillHover : Theme.pillBg))
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     property var sink: Pipewire.defaultAudioSink
     property var source: Pipewire.defaultAudioSource

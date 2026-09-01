@@ -128,10 +128,62 @@ QtObject {
         return background;
     }
 
-    readonly property color  widgetBg:              surface_container_low
-    readonly property color  widgetHover:           surface_container_high
-    readonly property color  widgetActive:          surface_container_highest
-    readonly property color  widgetBorder:          alpha(outline_variant, 0.5)
+    readonly property color  widgetBg: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#111111";
+        if (bs === "translucent") return alpha(surface_container_high, 0.40);
+        if (bs === "accent-glow") return alpha(primary_container, 0.55);
+        if (bs === "monochrome") return surface_container_high;
+        return surface_container_low;
+    }
+    readonly property color  widgetHover: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#1c1c1c";
+        if (bs === "translucent") return alpha(surface_container_highest, 0.65);
+        if (bs === "accent-glow") return alpha(primary, 0.25);
+        if (bs === "monochrome") return surface_container_highest;
+        return surface_container_highest;
+    }
+    readonly property color  widgetActive: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#262626";
+        if (bs === "translucent") return alpha(surface_container_highest, 0.85);
+        if (bs === "accent-glow") return alpha(primary, 0.40);
+        if (bs === "monochrome") return alpha(on_surface, 0.20);
+        return surface_container_highest;
+    }
+    readonly property color  widgetBorder: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#282828";
+        if (bs === "translucent") return alpha(outline_variant, 0.35);
+        if (bs === "accent-glow") return alpha(primary, 0.50);
+        if (bs === "monochrome") return alpha(outline, 0.4);
+        return alpha(outline_variant, 0.5);
+    }
+    readonly property color  pillBg: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#121212";
+        if (bs === "translucent") return alpha(surface_container_high, 0.45);
+        if (bs === "accent-glow") return alpha(primary, 0.16);
+        if (bs === "monochrome") return surface_container;
+        return surface_container_high;
+    }
+    readonly property color  pillHover: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#222222";
+        if (bs === "translucent") return alpha(surface_container_highest, 0.70);
+        if (bs === "accent-glow") return alpha(primary, 0.28);
+        if (bs === "monochrome") return surface_container_highest;
+        return surface_container_highest;
+    }
+    readonly property color  pillBorder: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#2a2a2a";
+        if (bs === "translucent") return alpha(outline_variant, 0.25);
+        if (bs === "accent-glow") return alpha(primary, 0.45);
+        if (bs === "monochrome") return alpha(outline, 0.35);
+        return "transparent";
+    }
 
     readonly property int    popupWidth:            460
     readonly property int    popupHeight:           580

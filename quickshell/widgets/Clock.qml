@@ -8,9 +8,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : timeText.implicitWidth + 24
     implicitHeight: Theme.isVertical ? 38 : Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+    color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     property date now: new Date()
     property int selectedYear: now.getFullYear()

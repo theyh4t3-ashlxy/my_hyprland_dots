@@ -16,11 +16,14 @@ Rectangle {
     implicitWidth: isVertical ? Theme.barHeight - 8 : (contentRow.implicitWidth + 16)
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: isLow ? Theme.error_overlay : (bMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
-    visible: (device?.ready ?? false) && (device?.isLaptopBattery ?? false)
+    color: isLow ? Theme.error_overlay : (bMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: isLow ? Theme.error : Theme.pillBorder
+    border.width: (isLow || Theme.pillBorder !== "transparent") ? 1 : 0
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
     Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+    visible: (device?.ready ?? false) && (device?.isLaptopBattery ?? false)
 
     Row {
         id: contentRow

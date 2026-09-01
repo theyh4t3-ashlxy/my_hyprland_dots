@@ -8,9 +8,12 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : cafRow.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: root.active ? Theme.primary_overlay : (cafMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+    color: root.active ? Theme.primary_overlay : (cafMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/caffeine.sh"
     property bool active: false

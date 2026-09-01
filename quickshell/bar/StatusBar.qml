@@ -77,9 +77,12 @@ PanelWindow {
                     implicitWidth: 36
                     implicitHeight: Theme.barHeight - 8
                     radius: Theme.radiusPill
-                    color: lMouseH.pressed ? Theme.widgetActive : lMouseH.containsMouse ? Theme.surface_container_highest : (launcherPopup.open ? Theme.primary_overlay : Theme.surface_container_high)
+                    color: lMouseH.pressed ? Theme.widgetActive : lMouseH.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
+                    border.color: Theme.pillBorder
+                    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                     Text {
                         anchors.centerIn: parent
@@ -225,9 +228,12 @@ PanelWindow {
                     implicitWidth: Theme.barHeight - 8
                     implicitHeight: 36
                     radius: Theme.radiusPill
-                    color: lMouseV.pressed ? Theme.widgetActive : lMouseV.containsMouse ? Theme.surface_container_highest : (launcherPopup.open ? Theme.primary_overlay : Theme.surface_container_high)
+                    color: lMouseV.pressed ? Theme.widgetActive : lMouseV.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
+                    border.color: Theme.pillBorder
+                    border.width: Theme.pillBorder === "transparent" ? 0 : 1
 
                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                     Text {
                         anchors.centerIn: parent
