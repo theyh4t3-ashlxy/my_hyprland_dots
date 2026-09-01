@@ -2,24 +2,27 @@
 local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
 
 # base shell wiring
-[[ -f "$zdir/core.zsh" ]]    && source "$zdir/core.zsh"
-[[ -f "$zdir/plugins.zsh" ]] && source "$zdir/plugins.zsh"
-[[ -f "$zdir/exports.zsh" ]] && source "$zdir/exports.zsh"
+[[ -f "$zdir/core.zsh" ]]     && source "$zdir/core.zsh"
+[[ -f "$zdir/plugins.zsh" ]]  && source "$zdir/plugins.zsh"
+[[ -f "$zdir/exports.zsh" ]]  && source "$zdir/exports.zsh"
 
 # modern overrides and shortcuts
 [[ -f "$zdir/aliases.zsh" ]]   && source "$zdir/aliases.zsh"
 [[ -f "$zdir/tools.zsh" ]]     && source "$zdir/tools.zsh"
 [[ -f "$zdir/functions.zsh" ]] && source "$zdir/functions.zsh"
+[[ -f "$zdir/nyae.zsh" ]]      && source "$zdir/nyae.zsh"
+[[ -f "$zdir/roast.zsh" ]]     && source "$zdir/roast.zsh"
+[[ -f "$zdir/quicknav.zsh" ]]  && source "$zdir/quicknav.zsh"
+[[ -f "$zdir/dev.zsh" ]]       && source "$zdir/dev.zsh"
 [[ -f "$zdir/git.zsh" ]]       && source "$zdir/git.zsh"
 
 # wallpaper hooks and local overrides
-[[ -f "$zdir/hyprland.zsh" ]] && source "$zdir/hyprland.zsh"
-[[ -f "$zdir/but.zsh" ]]      && source "$zdir/but.zsh"
-[[ -f "$zdir/matugen.zsh" ]]  && source "$zdir/matugen.zsh"
-[[ -f "$zdir/local.zsh" ]]    && source "$zdir/local.zsh"
+[[ -f "$zdir/hyprland.zsh" ]]  && source "$zdir/hyprland.zsh"
+[[ -f "$zdir/matugen.zsh" ]]   && source "$zdir/matugen.zsh"
+[[ -f "$zdir/local.zsh" ]]     && source "$zdir/local.zsh"
 
 # the actual prompt
-[[ -f "$zdir/prompt.zsh" ]]   && source "$zdir/prompt.zsh"
+[[ -f "$zdir/prompt.zsh" ]]    && source "$zdir/prompt.zsh"
 
 if (( $+commands[fastfetch] )); then
     fastfetch
