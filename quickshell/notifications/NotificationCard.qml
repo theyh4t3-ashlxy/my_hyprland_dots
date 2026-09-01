@@ -29,14 +29,14 @@ Item {
             property: "morphProgress"
             from: 0.0
             to: 1.0
-            duration: 240
+            duration: 140
             easing.type: Easing.OutCubic
         }
     }
 
     ParallelAnimation {
         id: dismissAnim
-        NumberAnimation { target: cardRoot; property: "morphProgress"; to: 0.0; duration: 180; easing.type: Easing.InCubic }
+        NumberAnimation { target: cardRoot; property: "morphProgress"; to: 0.0; duration: 120; easing.type: Easing.InCubic }
         onFinished: cardRoot.closed()
     }
 

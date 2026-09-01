@@ -90,22 +90,22 @@ PanelWindow {
                 property: "opacity"
                 from: 0.0
                 to: 1.0
-                duration: Theme.animNormal
-                easing.type: Theme.animEasing
+                duration: 140
+                easing.type: Easing.OutCubic
             }
             NumberAnimation {
                 property: "y"
-                from: toastWindow.isTop ? -30 : 30
-                duration: Theme.animNormal
-                easing.type: Theme.animEasing
+                from: toastWindow.isTop ? -24 : 24
+                duration: 140
+                easing.type: Easing.OutCubic
             }
         }
 
         displaced: Transition {
             NumberAnimation {
                 property: "y"
-                duration: Theme.animNormal
-                easing.type: Theme.animEasing
+                duration: 140
+                easing.type: Easing.OutCubic
             }
         }
 
@@ -113,7 +113,7 @@ PanelWindow {
             NumberAnimation {
                 property: "opacity"
                 to: 0.0
-                duration: Theme.animFast
+                duration: 120
                 easing.type: Easing.InCubic
             }
         }
