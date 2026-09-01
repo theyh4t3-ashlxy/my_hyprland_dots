@@ -6,6 +6,7 @@ DOTS_DIR="${0:A:h}"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 WALLPAPER_DIR="$HOME/.wallpapers"
+BACKUP_DIR="$CACHE_DIR/dotfiles-backups"
 
 # colors for pretty terminal chaos
 typeset -A colors
@@ -17,12 +18,14 @@ colors=(
     error "\e[38;5;203m"
     dim "\e[38;5;244m"
     bold "\e[1m"
+    cyan "\e[38;5;117m"
 )
 
 log_info() { print -P "${colors[primary]}󰄛${colors[reset]} $1" }
 log_ok()   { print -P "${colors[success]}󰄲${colors[reset]} $1" }
 log_warn() { print -P "${colors[warn]}󰀦${colors[reset]} $1" }
 log_err()  { print -P "${colors[error]}󰅚${colors[reset]} $1" }
+log_step() { print -P "${colors[cyan]}󰁕${colors[reset]} ${colors[bold]}$1${colors[reset]}" }
 
 detect_aur_helper() {
     if (( $+commands[paru] )); then
@@ -46,14 +49,14 @@ install_dependencies() {
     local helper=$(detect_aur_helper)
     log_info "detected package manager: ${colors[bold]}$helper${colors[reset]}"
 
-    # arch packages
+    # arch packages needed for full rice experience
     local arch_pkgs=(
         hyprland
         hypridle
         hyprlock
         xdg-desktop-portal-hyprland
         xdg-desktop-portal-gtk
-        awww
+        swww
         matugen-bin
         quickshell-git
         kitty
@@ -85,18 +88,40 @@ install_dependencies() {
 
     case "$helper" in
         paru|yay)
-            log_info "installing packages via $helper..."
-            # install packages without choking if some are already present
-            $helper -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "some packages failed to install, check logs"
+            log_info "installing / updating dependencies via $helper..."
+            $helper -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "some packages failed to install, check your internet or aur build logs"
             ;;
         pacman)
             log_warn "no aur helper found (paru/yay). installing official repo packages only..."
-            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen / quickshell"
+            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin and quickshell-git"
             ;;
         *)
             log_warn "distro not automatically mapped. install hyprland, quickshell, matugen, and swww manually."
             ;;
     esac
+}
+
+backup_existing() {
+    log_info "creating safety backup in $BACKUP_DIR..."
+    mkdir -p "$BACKUP_DIR"
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local target_archive="$BACKUP_DIR/backup_${timestamp}.tar.gz"
+
+    local folders=("hypr" "quickshell" "matugen" "kitty" "fastfetch" "zsh" "yazi" "nvim" "gtk-3.0" "gtk-4.0")
+    local existing_targets=()
+
+    for folder in "${folders[@]}"; do
+        if [[ -e "$CONFIG_DIR/$folder" && ! -L "$CONFIG_DIR/$folder" ]]; then
+            existing_targets+=( "$CONFIG_DIR/$folder" )
+        fi
+    done
+
+    if (( ${#existing_targets[@]} > 0 )); then
+        tar -czf "$target_archive" "${existing_targets[@]}" 2>/dev/null || true
+        log_ok "backed up unlinked configs -> $target_archive"
+    else
+        log_info "no unlinked configs needed backup"
+    fi
 }
 
 link_configurations() {
@@ -136,10 +161,12 @@ link_configurations() {
             continue
         fi
 
-        # backup existing real directory so we don't nuke user's life work
-        if [[ -d "$target" && ! -L "$target" ]]; then
+        # remove old broken link or handle directory
+        if [[ -L "$target" ]]; then
+            rm -f "$target"
+        elif [[ -d "$target" ]]; then
             local backup="${target}.bak.$(date +%s)"
-            log_warn "backing up existing $target -> $backup"
+            log_warn "moving existing real dir $target -> $backup"
             mv "$target" "$backup"
         fi
 
@@ -161,14 +188,15 @@ setup_directories_and_permissions() {
     log_info "creating wallpaper and cache directories..."
     mkdir -p "$WALLPAPER_DIR"
     mkdir -p "$CACHE_DIR/quickshell/wallpapers"
+    mkdir -p "$BACKUP_DIR"
 
     # make all helper scripts executable
-    log_info "chmodding helper scripts..."
+    log_info "chmodding helper scripts and tools..."
     chmod +x "$DOTS_DIR"/quickshell/scripts/*.sh(N)
     chmod +x "$DOTS_DIR"/quickshell/scripts/*.py(N)
     chmod +x "$DOTS_DIR"/matugen/post-hook-scripts/*.zsh(N)
     chmod +x "$DOTS_DIR"/install.zsh
-    log_ok "permissions set"
+    log_ok "script permissions set"
 }
 
 initial_theming() {
@@ -183,7 +211,114 @@ initial_theming() {
             log_ok "matugen initial theme generated"
         fi
     else
-        log_warn "no wallpapers found in $WALLPAPER_DIR yet. put some images there to get colors."
+        log_warn "no wallpapers found in $WALLPAPER_DIR yet. drop some images there to generate colors."
+    fi
+}
+
+update_dots() {
+    log_step "updating dotfiles repository..."
+    if [[ -d "$DOTS_DIR/.git" ]]; then
+        log_info "pulling latest commits from git remote..."
+        git -C "$DOTS_DIR" pull --rebase origin main || {
+            log_warn "git pull encountered conflicts or dirty state, check git status"
+        }
+        log_ok "repository up to date"
+    else
+        log_warn "$DOTS_DIR is not a git repository, skipping git pull"
+    fi
+
+    setup_directories_and_permissions
+    link_configurations
+    initial_theming
+    reload_shell
+    log_ok "update complete! desktop updated with latest dots."
+}
+
+reload_shell() {
+    log_step "reloading desktop shell & compositors..."
+    
+    # reload hyprland configs if hyprland is active
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && (( $+commands[hyprctl] )); then
+        hyprctl reload 2>/dev/null || true
+        log_ok "hyprland config reloaded"
+    fi
+
+    # restart or reload quickshell
+    if pgrep -x "quickshell" >/dev/null; then
+        log_info "reloading quickshell..."
+        pkill -x "quickshell" || true
+        sleep 0.5
+        if (( $+commands[qs] )); then
+            ( qs >/dev/null 2>&1 & )
+        elif (( $+commands[quickshell] )); then
+            ( quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 & )
+        fi
+        log_ok "quickshell reloaded"
+    fi
+}
+
+doctor_check() {
+    log_step "running system health check & diagnostics..."
+    local missing_bins=()
+    local critical_bins=(
+        "hyprland"
+        "quickshell"
+        "matugen"
+        "swww"
+        "kitty"
+        "zsh"
+        "wl-copy"
+        "pactl"
+        "brightnessctl"
+        "playerctl"
+        "python3"
+    )
+
+    for b in "${critical_bins[@]}"; do
+        if (( $+commands[$b] )); then
+            print -P "  ${colors[success]}󰄲${colors[reset]} $b found: ${colors[dim]}$(which $b)${colors[reset]}"
+        else
+            print -P "  ${colors[error]}󰅚${colors[reset]} $b: ${colors[bold]}MISSING${colors[reset]}"
+            missing_bins+=( "$b" )
+        fi
+    done
+
+    # check fonts
+    print ""
+    log_info "checking essential fonts..."
+    if fc-list : family | grep -qi "JetBrainsMono Nerd Font"; then
+        print -P "  ${colors[success]}󰄲${colors[reset]} JetBrainsMono Nerd Font found"
+    else
+        print -P "  ${colors[warn]}󰀦${colors[reset]} JetBrainsMono Nerd Font missing (nerd icons might look weird)"
+    fi
+
+    if fc-list : family | grep -qi "Noto Sans"; then
+        print -P "  ${colors[success]}󰄲${colors[reset]} Noto Sans font found"
+    else
+        print -P "  ${colors[warn]}󰀦${colors[reset]} Noto Sans missing"
+    fi
+
+    # check symlinks
+    print ""
+    log_info "verifying config symlinks..."
+    local check_links=("hypr" "quickshell" "matugen" "kitty")
+    for l in "${check_links[@]}"; do
+        local target="$CONFIG_DIR/$l"
+        if [[ -L "$target" ]]; then
+            print -P "  ${colors[success]}󰄲${colors[reset]} $target -> $(readlink $target)"
+        elif [[ -d "$target" ]]; then
+            print -P "  ${colors[warn]}󰀦${colors[reset]} $target exists but is a real directory (not symlinked)"
+        else
+            print -P "  ${colors[error]}󰅚${colors[reset]} $target missing"
+        fi
+    done
+
+    print ""
+    if (( ${#missing_bins[@]} > 0 )); then
+        log_warn "missing ${#missing_bins[@]} dependencies: ${missing_bins[*]}"
+        print -P "  run ${colors[primary]}./install.zsh --deps${colors[reset]} to install them"
+    else
+        log_ok "all core tools and services are healthy"
     fi
 }
 
@@ -192,8 +327,11 @@ show_help() {
     print ""
     print "options:"
     print "  -a, --all        full rice install (deps + links + permissions + theme)"
+    print "  -u, --update     pull latest dotfiles from git, sync links, and reload shell"
     print "  -l, --links      symlink configs only"
     print "  -d, --deps       install dependencies only"
+    print "  -c, --doctor     run health check and diagnostic tool"
+    print "  -r, --reload     reload running hyprland & quickshell"
     print "  -h, --help       show this help message"
 }
 
@@ -206,12 +344,24 @@ while [[ $# -gt 0 ]]; do
             mode="all"
             shift
             ;;
+        -u|--update)
+            mode="update"
+            shift
+            ;;
         -l|--links)
             mode="links"
             shift
             ;;
         -d|--deps)
             mode="deps"
+            shift
+            ;;
+        -c|--doctor|--check)
+            mode="doctor"
+            shift
+            ;;
+        -r|--reload)
+            mode="reload"
             shift
             ;;
         -h|--help)
@@ -226,33 +376,44 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-print -P "${colors[primary]}󰄛 rice installer: preparing pure visual dopamine${colors[reset]}"
+print -P "${colors[primary]}󰄛 rice manager: keeping your setup immaculate${colors[reset]}"
 
 if [[ "$mode" == "interactive" ]]; then
     print ""
     print "what do you want to do?"
     print "  1) full install (dependencies + symlinks + theming)"
-    print "  2) symlink dotfiles only"
-    print "  3) install packages only"
-    print "  4) quit"
-    print -n "choice [1-4]: "
+    print "  2) update dotfiles (git pull + sync + reload shell)"
+    print "  3) symlink dotfiles only"
+    print "  4) install dependencies only"
+    print "  5) doctor / system health check"
+    print "  6) reload running shell (hyprland + quickshell)"
+    print "  7) quit"
+    print -n "choice [1-7]: "
     read -r choice
     case "$choice" in
         1) mode="all" ;;
-        2) mode="links" ;;
-        3) mode="deps" ;;
+        2) mode="update" ;;
+        3) mode="links" ;;
+        4) mode="deps" ;;
+        5) mode="doctor" ;;
+        6) mode="reload" ;;
         *) print "quitting."; exit 0 ;;
     esac
 fi
 
 case "$mode" in
     all)
+        backup_existing
         install_dependencies
         setup_directories_and_permissions
         link_configurations
         initial_theming
         ;;
+    update)
+        update_dots
+        ;;
     links)
+        backup_existing
         setup_directories_and_permissions
         link_configurations
         initial_theming
@@ -260,7 +421,13 @@ case "$mode" in
     deps)
         install_dependencies
         ;;
+    doctor)
+        doctor_check
+        ;;
+    reload)
+        reload_shell
+        ;;
 esac
 
 print ""
-log_ok "everything is set up. restart hyprland or run 'qs' to enjoy the rice."
+log_ok "done. everything is looking clean."
