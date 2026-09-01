@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import ".."
 import Quickshell
+import Quickshell.Io
 import Quickshell.Networking
 
 QtObject {
@@ -64,15 +65,12 @@ QtObject {
     property int _cliSignal: 0
     property bool _cliConnected: false
 
-    Timer {
-        id: statusPoller
-        interval: 3000
-        repeat: true
-        running: true
-        triggeredOnStart: true
-        onTriggered: {
-            Quickshell.exec(["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION,SIGNAL", "dev"], (out) => {
-                let lines = (out || "").trim().split("\n");
+    property Process cliPoller: Process {
+        command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION,SIGNAL", "dev"]
+        running: false
+        stdout: SplitParser {
+            onRead: (data) => {
+                let lines = (data || "").trim().split("\n");
                 let foundWifi = false;
                 for (let i = 0; i < lines.length; i++) {
                     let parts = lines[i].split(":");
@@ -89,7 +87,17 @@ QtObject {
                     root._cliSsid = "";
                     root._cliSignal = 0;
                 }
-            });
+            }
+        }
+    }
+
+    property Timer statusPoller: Timer {
+        interval: 3000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            if (!root.cliPoller.running) root.cliPoller.running = true;
         }
     }
 

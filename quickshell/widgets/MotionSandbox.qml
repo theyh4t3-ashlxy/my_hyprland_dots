@@ -8,19 +8,21 @@ import Quickshell.Wayland
 PanelWindow {
     id: root
 
+    required property var modelData
+    screen: modelData
+
     property bool open: false
     property string dockPosition: "bottom" // "bottom" or "right"
     readonly property bool isBottom: dockPosition === "bottom"
 
     anchors {
         bottom: true
-        right: !root.isBottom
-        horizontalCenter: root.isBottom
+        right: true
     }
 
     margins {
         bottom: root.isBottom ? 0 : 32
-        right: root.isBottom ? 0 : 0
+        right: root.isBottom ? 32 : 0
     }
 
     color: "transparent"

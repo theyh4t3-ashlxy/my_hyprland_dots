@@ -224,6 +224,7 @@ QtObject {
     readonly property string iconSparkles:          "󰓏"
     readonly property string iconRadio:             "󰐹"
     readonly property string iconSliders:           "󰝚"
+    readonly property string iconTerminal:          ""
 
     // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
