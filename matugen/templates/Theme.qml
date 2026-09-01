@@ -214,9 +214,6 @@ QtObject {
     readonly property string iconChevronLeft:       ""
     readonly property string iconChevronDown:       ""
     readonly property string iconChevronUp:         ""
-y string iconChevronLeft:       ""
-    readonly property string iconChevronDown:       ""
-    readonly property string iconChevronUp:         ""
 
     // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
