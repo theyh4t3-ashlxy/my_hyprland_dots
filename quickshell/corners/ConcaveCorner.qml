@@ -8,59 +8,60 @@ Shape {
     property real radiusX: Theme.scoopRadiusX
     property real radiusY: Theme.scoopRadiusY
     property real tension: Theme.scoopTension ?? 0.55228475
-    property string style: Theme.scoopStyle
+    property string style: Theme.scoopStyle ?? "cubic"
     property color fillColor: "#000"
     property bool flipX: false
     property bool flipY: false
 
-    width: radiusX
-    height: radiusY
+    width: Math.max(1, radiusX)
+    height: Math.max(1, radiusY)
 
-    // please stop blurring my edges
+    // no subpixel blurring or weird transform scaling
     layer.enabled: false
-    preferredRendererType: Shape.CurveRenderer
+    preferredRendererType: Shape.GeometryRenderer
+    asynchronous: false
 
-    // if this flips weirdly again im deleting hyprland
-    transform: Scale {
-        xScale: root.flipX ? -1 : 1
-        yScale: root.flipY ? -1 : 1
-        origin.x: Math.floor(root.width / 2)
-        origin.y: Math.floor(root.height / 2)
-    }
+    readonly property real w: width
+    readonly property real h: height
+    readonly property real t: 1.0 - tension
 
-    readonly property real c1X: style === "chamfer" ? (root.radiusX * 0.5)
-                              : style === "flared"  ? (root.radiusX * 0.08)
-                              : style === "stepped" ? 0
-                              : (root.radiusX * (1.0 - root.tension))
-    readonly property real c1Y: style === "chamfer" ? (root.radiusY * 0.5) : 0
+    // direct 4-quadrant continuous closed loop bezier coordinates
+    readonly property real startPtX: flipX ? w : 0
+    readonly property real startPtY: flipY ? h : 0
 
-    readonly property real c2X: style === "chamfer" ? (root.radiusX * 0.5) : 0
-    readonly property real c2Y: style === "chamfer" ? (root.radiusY * 0.5)
-                              : style === "flared"  ? (root.radiusY * 0.08)
-                              : style === "stepped" ? 0
-                              : (root.radiusY * (1.0 - root.tension))
+    readonly property real linePtX: flipX ? 0 : w
+    readonly property real linePtY: flipY ? h : 0
+
+    readonly property real endPtX: flipX ? w : 0
+    readonly property real endPtY: flipY ? 0 : h
+
+    readonly property real ctrl1X: flipX ? (w * tension) : (w * t)
+    readonly property real ctrl1Y: flipY ? h : 0
+
+    readonly property real ctrl2X: flipX ? w : 0
+    readonly property real ctrl2Y: flipY ? (h * tension) : (h * t)
 
     ShapePath {
         fillColor: root.fillColor
         strokeColor: "transparent"
         strokeWidth: 0
+        joinStyle: ShapePath.MiterJoin
+        capStyle: ShapePath.FlatCap
 
-        // back to the origin before it blows up
-        startX: 0
-        startY: 0
+        startX: root.startPtX
+        startY: root.startPtY
 
-        PathLine { x: root.radiusX; y: 0 }
+        PathLine { x: root.linePtX; y: root.linePtY }
 
-        // actual concave scoop math instead of convex garbage
         PathCubic {
-            x: 0
-            y: root.radiusY
-            control1X: root.c1X
-            control1Y: root.c1Y
-            control2X: root.c2X
-            control2Y: root.c2Y
+            x: root.endPtX
+            y: root.endPtY
+            control1X: root.ctrl1X
+            control1Y: root.ctrl1Y
+            control2X: root.ctrl2X
+            control2Y: root.ctrl2Y
         }
 
-        PathLine { x: 0; y: 0 }
+        PathLine { x: root.startPtX; y: root.startPtY }
     }
 }

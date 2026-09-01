@@ -51,8 +51,7 @@ PanelWindow {
             width: root.isVertical ? Theme.barHeight : parent.width
             height: root.isVertical ? parent.height : Theme.barHeight
             color: Theme.barBg
-            border.color: Theme.barBorderColor
-            border.width: Settings.barStyle === "accent-glow" || Settings.barStyle === "pure-black" ? 1 : 0
+            border.width: 0
             radius: 0
         }
 
