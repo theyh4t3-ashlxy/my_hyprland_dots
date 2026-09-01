@@ -57,10 +57,10 @@ Item {
         width: 360
         height: Math.max(1, cardRoot.morphProgress * (contentLayout.implicitHeight + 24 + (cardRoot.hasTimer ? 2 : 0)))
         radius: Theme.radiusLg
-        color: cardRoot.isCritical ? Theme.error_container : Theme.surface_container_low
+        color: cardRoot.isCritical ? Theme.error_container : Theme.popupBg
         clip: true
 
-        border.color: cardRoot.isCritical ? Theme.error : (cardMouse.containsMouse ? Theme.primary : Theme.widgetBorder)
+        border.color: cardRoot.isCritical ? Theme.error : (cardMouse.containsMouse ? Theme.primary : Theme.popupBorderColor)
         border.width: 1
 
         Behavior on border.color { ColorAnimation { duration: Theme.animFast } }

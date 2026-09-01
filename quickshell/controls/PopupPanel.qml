@@ -114,7 +114,7 @@ PanelWindow {
             y: Theme.barHeight
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: false
             visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -124,7 +124,7 @@ PanelWindow {
             y: Theme.barHeight
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: false
             visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -136,7 +136,7 @@ PanelWindow {
             y: root.height - Theme.barHeight - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: true
             visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -146,7 +146,7 @@ PanelWindow {
             y: root.height - Theme.barHeight - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: true
             visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -158,7 +158,7 @@ PanelWindow {
             y: popupBody.y - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: true
             visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -168,7 +168,7 @@ PanelWindow {
             y: popupBody.y + popupBody.height
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: false
             visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -180,7 +180,7 @@ PanelWindow {
             y: popupBody.y - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: true
             visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -190,7 +190,7 @@ PanelWindow {
             y: popupBody.y + popupBody.height
             radiusX: root.curScoopW
             radiusY: root.curScoopH
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: false
             visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
@@ -203,7 +203,9 @@ PanelWindow {
             y: root.clampedBodyY
             width: root.panelWidth
             height: Math.max(1, root.morphProgress * root.panelHeight)
-            color: Theme.surface_container_low
+            color: Theme.popupBg
+            border.color: Theme.popupBorderColor
+            border.width: 1
             clip: true
 
             topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.popupRadius

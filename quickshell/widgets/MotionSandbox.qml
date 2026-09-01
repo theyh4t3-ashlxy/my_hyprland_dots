@@ -54,7 +54,7 @@ PanelWindow {
             y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: false
             visible: root.isTop && Settings.scoopRadius > 0
@@ -64,7 +64,7 @@ PanelWindow {
             y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: false
             visible: root.isTop && Settings.scoopRadius > 0
@@ -76,7 +76,7 @@ PanelWindow {
             y: parent.height - Theme.scoopRadiusY
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: true
             visible: root.isBottom && Settings.scoopRadius > 0
@@ -86,7 +86,7 @@ PanelWindow {
             y: parent.height - Theme.scoopRadiusY
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: true
             visible: root.isBottom && Settings.scoopRadius > 0
@@ -98,7 +98,7 @@ PanelWindow {
             y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: true
             visible: root.isLeft && Settings.scoopRadius > 0
@@ -108,7 +108,7 @@ PanelWindow {
             y: parent.height - Theme.scoopRadiusY
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: false
             flipY: false
             visible: root.isLeft && Settings.scoopRadius > 0
@@ -120,7 +120,7 @@ PanelWindow {
             y: 0
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: true
             visible: root.isRight && Settings.scoopRadius > 0
@@ -130,7 +130,7 @@ PanelWindow {
             y: parent.height - Theme.scoopRadiusY
             radiusX: Theme.scoopRadiusX
             radiusY: Theme.scoopRadiusY
-            fillColor: Theme.surface_container_low
+            fillColor: Theme.popupBg
             flipX: true
             flipY: false
             visible: root.isRight && Settings.scoopRadius > 0
@@ -145,8 +145,8 @@ PanelWindow {
             anchors.topMargin: root.isVertical ? Theme.scoopRadiusY : 0
             anchors.bottomMargin: root.isVertical ? Theme.scoopRadiusY : 0
             radius: Theme.radiusMd
-            color: Theme.surface_container_low
-            border.color: Theme.widgetBorder
+            color: Theme.popupBg
+            border.color: Theme.popupBorderColor
             border.width: 1
 
             topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.radiusMd

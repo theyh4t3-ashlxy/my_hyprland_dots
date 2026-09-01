@@ -160,6 +160,38 @@ QtObject {
         if (bs === "monochrome") return alpha(outline, 0.4);
         return alpha(outline_variant, 0.5);
     }
+    readonly property color  popupBg: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#0a0a0a";
+        if (bs === "translucent") return alpha(surface_container_low, 0.82);
+        if (bs === "accent-glow") return alpha(surface_container_low, 0.94);
+        if (bs === "monochrome") return surface_container_low;
+        return surface_container_low;
+    }
+    readonly property color  popupBorderColor: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#282828";
+        if (bs === "translucent") return alpha(outline_variant, 0.40);
+        if (bs === "accent-glow") return alpha(primary, 0.60);
+        if (bs === "monochrome") return alpha(outline, 0.45);
+        return widgetBorder;
+    }
+    readonly property color  cardBg: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#111111";
+        if (bs === "translucent") return alpha(surface_container_high, 0.50);
+        if (bs === "accent-glow") return alpha(primary_container, 0.45);
+        if (bs === "monochrome") return surface_container_high;
+        return surface_container_high;
+    }
+    readonly property color  cardBorder: {
+        let bs = Settings?.barStyle ?? "glass";
+        if (bs === "pure-black") return "#222222";
+        if (bs === "translucent") return alpha(outline_variant, 0.30);
+        if (bs === "accent-glow") return alpha(primary, 0.40);
+        if (bs === "monochrome") return alpha(outline, 0.35);
+        return widgetBorder;
+    }
     readonly property color  pillBg: {
         let bs = Settings?.barStyle ?? "glass";
         if (bs === "pure-black") return "#121212";
