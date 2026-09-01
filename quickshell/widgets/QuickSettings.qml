@@ -69,7 +69,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: "settings"
+                    text: "settings & customization"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
                     font.weight: Font.Bold
@@ -77,11 +77,32 @@ Rectangle {
                     Layout.fillWidth: true
                 }
 
-                IconButton {
-                    icon: Theme.iconSave
-                    iconSize: Theme.fontSizeMd
-                    tooltip: "save configuration"
-                    onClicked: Settings.save()
+                Rectangle {
+                    height: 24
+                    implicitWidth: saveBadgeRow.implicitWidth + 16
+                    radius: Theme.radiusPill
+                    color: Theme.primary_overlay
+
+                    RowLayout {
+                        id: saveBadgeRow
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            text: Theme.iconCheck
+                            font.family: Theme.fontMono
+                            font.pixelSize: 10
+                            color: Theme.primary
+                        }
+
+                        Text {
+                            text: "auto-saved"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            color: Theme.primary
+                        }
+                    }
                 }
             }
 

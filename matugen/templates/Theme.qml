@@ -214,6 +214,12 @@ QtObject {
     readonly property string iconChevronLeft:       ""
     readonly property string iconChevronDown:       ""
     readonly property string iconChevronUp:         ""
+    readonly property string iconHeadphones:        "󰋋"
+    readonly property string iconEqualizer:         "󰎎"
+    readonly property string iconFlame:             "󰈸"
+    readonly property string iconSparkles:          "󰓏"
+    readonly property string iconRadio:             "󰐹"
+    readonly property string iconSliders:           "󰝚"
 
     // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
@@ -237,5 +243,16 @@ QtObject {
     readonly property string kaoDead:               "(x_x)"
     readonly property string kaoCat:                "(=^･ω･^=)"
     readonly property string kaoPanic:              "(°Д°；)"
+    readonly property string kaoVibe:               "( ˘ ³˘)♥"
+    readonly property string kaoJam:                "(~‾▿‾)~"
+    readonly property string kaoDJ:                 "(ノ^_^)ノ"
+    readonly property string kaoSilent:             "( ˙-˙ )"
+    readonly property string kaoCozy:               "(っ˘ω˘ς)"
+    readonly property string kaoCheer:              "(ﾉ>ω<)ﾉ :｡･:*:･ﾟ"
+    readonly property string kaoSmug:               "( ˘⌣˘ )"
+    readonly property string kaoFire:               "(ง🔥Д🔥)ง"
+    readonly property string kaoSparkle:            "(★ω★)"
+    readonly property string kaoTableFlip:          "(╯°□°)╯︵ ┻━┻"
+    readonly property string kaoPutBack:            "┬─┬ノ( º _ ºノ)"
 }
 

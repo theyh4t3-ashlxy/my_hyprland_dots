@@ -63,6 +63,69 @@ QtObject {
 
     readonly property string saveScriptPath: "/home/ashley/.config/quickshell/scripts/save_settings.py"
 
+    // auto-save mechanics so you never have to click a stupid save button again
+    property bool _initialized: false
+
+    property Timer autoSaveTimer: Timer {
+        interval: 80
+        repeat: false
+        onTriggered: {
+            if (root._initialized) {
+                root.save();
+            }
+        }
+    }
+
+    function queueSave() {
+        if (root._initialized) {
+            autoSaveTimer.restart();
+        }
+    }
+
+    onBarPositionChanged: queueSave()
+    onBarMarginChanged: queueSave()
+    onBarFloatingChanged: queueSave()
+    onBarHeightChanged: queueSave()
+    onScoopRadiusChanged: queueSave()
+    onScoopTensionChanged: queueSave()
+    onScreenCornerRadiusChanged: queueSave()
+    onScreenCornerModeChanged: queueSave()
+    onCornerStyleChanged: queueSave()
+    onCornerColorModeChanged: queueSave()
+    onMatugenModeChanged: queueSave()
+    onMatugenSchemeChanged: queueSave()
+    onAwwwTransitionTypeChanged: queueSave()
+    onAwwwTransitionAngleChanged: queueSave()
+    onAwwwTransitionStepChanged: queueSave()
+    onAwwwTransitionDurationChanged: queueSave()
+    onAwwwTransitionFpsChanged: queueSave()
+    onAwwwFilterChanged: queueSave()
+    onAnimSpeedChanged: queueSave()
+    onUnhingedFlavorChanged: queueSave()
+    onShowWorkspacesChanged: queueSave()
+    onShowWindowTitleChanged: queueSave()
+    onShowClockChanged: queueSave()
+    onShowBatteryChanged: queueSave()
+    onShowSystemTrayChanged: queueSave()
+    onShowVolumeChanged: queueSave()
+    onShowMediaChanged: queueSave()
+    onShowNotificationsChanged: queueSave()
+    onShowLauncherChanged: queueSave()
+    onShowPowerMenuChanged: queueSave()
+    onShowNetworkChanged: queueSave()
+    onShowBluetoothChanged: queueSave()
+    onShowClipboardChanged: queueSave()
+    onShowIdleInhibitorChanged: queueSave()
+    onShowQuickSettingsChanged: queueSave()
+    onShowWallpaperChanged: queueSave()
+    onClockFormatChanged: queueSave()
+    onDateFormatChanged: queueSave()
+    onWorkspaceCountChanged: queueSave()
+    onFontFamilyChanged: queueSave()
+    onFontMonoChanged: queueSave()
+    onFontScaleChanged: queueSave()
+    onFontWeightChanged: queueSave()
+
     function loadObject(data) {
         if (!data) return;
         if (data.barPosition !== undefined && root.barPosition !== data.barPosition) root.barPosition = data.barPosition;
@@ -120,7 +183,6 @@ QtObject {
             if (eqIdx !== -1) {
                 let key = line.substring(0, eqIdx).trim();
                 let val = line.substring(eqIdx + 1).trim();
-                // strip quotes if present e.g. "Noto Sans" or 'Noto Sans'
                 if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
                     val = val.substring(1, val.length - 1);
                 }
@@ -138,7 +200,6 @@ QtObject {
         }
     }
 
-    // nuke the stale cache or every save reverts itself
     property FileView confFile: FileView {
         path: "/home/ashley/.config/quickshell/settings.conf"
         watchChanges: true
@@ -169,7 +230,10 @@ QtObject {
     property Timer startupTimer3: Timer {
         interval: 500
         repeat: false
-        onTriggered: root.loadFromFile()
+        onTriggered: {
+            root.loadFromFile();
+            root._initialized = true;
+        }
     }
 
     Component.onCompleted: {

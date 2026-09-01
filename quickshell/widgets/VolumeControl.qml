@@ -32,7 +32,7 @@ Rectangle {
             text: volRoot.muted || volRoot.vol === 0 ? Theme.iconVolMute
                 : volRoot.vol < 0.33                 ? Theme.iconVolLow
                 : volRoot.vol < 0.66                 ? Theme.iconVolMid
-                                                     : Theme.iconVolHigh
+                : Theme.iconVolHigh
             font.family: Theme.fontMono
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : (volRoot.muted ? Theme.on_surface_disabled : Theme.on_surface)
@@ -85,7 +85,7 @@ Rectangle {
     PopupPanel {
         id: popup
         cardWidth: 420
-        cardHeight: 460
+        cardHeight: 520
         targetRelativeX: volRoot.mapToItem(null, 0, 0).x + (volRoot.width / 2)
 
         content: ColumnLayout {
@@ -98,7 +98,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: "audio & sound"
+                    text: "audio & mixer"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
                     font.weight: Font.Bold
@@ -107,7 +107,7 @@ Rectangle {
                 }
 
                 IconButton {
-                    icon: Theme.iconSettings
+                    icon: Theme.iconSliders
                     iconSize: Theme.fontSizeMd
                     tooltip: "open pavucontrol mixer"
                     onClicked: Quickshell.execDetached(["pavucontrol"])
@@ -120,7 +120,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // Output Volume (Speaker / Headphones)
+            // Output Volume Slider Card
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
@@ -149,7 +149,7 @@ Rectangle {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 52
+                    height: 54
                     radius: Theme.widgetRadius
                     color: Theme.surface_container_highest
 
@@ -206,7 +206,7 @@ Rectangle {
                             font.pixelSize: Theme.fontSizeXs
                             font.weight: Font.Bold
                             color: (volRoot.sink?.audio?.muted ?? false) ? Theme.on_surface_disabled : Theme.primary
-                            Layout.preferredWidth: 38
+                            Layout.preferredWidth: 42
                             horizontalAlignment: Text.AlignRight
                         }
                     }
@@ -221,9 +221,9 @@ Rectangle {
                 Repeater {
                     model: [
                         { label: "mute", val: 0.0, mute: true },
-                        { label: "30%", val: 0.3, mute: false },
+                        { label: "25%", val: 0.25, mute: false },
                         { label: "50%", val: 0.5, mute: false },
-                        { label: "80%", val: 0.8, mute: false },
+                        { label: "75%", val: 0.75, mute: false },
                         { label: "100%", val: 1.0, mute: false },
                         { label: "150%", val: 1.5, mute: false }
                     ]
@@ -301,7 +301,7 @@ Rectangle {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 52
+                    height: 54
                     radius: Theme.widgetRadius
                     color: Theme.surface_container_highest
 
@@ -357,8 +357,93 @@ Rectangle {
                             font.pixelSize: Theme.fontSizeXs
                             font.weight: Font.Bold
                             color: (volRoot.source?.audio?.muted ?? false) ? Theme.on_surface_disabled : Theme.primary
-                            Layout.preferredWidth: 38
+                            Layout.preferredWidth: 42
                             horizontalAlignment: Text.AlignRight
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.widgetBorder
+            }
+
+            // Output Devices Quick List
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Text {
+                    text: "output devices"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeXs
+                    font.weight: Font.Bold
+                    color: Theme.primary
+                }
+
+                Flickable {
+                    Layout.fillWidth: true
+                    height: 80
+                    contentHeight: devCol.implicitHeight
+                    clip: true
+
+                    ColumnLayout {
+                        id: devCol
+                        width: parent.width
+                        spacing: 4
+
+                        Repeater {
+                            model: {
+                                if (!Pipewire.nodes || !Pipewire.nodes.values) return []
+                                return Pipewire.nodes.values.filter(n => n && n.isSink && n.audio)
+                            }
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 32
+                                radius: Theme.radiusSm
+                                readonly property bool isCurrent: modelData?.id === volRoot.sink?.id
+                                color: isCurrent ? Theme.primary_overlay : (devMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: 8
+
+                                    Text {
+                                        text: isCurrent ? Theme.iconCheckCircle : Theme.iconHeadphones
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: Theme.fontSizeSm
+                                        color: isCurrent ? Theme.primary : Theme.on_surface_variant
+                                    }
+
+                                    Text {
+                                        text: modelData.description || modelData.name || "audio device"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: isCurrent ? Theme.primary : Theme.on_surface
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: devMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (modelData?.id) {
+                                            Quickshell.execDetached(["wpctl", "set-default", String(modelData.id)])
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
