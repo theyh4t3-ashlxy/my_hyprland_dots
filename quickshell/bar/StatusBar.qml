@@ -33,7 +33,7 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:bar"
 
     mask: Region {
-        item: barBg
+        item: barRootItem
     }
 
     AppLauncher {
@@ -41,6 +41,7 @@ PanelWindow {
     }
 
     Item {
+        id: barRootItem
         anchors.fill: parent
 
         // bar background body positioned by clean explicit geometry
