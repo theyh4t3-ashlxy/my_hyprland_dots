@@ -48,9 +48,9 @@ Rectangle {
             visible: !container.isVertical
             text: {
                 if (bMouse.containsMouse) {
-                    if (container.isCharging) return "charging (" + container.pct + "%)";
-                    if (container.pct < 15) return "low (" + container.pct + "%)";
-                    if (container.pct >= 95) return "full (" + container.pct + "%)";
+                    if (container.isCharging) return Theme.getVibe(Theme.kaoBolt + " chuggin watts", "󰂄 charging (" + container.pct + "%)", "charging (" + container.pct + "%)");
+                    if (container.pct < 15) return Theme.getVibe(Theme.kaoSad + " feed me", "󰂃 low (" + container.pct + "%)", "low (" + container.pct + "%)");
+                    if (container.pct >= 95) return Theme.getVibe(Theme.kaoHappy + " full", "󰁹 full (" + container.pct + "%)", "full (" + container.pct + "%)");
                     return container.pct + "%";
                 }
                 return container.pct + "%";

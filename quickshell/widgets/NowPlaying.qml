@@ -51,7 +51,9 @@ Rectangle {
                     let title = root.player.trackTitle || "unknown track"
                     return artist + title
                 }
-                return npMouse.containsMouse ? "nothing playing" : "quiet"
+                return npMouse.containsMouse 
+                    ? Theme.getVibe(Theme.kaoShrug + " nothing playing rn", "󰝚 nothing playing", "nothing playing")
+                    : Theme.getVibe(Theme.kaoEmpty + " quiet", "󰝚 quiet", "quiet")
             }
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSm

@@ -826,49 +826,53 @@ Rectangle {
                     width: parent.width - 4
                     spacing: 12
 
-                    // Unhinged Kaomoji Mode Toggle
-                    Rectangle {
+                    // Vibe & Icon Flavor Style Selector
+                    Text {
+                        text: "vibe & flavor mode"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.Bold
+                        color: Theme.on_surface
+                    }
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        height: 52
-                        radius: Theme.widgetRadius
-                        color: Theme.cardBg
-                            border.color: Theme.cardBorder
-                            border.width: 1
+                        spacing: 6
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: Theme.widgetPaddingH
-                            spacing: 10
+                        Repeater {
+                            model: [
+                                { id: "kaomoji", label: "(ﾉ◕ヮ◕)ﾉ kaomoji" },
+                                { id: "nerd",    label: "󰄛 nerd fonts" },
+                                { id: "text",    label: "󰦨 plain text" }
+                            ]
 
-                            Text {
-                                text: "󰄛"
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeMd
-                                color: Theme.primary
-                            }
-
-                            ColumnLayout {
+                            delegate: Rectangle {
+                                required property var modelData
                                 Layout.fillWidth: true
-                                spacing: 2
+                                height: 36
+                                radius: Theme.radiusSm
+                                readonly property bool isCurrent: Settings.vibeStyle === modelData.id
+                                color: isCurrent ? Theme.primary_overlay : (vibeMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+                                border.color: isCurrent ? Theme.primary : "transparent"
+                                border.width: 1
+
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                 Text {
-                                    text: "personality flavor"
+                                    text: modelData.label
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSm
-                                    font.weight: Font.Bold
-                                    color: Theme.on_surface
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: isCurrent ? Font.Bold : Font.Normal
+                                    color: isCurrent ? Theme.primary : Theme.on_surface
+                                    anchors.centerIn: parent
                                 }
-                                Text {
-                                    text: Settings.unhingedFlavor ? "active: dynamic flavor text" : "minimal plain text mode"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    color: Theme.on_surface_variant
-                                }
-                            }
 
-                            ToggleSwitch {
-                                checked: Settings.unhingedFlavor
-                                onToggled: Settings.unhingedFlavor = !Settings.unhingedFlavor
+                                MouseArea {
+                                    id: vibeMouse
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.vibeStyle = modelData.id
+                                }
                             }
                         }
                     }

@@ -36,6 +36,7 @@ QtObject {
     // anim & chaos vibe
     property string animSpeed: "snappy"
     property bool unhingedFlavor: true
+    property string vibeStyle: "nerd" // "kaomoji", "nerd", "text"
     property bool dnd: false // do not disturb: silence toast popups
 
     // visibility toggles
@@ -139,6 +140,7 @@ QtObject {
     onMpvPanscanChanged: queueSave()
     onMpvAudioChanged: queueSave()
     onDndChanged: queueSave()
+    onVibeStyleChanged: queueSave()
 
     function loadObject(data) {
         if (!data) return;
@@ -163,6 +165,7 @@ QtObject {
         if (data.mpvPanscan !== undefined && root.mpvPanscan !== parseFloat(data.mpvPanscan)) root.mpvPanscan = parseFloat(data.mpvPanscan);
         if (data.mpvAudio !== undefined) root.mpvAudio = (data.mpvAudio === true || data.mpvAudio === "true");
         if (data.dnd !== undefined) root.dnd = (data.dnd === true || data.dnd === "true");
+        if (data.vibeStyle !== undefined && root.vibeStyle !== data.vibeStyle) root.vibeStyle = data.vibeStyle;
         if (data.animSpeed !== undefined && root.animSpeed !== data.animSpeed) root.animSpeed = data.animSpeed;
         if (data.unhingedFlavor !== undefined) root.unhingedFlavor = (data.unhingedFlavor === true || data.unhingedFlavor === "true");
         if (data.showWorkspaces !== undefined) root.showWorkspaces = (data.showWorkspaces === true || data.showWorkspaces === "true");
@@ -296,6 +299,7 @@ QtObject {
             "mpvPanscan=" + mpvPanscan,
             "mpvAudio=" + mpvAudio,
             "dnd=" + dnd,
+            'vibeStyle="' + vibeStyle + '"',
             'animSpeed="' + animSpeed + '"',
             "unhingedFlavor=" + unhingedFlavor,
             "showWorkspaces=" + showWorkspaces,

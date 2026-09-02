@@ -122,7 +122,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: "manage current desktop session"
+                        text: Theme.getVibe(Theme.kaoChaos + " choose your destiny", "󰐥 session manager", "manage current desktop session")
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -354,7 +354,7 @@ Rectangle {
                                 color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface
                             }
                             Text {
-                                text: "power off device"
+                                text: Theme.getVibe(Theme.kaoSleepy + " goodnight", "󰐥 power off", "power off device")
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface_variant

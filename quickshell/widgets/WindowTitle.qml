@@ -12,7 +12,7 @@ Rectangle {
         id: titleText
         anchors.centerIn: parent
         // what are you even doing rn
-        text: Hyprland.activeToplevel?.title ?? "desktop"
+        text: Hyprland.activeToplevel?.title ?? Theme.getVibe(Theme.kaoEmpty, "󰄛", "desktop")
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSizeSm
         color: Theme.on_surface

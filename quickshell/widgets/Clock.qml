@@ -37,12 +37,13 @@ Rectangle {
             if (Theme.isVertical) {
                 return Qt.formatDateTime(clockRoot.now, "HH\nmm");
             }
-            if (Settings.unhingedFlavor) {
-                let hrs = clockRoot.now.getHours();
-                let mood = (hrs < 6) ? "󰤄" : (hrs < 12) ? "󰖨" : (hrs < 18) ? "󰖙" : "󰖔";
-                return mood + " " + Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
-            }
-            return Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
+            let hrs = clockRoot.now.getHours();
+            let mood = (hrs < 6) ? Theme.getVibe(Theme.kaoSleepy, "󰤄", "")
+                     : (hrs < 12) ? Theme.getVibe(Theme.kaoCoffee, "󰖨", "")
+                     : (hrs < 18) ? Theme.getVibe(Theme.kaoCool, "󰖙", "")
+                     : Theme.getVibe(Theme.kaoMusic, "󰖔", "");
+            let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
+            return mood !== "" ? (mood + " " + timeStr) : timeStr;
         }
         font.family: Theme.fontFamily
         font.pixelSize: Theme.isVertical ? 10 : Theme.fontSizeMd

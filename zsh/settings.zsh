@@ -47,11 +47,12 @@ settings() {
             "󰅚 psychological roaster on typo: [${psycho_status}]"
             " git details in prompt: [${git_status}]"
             "󰁕 execution timer in prompt: [${timer_status}]"
+            "󰏘 vibe style (kaomoji / nerd / text)"
             "󰚰 recompile zsh bytecode (speedup)"
             "󰅚 exit settings"
         )
 
-        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 terminal & shell settings - select to toggle]" --reverse --height=40%)
+        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 terminal & shell settings - select to toggle]" --reverse --height=45%)
         [[ -z "$choice" || "$choice" == *"exit settings"* ]] && break
 
         case "$choice" in
@@ -69,6 +70,21 @@ settings() {
                 ;;
             *"execution timer"*)
                 if [[ "$timer_status" == "true" ]]; then _save_pref "SHOW_CMD_TIMER" "false"; else _save_pref "SHOW_CMD_TIMER" "true"; fi
+                ;;
+            *"vibe style"*)
+                local v_choice=$(printf "%s\n" "(ﾉ◕ヮ◕)ﾉ kaomoji" "󰄛 nerd fonts" "󰦨 plain text" | fzf --header="[choose your desktop vibe style]" --reverse --height=25%)
+                if [[ -n "$v_choice" ]]; then
+                    local style="nerd"
+                    [[ "$v_choice" == *"kaomoji"* ]] && style="kaomoji"
+                    [[ "$v_choice" == *"text"* ]]    && style="text"
+                    local qs_conf="$HOME/.config/quickshell/settings.conf"
+                    if grep -q "^vibeStyle=" "$qs_conf" 2>/dev/null; then
+                        sed -i "s|^vibeStyle=.*|vibeStyle=\"${style}\"|" "$qs_conf"
+                    else
+                        echo "vibeStyle=\"${style}\"" >> "$qs_conf"
+                    fi
+                    print -P "%F{green}󰄲 desktop vibe updated -> %B${style}%b%f"
+                fi
                 ;;
             *"recompile zsh"*)
                 zrecompile 2>/dev/null || true
