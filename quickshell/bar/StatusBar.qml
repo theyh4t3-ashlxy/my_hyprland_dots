@@ -36,9 +36,9 @@ PanelWindow {
 
     WlrLayershell.namespace: "quickshell:bar"
 
-    // only mask the physical bar body so the empty scoop zone doesn't steal clicks
+    // ensure the full bar area accepts user input
     mask: Region {
-        item: barBg
+        item: barRootItem
     }
 
     AppLauncher {
@@ -81,7 +81,7 @@ PanelWindow {
             visible: !root.isVertical
 
             // left widgets
-            RowLayout {
+            Row {
                 anchors.left: parent.left
                 anchors.leftMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
@@ -90,11 +90,8 @@ PanelWindow {
                 Rectangle {
                     id: launcherBtnH
                     visible: Settings?.showLauncher ?? true
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: Theme.barHeight - 8
-                    implicitWidth: 36
-                    implicitHeight: Theme.barHeight - 8
+                    width: 36
+                    height: Theme.barHeight - 8
                     radius: Theme.radiusPill
                     color: lMouseH.pressed ? Theme.widgetActive : lMouseH.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
                     border.color: Theme.pillBorder
@@ -126,27 +123,27 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { Workspaces {} }
                 }
 
                 Loader {
                     active: (Settings?.showWindowTitle ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : 0
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { WindowTitle {} }
                 }
             }
@@ -155,12 +152,14 @@ PanelWindow {
             Loader {
                 active: (Settings?.showClock ?? true) && !root.isVertical
                 visible: active && (item?.visible ?? true)
+                width: item ? item.implicitWidth : 100
+                height: item ? item.implicitHeight : (Theme.barHeight - 8)
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
             }
 
             // right widgets
-            RowLayout {
+            Row {
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
@@ -170,108 +169,108 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { PowerMenu {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: (Settings?.showMedia ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.verticalCenter: parent.verticalCenter
                     sourceComponent: Component { NowPlaying {} }
                 }
             }
@@ -286,7 +285,7 @@ PanelWindow {
             visible: root.isVertical
 
             // top widgets
-            ColumnLayout {
+            Column {
                 anchors.top: parent.top
                 anchors.topMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -295,11 +294,8 @@ PanelWindow {
                 Rectangle {
                     id: launcherBtnV
                     visible: Settings?.showLauncher ?? true
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: Theme.barHeight - 8
-                    Layout.preferredHeight: 36
-                    implicitWidth: Theme.barHeight - 8
-                    implicitHeight: 36
+                    width: Theme.barHeight - 8
+                    height: 36
                     radius: Theme.radiusPill
                     color: lMouseV.pressed ? Theme.widgetActive : lMouseV.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
                     border.color: Theme.pillBorder
@@ -331,18 +327,18 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { Workspaces {} }
                 }
             }
@@ -351,12 +347,14 @@ PanelWindow {
             Loader {
                 active: (Settings?.showClock ?? true) && root.isVertical
                 visible: active && (item?.visible ?? true)
+                width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                height: item ? item.implicitHeight : 38
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
             }
 
             // bottom widgets
-            ColumnLayout {
+            Column {
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -365,108 +363,108 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showMedia ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     sourceComponent: Component { PowerMenu {} }
                 }
             }
