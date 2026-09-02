@@ -80,31 +80,37 @@ Rectangle {
         } catch(e) {}
     }
 
-    function reloadLocalWallpapers() {
-        WallpaperService.scanLocalWallpapers()
-        parseLocalTimer.restart()
+    Connections {
+        target: WallpaperService
+        function onWallpapersUpdated() {
+            root.parseLocalWallpapers();
+        }
     }
 
-    Timer {
-        id: parseLocalTimer
-        interval: 150
-        repeat: false
-        onTriggered: {
-            WallpaperService.localWpListFile.reload();
-            let str = WallpaperService.localWpListFile.text();
-            if (!str || str.trim() === "") return;
-            try {
-                let items = JSON.parse(str);
-                localWpModel.clear();
-                localLiveWpModel.clear();
-                for (let i = 0; i < items.length; i++) {
-                    localWpModel.append(items[i]);
-                    if (items[i].isVideo || items[i].isGif || items[i].isLive || items[i].ext === "gif" || items[i].ext === "mp4" || items[i].ext === "webm") {
-                        localLiveWpModel.append(items[i]);
-                    }
+    function parseLocalWallpapers() {
+        WallpaperService.localWpListFile.reload();
+        let str = WallpaperService.localWpListFile.text();
+        if (!str || str.trim() === "") return;
+        try {
+            let items = JSON.parse(str);
+            localWpModel.clear();
+            localLiveWpModel.clear();
+            for (let i = 0; i < items.length; i++) {
+                localWpModel.append(items[i]);
+                if (items[i].isVideo || items[i].isGif || items[i].isLive || items[i].ext === "gif" || items[i].ext === "mp4" || items[i].ext === "webm") {
+                    localLiveWpModel.append(items[i]);
                 }
-            } catch(e) {}
-        }
+            }
+        } catch(e) {}
+    }
+
+    function reloadLocalWallpapers() {
+        WallpaperService.scanLocalWallpapers();
+    }
+
+    Component.onCompleted: {
+        parseLocalWallpapers();
+        reloadLocalWallpapers();
     }
 
     function fetchWallhaven(query, sort, page) {

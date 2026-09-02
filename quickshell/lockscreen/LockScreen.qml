@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import ".."
-import "../controls"
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -13,9 +12,17 @@ Scope {
     id: lockRoot
 
     property bool locked: false
-    property string password: ""
     property bool authFailed: false
     property bool isChecking: false
+    property date currentTime: new Date()
+
+    // time loop so our clock doesn't freeze in time
+    Timer {
+        interval: 1000
+        running: lockRoot.locked
+        repeat: true
+        onTriggered: lockRoot.currentTime = new Date()
+    }
 
     IpcHandler {
         target: "lock"
@@ -30,22 +37,22 @@ Scope {
     }
 
     function tryUnlock(pw) {
-        if (isChecking) return;
-        if (!pw || pw.length === 0) return;
+        if (isChecking || !pw || pw.length === 0) return;
 
         isChecking = true;
         authFailed = false;
 
-        authProc.command = [
-            "python3",
-            Quickshell.env("HOME") + "/.config/quickshell/scripts/auth.py",
-            pw
-        ];
+        // write via stdin to keep it out of ps aux
         authProc.running = true;
+        authProc.write(pw + "\n");
     }
 
     Process {
         id: authProc
+        command: [
+            "python3",
+            Quickshell.env("HOME") + "/.config/quickshell/scripts/auth.py"
+        ]
         running: false
         onExited: (code) => {
             lockRoot.isChecking = false;
@@ -54,6 +61,7 @@ Scope {
                 lockRoot.authFailed = false;
             } else {
                 lockRoot.authFailed = true;
+                shakeAnim.restart();
                 shakeTimer.restart();
             }
         }
@@ -61,7 +69,7 @@ Scope {
 
     Timer {
         id: shakeTimer
-        interval: 1000
+        interval: 1200
         onTriggered: lockRoot.authFailed = false
     }
 
@@ -73,11 +81,15 @@ Scope {
             WlSessionLockSurface {
                 id: surface
 
+                readonly property var activePlayer: Mpris.players.values[0] ?? null
+                readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
+                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.background ?? "#000000"
+
                 Rectangle {
                     anchors.fill: parent
                     color: "#050505"
 
-                    // wallpaper background image with ambient overlay
+                    // wallpaper backdrop
                     Image {
                         anchors.fill: parent
                         source: WallpaperService.currentWallpaperPath ? ("file://" + WallpaperService.currentWallpaperPath) : ""
@@ -86,21 +98,20 @@ Scope {
                         asynchronous: true
                     }
 
-                    // dark vignette gradient
+                    // vignette overlay
                     Rectangle {
                         anchors.fill: parent
                         color: "black"
                         opacity: 0.50
                     }
 
-                    // top status row (battery, network)
+                    // top status row
                     RowLayout {
                         anchors.top: parent.top
                         anchors.right: parent.right
                         anchors.margins: 32
                         spacing: 16
 
-                        // network pill
                         RowLayout {
                             spacing: 6
                             Text {
@@ -118,7 +129,6 @@ Scope {
                             }
                         }
 
-                        // battery pill
                         RowLayout {
                             spacing: 6
                             visible: UPower.displayDevice?.isPresent ?? false
@@ -138,35 +148,28 @@ Scope {
                         }
                     }
 
-                    // center main lock card
+                    // center lock card
                     ColumnLayout {
                         anchors.centerIn: parent
                         spacing: 24
                         width: 440
 
-                        // large aesthetic digital clock
+                        // large clock
                         ColumnLayout {
                             Layout.alignment: Qt.AlignHCenter
                             spacing: 4
 
                             Text {
-                                text: Qt.formatDateTime(new Date(), Settings.clock24h ? "HH:mm" : "hh:mm A")
+                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clock24h ? "HH:mm" : "hh:mm A")
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 84
                                 font.weight: Font.Bold
                                 color: Theme.on_surface
                                 Layout.alignment: Qt.AlignHCenter
-
-                                Timer {
-                                    interval: 1000
-                                    running: lockRoot.locked
-                                    repeat: true
-                                    onTriggered: parent.text = Qt.formatDateTime(new Date(), Settings.clock24h ? "HH:mm" : "hh:mm A")
-                                }
                             }
 
                             Text {
-                                text: Qt.formatDateTime(new Date(), "dddd, MMMM d")
+                                text: Qt.formatDateTime(lockRoot.currentTime, "dddd, MMMM d")
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeMd
                                 font.weight: Font.Medium
@@ -175,7 +178,7 @@ Scope {
                             }
                         }
 
-                        // media playback card on lockscreen
+                        // media player card
                         Rectangle {
                             Layout.fillWidth: true
                             height: 72
@@ -183,7 +186,7 @@ Scope {
                             color: Theme.cardBg
                             border.color: Theme.cardBorder
                             border.width: 1
-                            visible: Mpris.players.values.length > 0 && Mpris.players.values[0]?.trackTitle !== ""
+                            visible: surface.activePlayer !== null && (surface.activePlayer.trackTitle !== "" || surface.activePlayer.isPlaying)
 
                             RowLayout {
                                 anchors.fill: parent
@@ -199,7 +202,7 @@ Scope {
 
                                     Image {
                                         anchors.fill: parent
-                                        source: Mpris.players.values[0]?.trackArtUrl || ""
+                                        source: surface.activePlayer?.trackArtUrl ?? ""
                                         fillMode: Image.PreserveAspectCrop
                                     }
 
@@ -209,7 +212,7 @@ Scope {
                                         font.family: Theme.fontIcon
                                         font.pixelSize: Theme.fontSizeMd
                                         color: Theme.primary
-                                        visible: !Mpris.players.values[0]?.trackArtUrl
+                                        visible: !surface.activePlayer?.trackArtUrl
                                     }
                                 }
 
@@ -218,7 +221,7 @@ Scope {
                                     spacing: 2
 
                                     Text {
-                                        text: Mpris.players.values[0]?.trackTitle || "no track playing"
+                                        text: surface.activePlayer?.trackTitle || "no track playing"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
                                         font.weight: Font.Bold
@@ -228,7 +231,7 @@ Scope {
                                     }
 
                                     Text {
-                                        text: Mpris.players.values[0]?.trackArtist || "unknown artist"
+                                        text: surface.activePlayer?.trackArtist || "unknown artist"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: Theme.on_surface_variant
@@ -241,26 +244,26 @@ Scope {
                                     icon: Theme.iconPrev
                                     iconSize: Theme.fontSizeXs
                                     tooltip: "previous"
-                                    onClicked: Mpris.players.values[0]?.previous()
+                                    onClicked: surface.activePlayer?.previous()
                                 }
 
                                 IconButton {
-                                    icon: Mpris.players.values[0]?.isPlaying ? Theme.iconPause : Theme.iconPlay
+                                    icon: surface.activePlayer?.isPlaying ? Theme.iconPause : Theme.iconPlay
                                     iconSize: Theme.fontSizeSm
                                     tooltip: "toggle play"
-                                    onClicked: Mpris.players.values[0]?.togglePlaying()
+                                    onClicked: surface.activePlayer?.togglePlaying()
                                 }
 
                                 IconButton {
                                     icon: Theme.iconNext
                                     iconSize: Theme.fontSizeXs
                                     tooltip: "next"
-                                    onClicked: Mpris.players.values[0]?.next()
+                                    onClicked: surface.activePlayer?.next()
                                 }
                             }
                         }
 
-                        // password input container
+                        // password entry container
                         Rectangle {
                             id: pwContainer
                             Layout.fillWidth: true
@@ -270,14 +273,16 @@ Scope {
                             border.color: lockRoot.authFailed ? Theme.error : (pwInput.activeFocus ? Theme.primary : Theme.cardBorder)
                             border.width: 2
 
-                            // shake animation on auth failure
-                            SequentialAnimation on x {
-                                running: lockRoot.authFailed
-                                NumberAnimation { from: 0; to: -12; duration: 50 }
-                                NumberAnimation { from: -12; to: 12; duration: 50 }
-                                NumberAnimation { from: 12; to: -8; duration: 50 }
-                                NumberAnimation { from: -8; to: 8; duration: 50 }
-                                NumberAnimation { from: 8; to: 0; duration: 50 }
+                            // transform translate so columnlayout doesn't fight our animation
+                            transform: Translate { id: pwShake }
+
+                            SequentialAnimation {
+                                id: shakeAnim
+                                NumberAnimation { target: pwShake; property: "x"; from: 0; to: -14; duration: 45; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: pwShake; property: "x"; from: -14; to: 14; duration: 45; easing.type: Easing.InOutQuad }
+                                NumberAnimation { target: pwShake; property: "x"; from: 14; to: -8; duration: 45; easing.type: Easing.InOutQuad }
+                                NumberAnimation { target: pwShake; property: "x"; from: -8; to: 8; duration: 45; easing.type: Easing.InOutQuad }
+                                NumberAnimation { target: pwShake; property: "x"; from: 8; to: 0; duration: 45; easing.type: Easing.OutQuad }
                             }
 
                             RowLayout {
@@ -287,7 +292,7 @@ Scope {
                                 spacing: 10
 
                                 Text {
-                                    text: lockRoot.authFailed ? Theme.iconLock : (pwInput.text.length > 0 ? Theme.iconLock : Theme.iconLock)
+                                    text: Theme.iconLock
                                     font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeMd
                                     color: lockRoot.authFailed ? Theme.error : Theme.primary
@@ -300,7 +305,6 @@ Scope {
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMd
                                     color: Theme.on_surface
-                                    focus: lockRoot.locked
                                     enabled: !lockRoot.isChecking
                                     passwordCharacter: "•"
 
@@ -319,6 +323,17 @@ Scope {
                                         text = "";
                                         lockRoot.tryUnlock(p);
                                     }
+
+                                    Component.onCompleted: forceActiveFocus()
+                                    Connections {
+                                        target: lockRoot
+                                        function onLockedChanged() {
+                                            if (lockRoot.locked) {
+                                                pwInput.text = "";
+                                                pwInput.forceActiveFocus();
+                                            }
+                                        }
+                                    }
                                 }
 
                                 IconButton {
@@ -335,7 +350,7 @@ Scope {
                             }
                         }
 
-                        // feedback status text
+                        // feedback status
                         Text {
                             text: lockRoot.isChecking ? "authenticating..." : (lockRoot.authFailed ? "incorrect password, try again" : "")
                             font.family: Theme.fontFamily
@@ -347,7 +362,7 @@ Scope {
                         }
                     }
 
-                    // bottom power actions row
+                    // bottom power management row
                     RowLayout {
                         anchors.bottom: parent.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -374,6 +389,51 @@ Scope {
                             iconSize: Theme.fontSizeMd
                             onClicked: Quickshell.execDetached(["systemctl", "suspend"])
                         }
+                    }
+
+                    // matching screen corners so our curved monitor bezels don't disappear
+                    ConcaveCorner {
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        radiusX: surface.cornerRadius
+                        radiusY: surface.cornerRadius
+                        fillColor: surface.cornerColor
+                        flipX: false
+                        flipY: false
+                        visible: surface.cornerRadius > 0
+                    }
+
+                    ConcaveCorner {
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        radiusX: surface.cornerRadius
+                        radiusY: surface.cornerRadius
+                        fillColor: surface.cornerColor
+                        flipX: true
+                        flipY: false
+                        visible: surface.cornerRadius > 0
+                    }
+
+                    ConcaveCorner {
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.left
+                        radiusX: surface.cornerRadius
+                        radiusY: surface.cornerRadius
+                        fillColor: surface.cornerColor
+                        flipX: false
+                        flipY: true
+                        visible: surface.cornerRadius > 0
+                    }
+
+                    ConcaveCorner {
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        radiusX: surface.cornerRadius
+                        radiusY: surface.cornerRadius
+                        fillColor: surface.cornerColor
+                        flipX: true
+                        flipY: true
+                        visible: surface.cornerRadius > 0
                     }
                 }
             }

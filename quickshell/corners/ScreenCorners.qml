@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import ".."
+import "../corners" // or "." depending on where this lives
 
 PanelWindow {
     id: root
@@ -11,7 +12,7 @@ PanelWindow {
     screen: modelData
     color: "transparent"
 
-    // quickshell window anchors use grouped syntax, not item-attached syntax
+    // quickshell grouped window anchors
     anchors {
         top: true
         bottom: true
@@ -25,25 +26,27 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:corners"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    // ghost mode — let clicks pass through to my actual windows
+    // ghost mode — click straight through this fullscreen overlay
     mask: Region {}
 
     readonly property string mode: Theme?.screenCornerMode ?? "all"
     readonly property string barPos: Settings?.barPosition ?? "top"
     readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
-    readonly property color cornerColor: Theme?.cornerFill ?? Theme.background
+    readonly property color cornerColor: Theme?.cornerFill ?? Theme?.background ?? "#000000"
 
-    readonly property bool showTopLeft: mode === "all" || mode === "top" || (mode === "opposite" && barPos !== "top" && barPos !== "left")
-    readonly property bool showTopRight: mode === "all" || mode === "top" || (mode === "opposite" && barPos !== "top" && barPos !== "right")
-    readonly property bool showBottomLeft: mode === "all" || mode === "bottom" || (mode === "opposite" && barPos !== "bottom" && barPos !== "left")
-    readonly property bool showBottomRight: mode === "all" || mode === "bottom" || (mode === "opposite" && barPos !== "bottom" && barPos !== "right")
+    // supporting vertical rice setups so it doesn't break
+    readonly property bool showTopLeft: mode === "all" || mode === "top" || mode === "left" || (mode === "opposite" && barPos !== "top" && barPos !== "left")
+    readonly property bool showTopRight: mode === "all" || mode === "top" || mode === "right" || (mode === "opposite" && barPos !== "top" && barPos !== "right")
+    readonly property bool showBottomLeft: mode === "all" || mode === "bottom" || mode === "left" || (mode === "opposite" && barPos !== "bottom" && barPos !== "left")
+    readonly property bool showBottomRight: mode === "all" || mode === "bottom" || mode === "right" || (mode === "opposite" && barPos !== "bottom" && barPos !== "right")
 
+    // don't waste compositor cycles on invisible zero-radius overlays
     visible: root.cornerRadius > 0 && root.mode !== "none"
 
     Item {
         anchors.fill: parent
 
-        // top left screen corner
+        // top left screen scoop
         ConcaveCorner {
             anchors.top: parent.top
             anchors.left: parent.left
@@ -55,7 +58,7 @@ PanelWindow {
             visible: root.showTopLeft
         }
 
-        // top right screen corner
+        // top right screen scoop
         ConcaveCorner {
             anchors.top: parent.top
             anchors.right: parent.right
@@ -67,7 +70,7 @@ PanelWindow {
             visible: root.showTopRight
         }
 
-        // bottom left screen corner
+        // bottom left screen scoop
         ConcaveCorner {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
@@ -79,7 +82,7 @@ PanelWindow {
             visible: root.showBottomLeft
         }
 
-        // bottom right screen corner
+        // bottom right screen scoop
         ConcaveCorner {
             anchors.bottom: parent.bottom
             anchors.right: parent.right

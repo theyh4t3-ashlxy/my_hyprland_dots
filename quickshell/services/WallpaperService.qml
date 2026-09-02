@@ -28,12 +28,15 @@ QtObject {
 
     property string targetMonitor: "all"
 
+    signal wallpapersUpdated()
+
     property FileView localWpListFile: FileView {
         path: "/tmp/qs_wallpapers.json"
         watchChanges: true
         printErrors: false
         onFileChanged: {
             reload();
+            service.wallpapersUpdated();
         }
     }
 
