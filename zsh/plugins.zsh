@@ -1,33 +1,43 @@
-# auto-pull plugins so fresh installs dont give me depression
-local plugin_dir="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
-mkdir -p "$plugin_dir"
+# plugin graveyard location
+typeset -g _PLUGIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
 
-load_plugin() {
+# only fork mkdir if the directory actually doesn't exist
+[[ -d "$_PLUGIN_DIR" ]] || mkdir -p "$_PLUGIN_DIR"
+
+_load_plugin() {
     local repo="$1"
     local name="${repo:t}"
-    local dir="$plugin_dir/$name"
+    local dir="$_PLUGIN_DIR/$name"
 
+    # snatch from git if missing
     if [[ ! -d "$dir" ]]; then
-        echo "grabbing $name..."
+        print -P "%F{cyan}󰄛 grabbing plugin:%f %F{green}$name%f..."
         git clone --depth 1 "https://github.com/$repo.git" "$dir" >/dev/null 2>&1
     fi
 
-    if [[ -f "$dir/$name.zsh" ]]; then
-        source "$dir/$name.zsh"
-    elif [[ -f "$dir/$name.plugin.zsh" ]]; then
-        source "$dir/$name.plugin.zsh"
+    # find entrypoint
+    local target=""
+    [[ -f "$dir/$name.plugin.zsh" ]] && target="$dir/$name.plugin.zsh"
+    [[ -f "$dir/$name.zsh" ]]        && target="$dir/$name.zsh"
+
+    if [[ -n "$target" ]]; then
+        # byte-compile so the shell doesn't crawl like a snail
+        if [[ ! -f "$target.zwc" || "$target" -nt "$target.zwc" ]]; then
+            zcompile "$target" 2>/dev/null
+        fi
+        source "$target"
     fi
 }
 
-# holy trinity of not making typing painful
-load_plugin "zsh-users/zsh-autosuggestions"
-load_plugin "zsh-users/zsh-syntax-highlighting"
-load_plugin "zsh-users/zsh-history-substring-search"
+# the holy trinity in strict load order so syntax highlighting doesn't combust
+_load_plugin "zsh-users/zsh-autosuggestions"
+_load_plugin "zsh-users/zsh-syntax-highlighting"
+_load_plugin "zsh-users/zsh-history-substring-search"
 
-# autosuggestions that actually blend with wallpaper
+# autosuggestion ghost colors
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=${MATUGEN_OUTLINE:-8}"
 
-# up/down arrow search so i dont retype commands like an npc
+# arrow keys for digging up your past mistakes
 if (( $+functions[history-substring-search-up] )); then
     bindkey '^[[A' history-substring-search-up
     bindkey '^[OA' history-substring-search-up
@@ -37,3 +47,6 @@ if (( $+functions[history-substring-search-up] )); then
     export HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_FOUND="fg=${MATUGEN_PRIMARY:-cyan},bold"
     export HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_NOT_FOUND="fg=${MATUGEN_ERROR:-red},bold"
 fi
+
+# nuke the loader from memory
+unfunction _load_plugin

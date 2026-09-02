@@ -1,50 +1,62 @@
-# locating where my sanity is stored
+# master dotfiles wiring
 local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
 
-# load user preferences
+# preferences & path exports must load first
 [[ -f "$zdir/user_prefs.conf" ]] && source "$zdir/user_prefs.conf"
+[[ -f "$zdir/exports.zsh" ]]     && source "$zdir/exports.zsh"
 
-# base shell wiring
-[[ -f "$zdir/core.zsh" ]]     && source "$zdir/core.zsh"
-[[ -f "$zdir/plugins.zsh" ]]  && source "$zdir/plugins.zsh"
-[[ -f "$zdir/exports.zsh" ]]  && source "$zdir/exports.zsh"
+# modular components
+local -a _mods=(
+    core plugins aliases tools functions roast
+    quicknav dev wp nuke dnd settings git hyprland matugen
+    local prompt
+)
 
-# modern overrides and shortcuts
-[[ -f "$zdir/aliases.zsh" ]]   && source "$zdir/aliases.zsh"
-[[ -f "$zdir/tools.zsh" ]]     && source "$zdir/tools.zsh"
-[[ -f "$zdir/functions.zsh" ]] && source "$zdir/functions.zsh"
-[[ -f "$zdir/roast.zsh" ]]     && source "$zdir/roast.zsh"
-[[ -f "$zdir/quicknav.zsh" ]]  && source "$zdir/quicknav.zsh"
-[[ -f "$zdir/dev.zsh" ]]       && source "$zdir/dev.zsh"
-[[ -f "$zdir/wp.zsh" ]]        && source "$zdir/wp.zsh"
-[[ -f "$zdir/nuke.zsh" ]]      && source "$zdir/nuke.zsh"
-[[ -f "$zdir/dnd.zsh" ]]       && source "$zdir/dnd.zsh"
-[[ -f "$zdir/settings.zsh" ]]  && source "$zdir/settings.zsh"
-[[ -f "$zdir/git.zsh" ]]       && source "$zdir/git.zsh"
+local mod
+for mod in "${_mods[@]}"; do
+    [[ -f "$zdir/$mod.zsh" ]] && source "$zdir/$mod.zsh"
+done
+unset _mods mod
 
-# wallpaper hooks and local overrides
-[[ -f "$zdir/hyprland.zsh" ]]  && source "$zdir/hyprland.zsh"
-[[ -f "$zdir/matugen.zsh" ]]   && source "$zdir/matugen.zsh"
-[[ -f "$zdir/local.zsh" ]]     && source "$zdir/local.zsh"
-
-# the actual prompt
-[[ -f "$zdir/prompt.zsh" ]]    && source "$zdir/prompt.zsh"
-
-# terminal greeting experience (customizable via `settings`)
+# existential greeting ritual
 if [[ -o interactive && -t 0 && -t 1 ]]; then
     if [[ "${SHOW_FASTFETCH:-true}" == "true" ]] && (( $+commands[fastfetch] )); then
         fastfetch
     fi
 
     if [[ "${SHOW_GREETING_ROAST:-true}" == "true" ]]; then
+        zmodload -i zsh/datetime 2>/dev/null
+        local hour=12
+        if (( $+EPOCHSECONDS )); then
+            hour=$(strftime "%-H" "$EPOCHSECONDS" 2>/dev/null || echo 12)
+        fi
+
         local greetings=(
-            "remember: every minute spent ricing is a minute not debugging production."
-            "your desktop is at 100% aesthetic capacity. now do something useful."
-            "welcome back. the terminal missed you, but your sleep schedule did not."
-            "ready to compile some questionable code."
-            "system running at peak velocity. zero excuses remaining."
+            "welcome back. whatever you opened this window to do, you'll be doomscrolling in under three minutes."
+            "session spawned. the facade of productivity begins now."
+            "another terminal allocated. another 4 hours of staring at pixels pretending you're solving fundamental problems."
+            "back again? the world moved forward while you were tuning your opacity settings."
+            "session initialized. you have 14 abandoned side projects and zero shipped products."
+            "your window manager is perfectly tiled, but your actual life is completely fragmented."
+            "welcome back. your posture is atrocious, your eyes are dry, and nobody is checking your commit history."
+            "spawning shell. you use vim keybindings to avoid moving your hands toward anything that matters."
+            "another buffer opened between you and the terrifying silence of your own thoughts."
+            "welcome. you have automated everything except finding peace of mind."
+            "fresh shell allocated. you are going to type 'ls', clear the screen, and wonder why you feel empty."
+            "the dopamine spike from this blur effect and font choice will wear off in approximately 12 seconds."
+            "welcome back. you've been optimizing your environment for 4 years to prepare for work you still haven't started."
+            "session alive. your childhood heroes were changing the world at your age, but hey, nice prompt icon."
+            "the machine is ready. your executive function, however, is nowhere to be found."
         )
+
+        if (( hour >= 0 && hour < 5 )); then
+            greetings+=(
+                "it is ${hour}am. you just opened a new terminal. you are actively running away from tomorrow."
+                "new shell at ${hour}am. you aren't grinding, you are dissociating under blue light."
+            )
+        fi
+
         local greet="${greetings[$(( RANDOM % ${#greetings[@]} + 1 ))]}"
-        print -P "%F{38;5;141m󰄛%f %F{244}${greet}%f"
+        print -P "%F{38;5;141}󰄛%f %F{244}${greet}%f\n"
     fi
 fi

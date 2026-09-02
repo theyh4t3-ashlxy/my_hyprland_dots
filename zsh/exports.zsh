@@ -19,6 +19,10 @@ path=(
     "$HOME/.local/bin"
     "$HOME/bin"
     /usr/local/bin
+    /usr/bin
+    /bin
+    /usr/sbin
+    /sbin
     $path
 )
 export PATH
