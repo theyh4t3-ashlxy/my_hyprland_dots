@@ -11,13 +11,16 @@ PanelWindow {
     screen: modelData
     color: "transparent"
 
-    readonly property bool isTop: Settings.barPosition === "top"
-    readonly property bool isBottom: Settings.barPosition === "bottom"
-    readonly property bool isLeft: Settings.barPosition === "left"
-    readonly property bool isRight: Settings.barPosition === "right"
+    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
+    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
+    readonly property bool isLeft: (Settings?.barPosition ?? "top") === "left"
+    readonly property bool isRight: (Settings?.barPosition ?? "top") === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    // full 4-way docking without undefined anchor locks
+    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
+    readonly property real scoopH: Theme?.scoopRadiusY ?? 16
+
+    // 4-way dynamic docking
     anchors {
         top: root.isTop || root.isVertical
         bottom: root.isBottom || root.isVertical
@@ -25,39 +28,40 @@ PanelWindow {
         right: root.isRight || !root.isVertical
     }
 
-    implicitWidth: root.isVertical ? (Theme.barHeight + Theme.scoopRadiusX) : 0
-    implicitHeight: root.isVertical ? 0 : (Theme.barHeight + Theme.scoopRadiusY)
+    implicitWidth: root.isVertical ? (Theme.barHeight + root.scoopW) : 0
+    implicitHeight: root.isVertical ? 0 : (Theme.barHeight + root.scoopH)
     exclusiveZone: Theme.barHeight
     exclusionMode: ExclusionMode.Normal
 
     WlrLayershell.namespace: "quickshell:bar"
 
+    // only mask the physical bar body so the empty scoop zone doesn't steal clicks
     mask: Region {
-        item: barRootItem
+        item: barBg
     }
 
     AppLauncher {
         id: launcherPopup
+        screen: root.screen
     }
 
     Item {
         id: barRootItem
         anchors.fill: parent
 
-        // bar background body positioned by clean explicit geometry
+        // bar background body
         Rectangle {
             id: barBg
-            x: root.isRight ? Theme.scoopRadiusX : 0
-            y: root.isBottom ? Theme.scoopRadiusY : 0
+            x: root.isRight ? root.scoopW : 0
+            y: root.isBottom ? root.scoopH : 0
             width: root.isVertical ? Theme.barHeight : parent.width
             height: root.isVertical ? parent.height : Theme.barHeight
             color: Theme.barBg
             border.width: 0
-            radius: 0
 
-            // glowing neon accent line on the edge facing workspaces
+            // glowing neon accent line facing workspaces
             Rectangle {
-                visible: Settings.barStyle === "accent-glow"
+                visible: Settings?.barStyle === "accent-glow"
                 x: root.isLeft ? parent.width - 2 : 0
                 y: root.isTop ? parent.height - 2 : 0
                 width: root.isVertical ? 2 : parent.width
@@ -67,7 +71,7 @@ PanelWindow {
             }
         }
 
-        // horizontal bar layout (top / bottom) so it doesnt explode
+        // horizontal bar layout (top / bottom)
         Item {
             x: barBg.x
             y: barBg.y
@@ -84,7 +88,7 @@ PanelWindow {
 
                 Rectangle {
                     id: launcherBtnH
-                    visible: Settings.showLauncher
+                    visible: Settings?.showLauncher ?? true
                     implicitWidth: 36
                     implicitHeight: Theme.barHeight - 8
                     radius: Theme.radiusPill
@@ -109,34 +113,34 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            launcherPopup.targetRelativeX = launcherBtnH.mapToItem(null, 0, 0).x + (launcherBtnH.width / 2)
-                            launcherPopup.open = !launcherPopup.open
+                            launcherPopup.targetRelativeX = launcherBtnH.mapToItem(null, 0, 0).x + (launcherBtnH.width / 2);
+                            launcherPopup.open = !launcherPopup.open;
                         }
                     }
                 }
 
                 Loader {
-                    active: Settings.showWallpaper && !root.isVertical
+                    active: (Settings?.showWallpaper ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
-                    active: Settings.showWorkspaces && !root.isVertical
+                    active: (Settings?.showWorkspaces ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Workspaces {} }
                 }
 
                 Loader {
-                    active: Settings.showWindowTitle && !root.isVertical
+                    active: (Settings?.showWindowTitle ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WindowTitle {} }
                 }
             }
 
-            // clock in center
+            // center clock
             Loader {
-                active: Settings.showClock && !root.isVertical
+                active: (Settings?.showClock ?? true) && !root.isVertical
                 visible: active && (item?.visible ?? true)
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
@@ -151,80 +155,80 @@ PanelWindow {
                 layoutDirection: Qt.RightToLeft
 
                 Loader {
-                    active: Settings.showPowerMenu && !root.isVertical
+                    active: (Settings?.showPowerMenu ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { PowerMenu {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickSettings && !root.isVertical
+                    active: (Settings?.showQuickSettings ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
-                    active: Settings.showBattery && !root.isVertical
+                    active: (Settings?.showBattery ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
-                    active: Settings.showVolume && !root.isVertical
+                    active: (Settings?.showVolume ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
-                    active: Settings.showNetwork && !root.isVertical
+                    active: (Settings?.showNetwork ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
-                    active: Settings.showBluetooth && !root.isVertical
+                    active: (Settings?.showBluetooth ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
-                    active: Settings.showSystemTray && !root.isVertical
+                    active: (Settings?.showSystemTray ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
-                    active: Settings.showNotifications && !root.isVertical
+                    active: (Settings?.showNotifications ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
-                    active: Settings.showIdleInhibitor && !root.isVertical
+                    active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
-                    active: Settings.showClipboard && !root.isVertical
+                    active: (Settings?.showClipboard ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickNotes && !root.isVertical
+                    active: (Settings?.showQuickNotes ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
-                    active: Settings.showMedia && !root.isVertical
+                    active: (Settings?.showMedia ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NowPlaying {} }
                 }
             }
         }
 
-        // vertical bar layout (left / right) so it doesnt explode
+        // vertical bar layout (left / right)
         Item {
             x: barBg.x
             y: barBg.y
@@ -241,7 +245,7 @@ PanelWindow {
 
                 Rectangle {
                     id: launcherBtnV
-                    visible: Settings.showLauncher
+                    visible: Settings?.showLauncher ?? true
                     implicitWidth: Theme.barHeight - 8
                     implicitHeight: 36
                     radius: Theme.radiusPill
@@ -266,28 +270,28 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            launcherPopup.targetRelativeY = launcherBtnV.mapToItem(null, 0, 0).y + (launcherBtnV.height / 2)
-                            launcherPopup.open = !launcherPopup.open
+                            launcherPopup.targetRelativeY = launcherBtnV.mapToItem(null, 0, 0).y + (launcherBtnV.height / 2);
+                            launcherPopup.open = !launcherPopup.open;
                         }
                     }
                 }
 
                 Loader {
-                    active: Settings.showWallpaper && root.isVertical
+                    active: (Settings?.showWallpaper ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
-                    active: Settings.showWorkspaces && root.isVertical
+                    active: (Settings?.showWorkspaces ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Workspaces {} }
                 }
             }
 
-            // clock in center
+            // center clock
             Loader {
-                active: Settings.showClock && root.isVertical
+                active: (Settings?.showClock ?? true) && root.isVertical
                 visible: active && (item?.visible ?? true)
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
@@ -301,149 +305,165 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
 
                 Loader {
-                    active: Settings.showMedia && root.isVertical
+                    active: (Settings?.showMedia ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
-                    active: Settings.showClipboard && root.isVertical
+                    active: (Settings?.showClipboard ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
-                    active: Settings.showIdleInhibitor && root.isVertical
+                    active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
-                    active: Settings.showNotifications && root.isVertical
+                    active: (Settings?.showNotifications ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
-                    active: Settings.showSystemTray && root.isVertical
+                    active: (Settings?.showSystemTray ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
-                    active: Settings.showBluetooth && root.isVertical
+                    active: (Settings?.showBluetooth ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
-                    active: Settings.showNetwork && root.isVertical
+                    active: (Settings?.showNetwork ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
-                    active: Settings.showVolume && root.isVertical
+                    active: (Settings?.showVolume ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
-                    active: Settings.showBattery && root.isVertical
+                    active: (Settings?.showBattery ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickSettings && root.isVertical
+                    active: (Settings?.showQuickSettings ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
-                    active: Settings.showQuickNotes && root.isVertical
+                    active: (Settings?.showQuickNotes ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
-                    active: Settings.showPowerMenu && root.isVertical
+                    active: (Settings?.showPowerMenu ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
                     sourceComponent: Component { PowerMenu {} }
                 }
             }
         }
 
-        // top bar scoops
+        // top bar edge scoops
         ConcaveCorner {
             y: barBg.height
             anchors.left: parent.left
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: false
             flipY: false
-            visible: root.isTop
+            visible: root.isTop && root.scoopW > 0
         }
         ConcaveCorner {
             y: barBg.height
             anchors.right: parent.right
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: true
             flipY: false
-            visible: root.isTop
+            visible: root.isTop && root.scoopW > 0
         }
 
-        // bottom bar scoops
+        // bottom bar edge scoops
         ConcaveCorner {
             y: 0
             anchors.left: parent.left
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: false
             flipY: true
-            visible: root.isBottom
+            visible: root.isBottom && root.scoopW > 0
         }
         ConcaveCorner {
             y: 0
             anchors.right: parent.right
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: true
             flipY: true
-            visible: root.isBottom
+            visible: root.isBottom && root.scoopW > 0
         }
 
-        // left bar scoops
+        // left bar edge scoops
         ConcaveCorner {
             x: barBg.width
             anchors.top: parent.top
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: false
             flipY: false
-            visible: root.isLeft
+            visible: root.isLeft && root.scoopW > 0
         }
         ConcaveCorner {
             x: barBg.width
             anchors.bottom: parent.bottom
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: false
             flipY: true
-            visible: root.isLeft
+            visible: root.isLeft && root.scoopW > 0
         }
 
-        // right bar scoops
+        // right bar edge scoops
         ConcaveCorner {
             x: 0
             anchors.top: parent.top
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: true
             flipY: false
-            visible: root.isRight
+            visible: root.isRight && root.scoopW > 0
         }
         ConcaveCorner {
             x: 0
             anchors.bottom: parent.bottom
+            radiusX: root.scoopW
+            radiusY: root.scoopH
             fillColor: barBg.color
             flipX: true
             flipY: true
-            visible: root.isRight
+            visible: root.isRight && root.scoopW > 0
         }
     }
 }

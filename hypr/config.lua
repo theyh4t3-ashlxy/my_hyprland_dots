@@ -29,18 +29,10 @@ hl.config({
 		gaps_out = 10,
 		border_size = 2,
 
-		-- the colors that don't make me want to throw my laptop out the window
+		-- clean solid borders, no gradient nonsense
 		col = {
-			-- gradient with 2 colors and 50 degree angle
-			active_border = {
-				colors = { colors.active_border_1, colors.active_border_2 },
-				angle = 50,
-			},
-			-- lua requires gradient syntax even for single colors
-			inactive_border = {
-				colors = { colors.inactive_border, colors.inactive_border },
-				angle = 0,
-			},
+			active_border = colors.active_border_1,
+			inactive_border = colors.inactive_border,
 		},
 	},
 

@@ -1,6 +1,5 @@
 import QtQuick
 import ".."
-import "../corners"
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -11,8 +10,8 @@ PanelWindow {
     property bool open: false
     property real targetRelativeX: 0
     property real targetRelativeY: 0
-    property int panelWidth: Theme.popupWidth
-    property int panelHeight: Theme.popupHeight
+    property int panelWidth: Theme?.popupWidth ?? 420
+    property int panelHeight: Theme?.popupHeight ?? 500
     property alias cardWidth: root.panelWidth
     property alias cardHeight: root.panelHeight
 
@@ -27,12 +26,12 @@ PanelWindow {
     readonly property real marginX: scoopW + 8
     readonly property real marginY: scoopH + 8
 
-    // Animated dynamic concave expansion factor
+    // animated expansion factor for smooth liquid welding
     readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.01, root.morphProgress * 1.35))
     readonly property real curScoopW: root.scoopW * root.scoopAnimFactor
     readonly property real curScoopH: root.scoopH * root.scoopAnimFactor
 
-    // Clamped positions for horizontal vs vertical bar docking
+    // clamped dock positioning
     readonly property real desiredBodyX: isVertical
         ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - panelWidth))
         : (targetRelativeX - (panelWidth / 2))
@@ -74,7 +73,7 @@ PanelWindow {
             id: numAnim
             target: root
             property: "morphProgress"
-            duration: root.open ? 240 : 160
+            duration: root.open ? 220 : 160
             easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
@@ -95,6 +94,7 @@ PanelWindow {
         }
     }
 
+    // click outside dismiss
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.ArrowCursor
@@ -108,7 +108,7 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // top docking scoops so my popups dont look detached
+        // top bar welding scoops
         ConcaveCorner {
             x: popupBody.x - root.curScoopW
             y: Theme.barHeight
@@ -117,7 +117,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: false
-            visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
@@ -127,10 +127,10 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: false
-            visible: root.isTop && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.05
         }
 
-        // bottom docking scoops
+        // bottom bar welding scoops
         ConcaveCorner {
             x: popupBody.x - root.curScoopW
             y: root.height - Theme.barHeight - root.curScoopH
@@ -139,7 +139,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: true
-            visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
@@ -149,10 +149,10 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: true
-            visible: root.isBottom && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.05
         }
 
-        // left docking scoops
+        // left bar welding scoops
         ConcaveCorner {
             x: Theme.barHeight
             y: popupBody.y - root.curScoopH
@@ -161,7 +161,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: true
-            visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: Theme.barHeight
@@ -171,10 +171,10 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: false
-            visible: root.isLeft && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.05
         }
 
-        // right docking scoops
+        // right bar welding scoops
         ConcaveCorner {
             x: root.width - Theme.barHeight - root.curScoopW
             y: popupBody.y - root.curScoopH
@@ -183,7 +183,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: true
-            visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.05
         }
         ConcaveCorner {
             x: root.width - Theme.barHeight - root.curScoopW
@@ -193,10 +193,10 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: false
-            visible: root.isRight && Settings.scoopRadius > 0 && root.morphProgress > 0.05
+            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.05
         }
 
-        // physical expanding shell with 4-way directional welded joint radiuses
+        // physical expanding popup body
         Rectangle {
             id: popupBody
             x: root.clampedBodyX
@@ -207,10 +207,10 @@ PanelWindow {
             border.width: 0
             clip: true
 
-            topLeftRadius: (root.isTop || root.isLeft) ? 0 : Theme.popupRadius
-            topRightRadius: (root.isTop || root.isRight) ? 0 : Theme.popupRadius
-            bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : Theme.popupRadius
-            bottomRightRadius: (root.isBottom || root.isRight) ? 0 : Theme.popupRadius
+            topLeftRadius: (root.isTop || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
+            topRightRadius: (root.isTop || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
+            bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
+            bottomRightRadius: (root.isBottom || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
 
             MouseArea {
                 anchors.fill: parent
@@ -233,7 +233,7 @@ PanelWindow {
                 Item {
                     id: contentItem
                     anchors.fill: parent
-                    anchors.margins: Theme.popupPadding
+                    anchors.margins: Theme.popupPadding ?? 16
                 }
             }
         }

@@ -12,6 +12,9 @@ PanelWindow {
     screen: modelData
 
     readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
+    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
+    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
+    readonly property real scoopH: Theme?.scoopRadiusY ?? 16
 
     anchors {
         top: toastWindow.isTop
@@ -20,8 +23,8 @@ PanelWindow {
     }
 
     margins {
-        top: toastWindow.isTop ? (Theme.barHeight + 8) : 0
-        bottom: !toastWindow.isTop ? (Theme.barHeight + 8) : 0
+        top: toastWindow.isTop ? Theme.barHeight : 0
+        bottom: toastWindow.isBottom ? Theme.barHeight : 0
         right: 16
     }
 
@@ -31,7 +34,10 @@ PanelWindow {
     color: "transparent"
 
     implicitWidth: 380
-    implicitHeight: Math.max(1, toastList.contentHeight + 16)
+    implicitHeight: Math.max(1, toastList.contentHeight + 24)
+
+    // hide surface completely when zero toasts exist so clicks pass through
+    visible: toastModel.count > 0
 
     mask: Region {
         item: toastList
@@ -44,15 +50,15 @@ PanelWindow {
     Connections {
         target: NotificationService
         function onNotificationReceived(n) {
-            // silence toasts when dnd is active unless critical
-            if (Settings.dnd && n.urgency !== NotificationUrgency.Critical) {
+            if (Settings?.dnd && n.urgency !== NotificationUrgency.Critical) {
                 return;
             }
 
-            let duration = n.expireTimeout > 0 ? n.expireTimeout : 5000
+            let duration = n.expireTimeout > 0 ? n.expireTimeout : 5000;
             if (n.urgency === NotificationUrgency.Critical) {
-                duration = 0
+                duration = 0;
             }
+
             toastModel.insert(0, {
                 notifRef: n,
                 appName: n.appName || "system",
@@ -63,17 +69,44 @@ PanelWindow {
                 urgency: n.urgency || 1,
                 expireTimeout: duration,
                 actions: n.actions || []
-            })
+            });
+
             if (toastModel.count > 5) {
-                toastModel.remove(5, toastModel.count - 5)
+                toastModel.remove(5, toastModel.count - 5);
             }
         }
+    }
+
+    // left welding scoop connecting the top toast directly to the status bar
+    ConcaveCorner {
+        x: (toastWindow.width - 360) / 2 - toastWindow.scoopW
+        y: toastWindow.isTop ? 0 : (toastWindow.height - toastWindow.scoopH)
+        radiusX: toastWindow.scoopW
+        radiusY: toastWindow.scoopH
+        fillColor: Theme.popupBg
+        flipX: true
+        flipY: !toastWindow.isTop
+        visible: toastModel.count > 0 && toastWindow.scoopW > 0
+    }
+
+    // right welding scoop connecting to the status bar
+    ConcaveCorner {
+        x: (toastWindow.width - 360) / 2 + 360
+        y: toastWindow.isTop ? 0 : (toastWindow.height - toastWindow.scoopH)
+        radiusX: toastWindow.scoopW
+        radiusY: toastWindow.scoopH
+        fillColor: Theme.popupBg
+        flipX: false
+        flipY: !toastWindow.isTop
+        visible: toastModel.count > 0 && toastWindow.scoopW > 0
     }
 
     ListView {
         id: toastList
         anchors.fill: parent
-        spacing: 8
+        anchors.topMargin: toastWindow.isTop ? 4 : 0
+        anchors.bottomMargin: !toastWindow.isTop ? 4 : 0
+        spacing: 10
         interactive: false
         model: toastModel
 
@@ -85,7 +118,7 @@ PanelWindow {
             notifData: modelData
             onClosed: {
                 if (index >= 0 && index < toastModel.count) {
-                    toastModel.remove(index)
+                    toastModel.remove(index);
                 }
             }
         }
@@ -95,13 +128,13 @@ PanelWindow {
                 property: "opacity"
                 from: 0.0
                 to: 1.0
-                duration: 140
+                duration: 160
                 easing.type: Easing.OutCubic
             }
             NumberAnimation {
                 property: "y"
                 from: toastWindow.isTop ? -24 : 24
-                duration: 140
+                duration: 160
                 easing.type: Easing.OutCubic
             }
         }
@@ -111,15 +144,6 @@ PanelWindow {
                 property: "y"
                 duration: 140
                 easing.type: Easing.OutCubic
-            }
-        }
-
-        remove: Transition {
-            NumberAnimation {
-                property: "opacity"
-                to: 0.0
-                duration: 120
-                easing.type: Easing.InCubic
             }
         }
     }
