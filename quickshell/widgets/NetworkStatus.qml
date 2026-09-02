@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../services"
 import Quickshell
 import Quickshell.Networking
 
@@ -19,8 +20,7 @@ Rectangle {
 
     readonly property string netIcon: {
         if (NetworkService.isWiredConnected) return Theme.iconEthernet;
-        if (!NetworkService.wifiEnabled) return Theme.iconWifiOff;
-        if (!NetworkService.isWifiConnected) return Theme.iconWifiOff;
+        if (!NetworkService.wifiEnabled || !NetworkService.isWifiConnected) return Theme.iconWifiOff;
         let sig = NetworkService.signalStrength;
         if (sig >= 75) return Theme.iconWifiHigh;
         if (sig >= 40) return Theme.iconWifiMed;
@@ -76,11 +76,14 @@ Rectangle {
         cardWidth: 420
         cardHeight: 500
 
+        readonly property var wifiNetworks: NetworkService.wifiDevice?.networks?.values ?? []
+        readonly property int wifiNetworkCount: wifiNetworks.length
+
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 
-            // Header Section
+            // header
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -98,9 +101,7 @@ Rectangle {
                     icon: Theme.iconRefresh
                     iconSize: Theme.fontSizeMd
                     tooltip: "rescan wireless networks"
-                    onClicked: {
-                        NetworkService.rescan();
-                    }
+                    onClicked: NetworkService.rescan()
                 }
 
                 IconButton {
@@ -125,7 +126,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // Active Connection Status Card
+            // active connection card
             Rectangle {
                 Layout.fillWidth: true
                 height: 56
@@ -194,10 +195,10 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (NetworkService.connectedWifi?.disconnect) {
-                                    NetworkService.connectedWifi.disconnect();
-                                } else {
-                                    Quickshell.execDetached(["nmcli", "dev", "disconnect", "iface", "wlan0"]);
+                                // severing ties with society
+                                const iface = NetworkService.wifiDevice?.name;
+                                if (iface) {
+                                    Quickshell.execDetached(["nmcli", "dev", "disconnect", "iface", iface]);
                                 }
                             }
                         }
@@ -205,10 +206,7 @@ Rectangle {
                 }
             }
 
-            readonly property var wifiNetworks: (NetworkService.wifiDevice?.networks?.values ?? NetworkService.wifiDevice?.networks) ?? []
-            readonly property int wifiNetworkCount: wifiNetworks ? (wifiNetworks.length ?? 0) : 0
-
-            // Available Networks Header
+            // section title
             RowLayout {
                 Layout.fillWidth: true
                 visible: NetworkService.wifiEnabled && popup.wifiNetworkCount > 0
@@ -224,209 +222,200 @@ Rectangle {
                 }
             }
 
-            // Scrollable Networks List
-            Flickable {
+            // actual listview so delegates don't reset every frame
+            ListView {
+                id: netList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                contentWidth: width
-                contentHeight: netCol.implicitHeight
+                spacing: 6
                 boundsBehavior: Flickable.StopAtBounds
                 visible: NetworkService.wifiEnabled && popup.wifiNetworkCount > 0
+                model: NetworkService.wifiEnabled ? popup.wifiNetworks : []
 
-                ColumnLayout {
-                    id: netCol
-                    width: parent.width - 4
-                    spacing: 6
+                delegate: Rectangle {
+                    id: netItem
+                    required property var modelData
+                    readonly property bool isItemConnected: modelData.connected || false
+                    readonly property string networkName: modelData.name || ""
+                    readonly property real signal: modelData.signalStrength || 0
+                    readonly property bool isSecured: (modelData.security !== undefined && modelData.security !== 0) || (modelData.flags !== undefined && modelData.flags > 0)
 
-                    Repeater {
-                        model: NetworkService.wifiEnabled ? popup.wifiNetworks : []
+                    property bool isExpanded: false
 
-                        delegate: Rectangle {
-                            id: netItem
-                            required property var modelData
-                            readonly property bool isItemConnected: modelData.connected || false
-                            readonly property string networkName: modelData.name || "hidden network"
-                            readonly property real signal: modelData.signalStrength || 0
-                            readonly property bool isSecured: (modelData.security !== undefined && modelData.security !== 0) || (modelData.flags !== undefined && modelData.flags > 0)
+                    width: netList.width
+                    height: isExpanded ? 92 : 48
+                    color: isItemConnected ? Theme.primary_overlay : (itemHover.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
+                    radius: Theme.radiusMd
+                    border.color: isItemConnected ? Theme.primary : (netItem.isExpanded ? Theme.primary : "transparent")
+                    border.width: 1
+                    clip: true
 
-                            property bool isExpanded: false
+                    Behavior on height { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
+                    MouseArea {
+                        id: itemHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (!netItem.isItemConnected) {
+                                netItem.isExpanded = !netItem.isExpanded;
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 6
+
+                        RowLayout {
                             Layout.fillWidth: true
-                            implicitHeight: isExpanded ? 90 : 48
-                            color: isItemConnected ? Theme.primary_overlay : (netItemMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
-                            radius: Theme.radiusMd
-                            border.color: isItemConnected ? Theme.primary : (netItem.isExpanded ? Theme.primary : "transparent")
-                            border.width: 1
-                            clip: true
+                            spacing: 8
 
-                            Behavior on implicitHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                            Text {
+                                text: netItem.isItemConnected ? Theme.iconWifiHigh : (netItem.signal > 0.65 ? Theme.iconWifiHigh : netItem.signal > 0.35 ? Theme.iconWifiMed : Theme.iconWifiLow)
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: netItem.isItemConnected ? Theme.primary : Theme.on_surface
+                            }
 
                             ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 6
+                                Layout.fillWidth: true
+                                spacing: 1
 
-                                RowLayout {
+                                Text {
+                                    text: netItem.networkName !== "" ? netItem.networkName : "hidden network"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    font.weight: netItem.isItemConnected ? Font.Bold : Font.Medium
+                                    color: netItem.isItemConnected ? Theme.primary : Theme.on_surface
+                                    elide: Text.ElideRight
                                     Layout.fillWidth: true
-                                    spacing: 8
-
-                                    Text {
-                                        text: netItem.isItemConnected ? Theme.iconWifiHigh : (netItem.signal > 0.65 ? Theme.iconWifiHigh : netItem.signal > 0.35 ? Theme.iconWifiMed : Theme.iconWifiLow)
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeMd
-                                        color: netItem.isItemConnected ? Theme.primary : Theme.on_surface
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 1
-
-                                        Text {
-                                            text: netItem.networkName
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSm
-                                            font.weight: netItem.isItemConnected ? Font.Bold : Font.Medium
-                                            color: netItem.isItemConnected ? Theme.primary : Theme.on_surface
-                                            elide: Text.ElideRight
-                                            Layout.fillWidth: true
-                                        }
-
-                                        RowLayout {
-                                            spacing: 4
-                                            Text {
-                                                text: netItem.isItemConnected ? "active connection" : (Math.round(netItem.signal <= 1.0 ? netItem.signal * 100 : netItem.signal) + "% signal")
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 10
-                                                color: Theme.on_surface_variant
-                                            }
-                                            Text {
-                                                text: "• secured"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: 10
-                                                color: Theme.on_surface_variant
-                                                visible: netItem.isSecured && !netItem.isItemConnected
-                                            }
-                                            Text {
-                                                text: Theme.iconLock
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: 10
-                                                color: Theme.on_surface_variant
-                                                visible: netItem.isSecured && !netItem.isItemConnected
-                                            }
-                                        }
-                                    }
-
-                                    IconButton {
-                                        icon: netItem.isItemConnected ? Theme.iconClose : (netItem.isExpanded ? Theme.iconChevronUp : Theme.iconChevronDown)
-                                        iconSize: Theme.fontSizeXs
-                                        tooltip: netItem.isItemConnected ? "disconnect" : (netItem.isExpanded ? "collapse" : "options")
-                                        onClicked: {
-                                            if (netItem.isItemConnected) {
-                                                if (netItem.modelData.disconnect) netItem.modelData.disconnect();
-                                                else Quickshell.execDetached(["nmcli", "dev", "disconnect", "iface", "wlan0"]);
-                                            } else {
-                                                netItem.isExpanded = !netItem.isExpanded;
-                                            }
-                                        }
-                                    }
                                 }
 
-                                // Password input drawer (when expanded)
                                 RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 6
-                                    visible: netItem.isExpanded && !netItem.isItemConnected
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 30
-                                        radius: Theme.radiusSm
-                                        color: Theme.surface_container_highest
-                                        border.color: pwdInput.activeFocus ? Theme.primary : Theme.widgetBorder
-                                        border.width: 1
-
-                                        TextInput {
-                                            id: pwdInput
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 8
-                                            anchors.rightMargin: 8
-                                            verticalAlignment: TextInput.AlignVCenter
-                                            echoMode: showPwdBtn.showPassword ? TextInput.Normal : TextInput.Password
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            color: Theme.on_surface
-
-                                            Text {
-                                                anchors.fill: parent
-                                                verticalAlignment: Text.AlignVCenter
-                                                text: "enter wi-fi password..."
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.on_surface_disabled
-                                                visible: pwdInput.text === "" && !pwdInput.activeFocus
-                                            }
-
-                                            onAccepted: connectBtnMouse.clicked(null)
-                                        }
+                                    spacing: 4
+                                    Text {
+                                        text: netItem.isItemConnected ? "active connection" : (Math.round(netItem.signal <= 1.0 ? netItem.signal * 100 : netItem.signal) + "% signal")
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                        color: Theme.on_surface_variant
                                     }
-
-                                    IconButton {
-                                        id: showPwdBtn
-                                        property bool showPassword: false
-                                        icon: showPassword ? Theme.iconEyeOff : Theme.iconEye
-                                        iconSize: Theme.fontSizeXs
-                                        tooltip: showPassword ? "hide password" : "show password"
-                                        onClicked: showPassword = !showPassword
+                                    Text {
+                                        text: "• secured"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 10
+                                        color: Theme.on_surface_variant
+                                        visible: netItem.isSecured && !netItem.isItemConnected
                                     }
-
-                                    Rectangle {
-                                        width: 72
-                                        height: 30
-                                        radius: Theme.radiusSm
-                                        color: connectBtnMouse.containsMouse ? Theme.primary_overlay : Theme.primary
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "connect"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
-                                            color: connectBtnMouse.containsMouse ? Theme.primary : Theme.on_primary
-                                        }
-
-                                        MouseArea {
-                                            id: connectBtnMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (pwdInput.text.trim() !== "") {
-                                                    Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", netItem.networkName, "password", pwdInput.text.trim()]);
-                                                } else {
-                                                    if (netItem.modelData.connect) netItem.modelData.connect();
-                                                    else Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", netItem.networkName]);
-                                                }
-                                                netItem.isExpanded = false;
-                                            }
-                                        }
+                                    Text {
+                                        text: Theme.iconLock
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: 10
+                                        color: Theme.on_surface_variant
+                                        visible: netItem.isSecured && !netItem.isItemConnected
                                     }
                                 }
                             }
 
-                            MouseArea {
-                                id: netItemMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                z: -1
+                            IconButton {
+                                icon: netItem.isItemConnected ? Theme.iconClose : (netItem.isExpanded ? Theme.iconChevronUp : Theme.iconChevronDown)
+                                iconSize: Theme.fontSizeXs
+                                tooltip: netItem.isItemConnected ? "disconnect" : (netItem.isExpanded ? "collapse" : "options")
                                 onClicked: {
                                     if (netItem.isItemConnected) {
-                                        if (netItem.modelData.disconnect) netItem.modelData.disconnect();
+                                        const iface = NetworkService.wifiDevice?.name;
+                                        if (iface) Quickshell.execDetached(["nmcli", "dev", "disconnect", "iface", iface]);
                                     } else {
                                         netItem.isExpanded = !netItem.isExpanded;
+                                    }
+                                }
+                            }
+                        }
+
+                        // password entry drawer
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            visible: netItem.isExpanded && !netItem.isItemConnected
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 30
+                                radius: Theme.radiusSm
+                                color: Theme.surface_container_highest
+                                border.color: pwdInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                                border.width: 1
+
+                                TextInput {
+                                    id: pwdInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    echoMode: showPwdBtn.showPassword ? TextInput.Normal : TextInput.Password
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: Theme.on_surface
+
+                                    Text {
+                                        anchors.fill: parent
+                                        verticalAlignment: Text.AlignVCenter
+                                        text: "enter wi-fi password..."
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_surface_disabled
+                                        visible: pwdInput.text === ""
+                                    }
+
+                                    onAccepted: connectBtnMouse.clicked(null)
+                                }
+                            }
+
+                            IconButton {
+                                id: showPwdBtn
+                                property bool showPassword: false
+                                icon: showPassword ? Theme.iconEyeOff : Theme.iconEye
+                                iconSize: Theme.fontSizeXs
+                                tooltip: showPassword ? "hide password" : "show password"
+                                onClicked: showPassword = !showPassword
+                            }
+
+                            Rectangle {
+                                width: 72
+                                height: 30
+                                radius: Theme.radiusSm
+                                color: connectBtnMouse.containsMouse ? Theme.primary_overlay : Theme.primary
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "connect"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: connectBtnMouse.containsMouse ? Theme.primary : Theme.on_primary
+                                }
+
+                                MouseArea {
+                                    id: connectBtnMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        // connecting to the mothership
+                                        const target = netItem.networkName;
+                                        if (target === "") return;
+
+                                        if (pwdInput.text.trim() !== "") {
+                                            Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", target, "password", pwdInput.text.trim()]);
+                                        } else {
+                                            Quickshell.execDetached(["nmcli", "dev", "wifi", "connect", target]);
+                                        }
+                                        netItem.isExpanded = false;
                                     }
                                 }
                             }
@@ -435,7 +424,7 @@ Rectangle {
                 }
             }
 
-            // Empty state when Wi-Fi disabled or scanning
+            // empty or disabled placeholder
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
