@@ -29,7 +29,7 @@ nyae() {
     print ""
 
     case "$key" in
-        y|Y|$n|$r)
+        y|Y|$'\n'|$'\r')
             print -P "  ${green}󰄲 executing...${reset}"
             eval "$cmd"
             return $?
@@ -38,7 +38,7 @@ nyae() {
             print -P "  ${yellow}󰀦 skipped.${reset}"
             return 0
             ;;
-        a|A|$e|q|Q)
+        a|A|$'\e'|q|Q)
             print -P "  ${red}󰅚 aborted by user.${reset}"
             return 1
             ;;
@@ -60,7 +60,7 @@ nyae() {
             fi
             ;;
         *)
-            print -P "  ${red}󰅚 invalid choice , aborting.${reset}"
+            print -P "  ${red}󰅚 invalid choice '${key}', aborting.${reset}"
             return 1
             ;;
     esac
