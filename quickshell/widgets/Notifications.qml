@@ -48,7 +48,11 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2)
+            if (Theme.isVertical) {
+                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+            } else {
+                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+            }
             popup.open = !popup.open
         }
     }

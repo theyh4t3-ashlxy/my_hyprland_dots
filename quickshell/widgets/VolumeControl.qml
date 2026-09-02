@@ -65,7 +65,11 @@ Rectangle {
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                popup.targetRelativeX = volRoot.mapToItem(null, 0, 0).x + (volRoot.width / 2)
+                if (Theme.isVertical) {
+                    popup.targetRelativeY = volRoot.mapToItem(null, 0, 0).y + (volRoot.height / 2);
+                } else {
+                    popup.targetRelativeX = volRoot.mapToItem(null, 0, 0).x + (volRoot.width / 2);
+                }
                 popup.open = !popup.open
             } else if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["pavucontrol"]);

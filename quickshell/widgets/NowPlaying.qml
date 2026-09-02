@@ -72,7 +72,11 @@ Rectangle {
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2)
+                if (Theme.isVertical) {
+                    popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+                } else {
+                    popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                }
                 popup.open = !popup.open
             } else if (mouse.button === Qt.RightButton) {
                 if (root.player?.canGoNext) root.player.next()

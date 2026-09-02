@@ -5,8 +5,8 @@ import Quickshell.Hyprland
 
 Rectangle {
     id: wsContainer
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : wsFlow.implicitWidth + 24
-    implicitHeight: Theme.isVertical ? wsFlow.implicitHeight + 24 : Theme.barHeight - 8
+    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : (wsRow.implicitWidth + 24)
+    implicitHeight: Theme.isVertical ? (wsCol.implicitHeight + 24) : Theme.barHeight - 8
     radius: Theme.radiusPill
     color: popup.open ? Theme.primary_overlay : (wsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
@@ -15,30 +15,55 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
-    Flow {
-        id: wsFlow
+    Column {
+        id: wsCol
+        visible: Theme.isVertical
         anchors.centerIn: parent
         spacing: 4
-        flow: Theme.isVertical ? Flow.TopToBottom : Flow.LeftToRight
 
         Repeater {
             model: Hyprland.workspaces
 
             Rectangle {
                 required property var modelData
-
                 property bool isFocused: Hyprland.focusedWorkspace?.id === modelData.id
                 property bool isActive: modelData.windows > 0
 
-                width: Theme.isVertical ? 6 : (isFocused ? 18 : isActive ? 8 : 6)
-                height: Theme.isVertical ? (isFocused ? 18 : isActive ? 8 : 6) : 6
-                radius: Math.min(width, height) / 2
+                width: 6
+                height: isFocused ? 18 : (isActive ? 8 : 6)
+                radius: 3
+                color: isFocused ? Theme.primary
+                     : isActive  ? Theme.on_surface_variant
+                                 : Theme.outline_variant
+
+                Behavior on height { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                Behavior on color  { ColorAnimation  { duration: Theme.animFast; easing.type: Theme.animEasing } }
+            }
+        }
+    }
+
+    Row {
+        id: wsRow
+        visible: !Theme.isVertical
+        anchors.centerIn: parent
+        spacing: 4
+
+        Repeater {
+            model: Hyprland.workspaces
+
+            Rectangle {
+                required property var modelData
+                property bool isFocused: Hyprland.focusedWorkspace?.id === modelData.id
+                property bool isActive: modelData.windows > 0
+
+                width: isFocused ? 18 : (isActive ? 8 : 6)
+                height: 6
+                radius: 3
                 color: isFocused ? Theme.primary
                      : isActive  ? Theme.on_surface_variant
                                  : Theme.outline_variant
 
                 Behavior on width  { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
-                Behavior on height { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                 Behavior on color  { ColorAnimation  { duration: Theme.animFast; easing.type: Theme.animEasing } }
             }
         }
@@ -52,7 +77,11 @@ Rectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onClicked: (mouse) => {
-            popup.targetRelativeX = wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2)
+            if (Theme.isVertical) {
+                popup.targetRelativeY = wsContainer.mapToItem(null, 0, 0).y + (wsContainer.height / 2);
+            } else {
+                popup.targetRelativeX = wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2);
+            }
             popup.open = !popup.open
         }
 
