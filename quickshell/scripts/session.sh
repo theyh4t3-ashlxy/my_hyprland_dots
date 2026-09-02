@@ -17,7 +17,7 @@ case "$action" in
         hyprctl dispatch exit || true
         ;;
     lock)
-        loginctl lock-session || true
+        qs ipc call lock lock 2>/dev/null || loginctl lock-session || hyprlock || true
         ;;
     *)
         echo "Usage: $0 {poweroff|reboot|suspend|logout|lock}"
