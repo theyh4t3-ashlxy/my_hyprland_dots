@@ -35,8 +35,6 @@ NowPlaying               widgets/NowPlaying.qml
 PowerMenu                widgets/PowerMenu.qml
 IdleInhibitor            widgets/IdleInhibitor.qml
 NetworkStatus            widgets/NetworkStatus.qml
-NetworkPopup             widgets/NetworkPopup.qml
-NetworkEntry             widgets/NetworkEntry.qml
 Bluetooth                widgets/Bluetooth.qml
 Clipboard                widgets/Clipboard.qml
 QuickSettings            widgets/QuickSettings.qml
