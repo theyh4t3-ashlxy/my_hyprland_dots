@@ -47,10 +47,10 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: !container.isVertical
             text: {
-                if (Settings.unhingedFlavor && bMouse.containsMouse) {
-                    if (container.isCharging) return Theme.kaoBolt + " chuggin watts";
-                    if (container.pct < 15) return Theme.kaoSad + " feed me";
-                    if (container.pct >= 95) return Theme.kaoHappy + " full";
+                if (bMouse.containsMouse) {
+                    if (container.isCharging) return "charging (" + container.pct + "%)";
+                    if (container.pct < 15) return "low (" + container.pct + "%)";
+                    if (container.pct >= 95) return "full (" + container.pct + "%)";
                     return container.pct + "%";
                 }
                 return container.pct + "%";

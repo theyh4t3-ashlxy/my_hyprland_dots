@@ -168,7 +168,7 @@ PanelWindow {
                     spacing: 8
 
                     Text {
-                        text: Theme.kaoDJ + " physics & momentum playground"
+                        text: "󰑮 physics & momentum playground"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSm
                         font.weight: Font.Bold
@@ -348,7 +348,7 @@ PanelWindow {
                             spacing: 4
 
                             Text {
-                                text: Theme.kaoJam
+                                text: "󰁕"
                                 font.family: Theme.fontIcon
                                 font.pixelSize: 18
                                 color: Theme.primary
@@ -448,7 +448,7 @@ PanelWindow {
                             spacing: 4
 
                             Text {
-                                text: Theme.kaoDJ
+                                text: "󰈈"
                                 font.family: Theme.fontIcon
                                 font.pixelSize: 18
                                 color: Theme.warn

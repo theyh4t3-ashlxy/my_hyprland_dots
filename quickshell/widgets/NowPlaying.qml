@@ -34,8 +34,8 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: root.isPlaying ? Theme.iconMusic : (root.hasTrack ? Theme.iconPause : Theme.kaoMusic)
-            font.family: (root.hasTrack || root.isPlaying) ? Theme.fontIcon : Theme.fontMono
+            text: root.isPlaying ? Theme.iconMusic : (root.hasTrack ? Theme.iconPause : Theme.iconMusic)
+            font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeSm
             color: root.isPlaying ? Theme.primary : Theme.on_surface_variant
 
@@ -51,7 +51,7 @@ Rectangle {
                     let title = root.player.trackTitle || "unknown track"
                     return artist + title
                 }
-                return npMouse.containsMouse ? (Theme.kaoShrug + " nothing playing rn") : (Theme.kaoEmpty + " quiet")
+                return npMouse.containsMouse ? "nothing playing" : "quiet"
             }
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSm
@@ -334,7 +334,7 @@ Rectangle {
                     spacing: 10
 
                     Text {
-                        text: Theme.kaoMusic
+                        text: Theme.iconMusic
                         font.family: Theme.fontIcon
                         font.pixelSize: 32
                         color: Theme.primary
@@ -342,7 +342,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: "nothing playing rn " + Theme.kaoShrug
+                        text: "nothing playing rn"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMd
                         font.weight: Font.Bold
@@ -351,7 +351,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: "start playback on spotify, browser, or mpv " + Theme.kaoHappy
+                        text: "start playback on spotify, browser, or mpv"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant

@@ -368,7 +368,7 @@ PopupPanel {
                 spacing: 8
 
                 Text {
-                    text: Theme.kaoSad
+                    text: Theme.iconSearch
                     font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeXl
                     color: Theme.on_surface_variant

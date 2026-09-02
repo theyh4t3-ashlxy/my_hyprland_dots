@@ -145,8 +145,8 @@ PopupPanel {
                 spacing: 8
 
                 Text {
-                    text: !NetworkService.wifiEnabled ? Theme.kaoSleepy : Theme.kaoSearch
-                    font.family: Theme.fontMono
+                    text: !NetworkService.wifiEnabled ? Theme.iconWifiOff : Theme.iconWifi
+                    font.family: Theme.fontIcon
                     font.pixelSize: 32
                     color: Theme.primary
                     Layout.alignment: Qt.AlignHCenter
@@ -162,7 +162,7 @@ PopupPanel {
                 }
 
                 Text {
-                    text: !NetworkService.wifiEnabled ? "toggle the switch above to connect" : (Theme.kaoHappy + " hang tight while we discover ssids")
+                    text: !NetworkService.wifiEnabled ? "toggle the switch above to connect" : "discovering local ssids..."
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     color: Theme.on_surface_variant

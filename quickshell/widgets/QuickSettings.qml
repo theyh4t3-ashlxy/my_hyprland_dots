@@ -756,7 +756,7 @@ Rectangle {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: Theme.kaoDJ
+                                    text: "󰑮"
                                     font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeMd
                                     color: Theme.primary
@@ -841,8 +841,8 @@ Rectangle {
                             spacing: 10
 
                             Text {
-                                text: Settings.unhingedFlavor ? Theme.kaoChaos : Theme.kaoCool
-                                font.family: Theme.fontMono
+                                text: "󰄛"
+                                font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeMd
                                 color: Theme.primary
                             }
@@ -852,14 +852,14 @@ Rectangle {
                                 spacing: 2
 
                                 Text {
-                                    text: "unhinged kaomoji flavor"
+                                    text: "personality flavor"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
                                     font.weight: Font.Bold
                                     color: Theme.on_surface
                                 }
                                 Text {
-                                    text: Settings.unhingedFlavor ? ("active: " + Theme.kaoHappy + " personality text") : "minimal plain text mode"
+                                    text: Settings.unhingedFlavor ? "active: dynamic flavor text" : "minimal plain text mode"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.on_surface_variant

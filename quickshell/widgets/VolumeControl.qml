@@ -45,9 +45,8 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: vMouse.containsMouse || popup.open
             text: {
-                if (volRoot.muted) return Settings.unhingedFlavor ? Theme.kaoAnger + " shh" : "muted";
+                if (volRoot.muted) return "muted";
                 let pct = Math.round(volRoot.vol * 100);
-                if (Settings.unhingedFlavor && pct > 100) return Theme.kaoPanic + " " + pct + "%";
                 return pct + "%";
             }
             font.family: Theme.fontFamily

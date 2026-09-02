@@ -102,7 +102,7 @@ Rectangle {
                 }
 
                 Text {
-                    text: Theme.kaoCoffee
+                    text: Theme.iconWorkspaces
                     font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.primary

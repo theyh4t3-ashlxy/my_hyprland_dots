@@ -767,7 +767,7 @@ Rectangle {
                         spacing: 8
 
                         Text {
-                            text: Theme.kaoSearch
+                            text: Theme.iconSearch
                             font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface_variant
@@ -1122,7 +1122,7 @@ Rectangle {
                         spacing: 8
 
                         Text {
-                            text: Theme.kaoSearch
+                            text: Theme.iconSearch
                             font.family: Theme.fontIcon
                             font.pixelSize: Theme.fontSizeSm
                             color: Theme.on_surface_variant
@@ -1383,7 +1383,7 @@ Rectangle {
                     visible: root.isOnlineLoading || onlineWpModel.count === 0
 
                     Text {
-                        text: root.isOnlineLoading ? (Theme.kaoLoading + "\nfetching wallpapers from wallhaven...") : "no wallpapers found"
+                        text: root.isOnlineLoading ? (Theme.iconRefresh + "\nfetching wallpapers from wallhaven...") : "no wallpapers found"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMd
                         color: Theme.on_surface_variant

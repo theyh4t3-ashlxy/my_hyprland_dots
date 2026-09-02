@@ -39,7 +39,7 @@ Rectangle {
             }
             if (Settings.unhingedFlavor) {
                 let hrs = clockRoot.now.getHours();
-                let mood = (hrs < 6) ? Theme.kaoSleepy : (hrs < 12) ? Theme.kaoCoffee : (hrs < 18) ? Theme.kaoCool : Theme.kaoMusic;
+                let mood = (hrs < 6) ? "󰤄" : (hrs < 12) ? "󰖨" : (hrs < 18) ? "󰖙" : "󰖔";
                 return mood + " " + Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
             }
             return Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
@@ -124,7 +124,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: Theme.kaoVibe
+                            text: Theme.iconClock
                             font.family: Theme.fontIcon
                             font.pixelSize: 11
                             color: Theme.primary

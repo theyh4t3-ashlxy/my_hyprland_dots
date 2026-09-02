@@ -87,7 +87,7 @@ Rectangle {
             border.width: 1
 
             Text {
-                text: Theme.kaoCool + " " + root.barPos + " dock"
+                text: "󰄛 " + root.barPos + " dock"
                 font.family: Theme.fontMono
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.on_surface_variant

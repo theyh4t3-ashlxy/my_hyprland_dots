@@ -246,7 +246,7 @@ Rectangle {
                 visible: root.notifCount === 0
                 
                 Text {
-                    text: (Settings.dnd ? (Theme.iconBellOff + "\ndo not disturb active\n") : (Theme.kaoSleepy + "\n")) + "all caught up"
+                    text: (Settings.dnd ? (Theme.iconBellOff + "\ndo not disturb active\n") : (Theme.iconBellOutline + "\n")) + "all caught up"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.on_surface_variant

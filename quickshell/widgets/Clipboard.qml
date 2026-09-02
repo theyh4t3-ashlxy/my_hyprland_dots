@@ -144,7 +144,7 @@ Rectangle {
                     spacing: 8
 
                     Text {
-                        text: Theme.kaoSearch
+                        text: Theme.iconSearch
                         font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.on_surface_variant
@@ -242,7 +242,7 @@ Rectangle {
                 visible: clipModel.count === 0
 
                 Text {
-                    text: Theme.kaoEmpty + "\nclipboard is empty"
+                    text: Theme.iconClipboard + "\nclipboard is empty"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.on_surface_variant

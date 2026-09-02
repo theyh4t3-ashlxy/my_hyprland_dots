@@ -192,7 +192,7 @@ Rectangle {
                 visible: !root.isPowered || !root.adapter || !root.adapter.devices || !root.adapter.devices.values || root.adapter.devices.values.length === 0
 
                 Text {
-                    text: !root.isPowered ? (Theme.kaoSleepy + "\nbluetooth is disabled") : (Theme.kaoSearch + "\nno devices found")
+                    text: !root.isPowered ? (Theme.iconBluetoothOff + "\nbluetooth is disabled") : (Theme.iconBluetooth + "\nno devices found")
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.on_surface_variant

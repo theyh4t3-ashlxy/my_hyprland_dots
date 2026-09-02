@@ -102,7 +102,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: Theme.kaoCool
+                        text: Theme.iconPower
                         font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.primary
@@ -122,7 +122,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: Settings.unhingedFlavor ? (Theme.kaoChaos + " choose your destiny") : "manage current desktop session"
+                        text: "manage current desktop session"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -354,7 +354,7 @@ Rectangle {
                                 color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface
                             }
                             Text {
-                                text: Settings.unhingedFlavor ? (Theme.kaoSleepy + " goodnight") : "power off device"
+                                text: "power off device"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface_variant
