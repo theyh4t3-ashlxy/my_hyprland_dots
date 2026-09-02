@@ -77,7 +77,7 @@ except Exception:
 
         # Monitor output args
         awww_out_args=()
-        mpv_out="ALL"
+        mpv_out="*"
         if [[ "$target_mon" != "all" && "$target_mon" != "*" && -n "$target_mon" ]]; then
             awww_out_args=("-o" "$target_mon")
             mpv_out="$target_mon"
@@ -99,14 +99,21 @@ except Exception:
                 audio_flag="volume=70"
             fi
             
-            # Launch mpvpaper with hardware acceleration, auto-pause, panscan full-screen crop, and looping
+            # Launch mpvpaper with hardware acceleration, panscan full-screen crop, and looping
             mpv_opts="loop-file=inf loop-playlist=inf panscan=$panscan $audio_flag --hwdec=auto-safe --keep-open=yes"
-            mpvpaper -f -p -a FULL -o "$mpv_opts" "$mpv_out" "$img_path" 2>/dev/null || true
+            mpvpaper -f -o "$mpv_opts" "$mpv_out" "$img_path" 2>/dev/null || true
         else
             # Static image or GIF: kill mpvpaper and use awww
             pkill -x mpvpaper 2>/dev/null || true
             
-            awww img "${awww_out_args[@]}" "$img_path"                 --transition-type "$transition"                 --transition-angle "$angle"                 --transition-step "$step"                 --transition-duration "$duration"                 --transition-fps "$fps"                 --filter "$filter" 2>/dev/null || true
+            awww query >/dev/null 2>&1 || (awww init >/dev/null 2>&1 & sleep 0.2)
+            awww img "${awww_out_args[@]}" "$img_path" \
+                --transition-type "$transition" \
+                --transition-angle "$angle" \
+                --transition-step "$step" \
+                --transition-duration "$duration" \
+                --transition-fps "$fps" \
+                --filter "$filter" 2>/dev/null || true
 
             matugen image "$img_path" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
         fi
