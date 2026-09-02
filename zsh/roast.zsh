@@ -72,12 +72,18 @@ command_not_found_handler() {
     
     # figure out how to feed your binary hoarding addiction
     local pkg=""
-    local helper="sudo pacman"
+    local helper="sudo pacman -S"
     
     if (( $+commands[paru] )); then
-        helper="paru"
+        helper="paru -S"
     elif (( $+commands[yay] )); then
-        helper="yay"
+        helper="yay -S"
+    elif (( $+commands[pacman] )); then
+        helper="sudo pacman -S"
+    elif (( $+commands[dnf] )); then
+        helper="sudo dnf install"
+    elif (( $+commands[apt] )); then
+        helper="sudo apt install"
     fi
 
     # dig through the repos before your attention span fully evaporates
@@ -88,7 +94,7 @@ command_not_found_handler() {
     fi
 
     if [[ -n "$pkg" ]]; then
-        print -P "  %F{cyan}󰄛 copium:%f you can download more distraction via %F{green}%B${pkg}%b%f (run: %F{magenta}${helper} -S ${pkg}%f)\n"
+        print -P "  %F{cyan}󰄛 copium:%f you can download more distraction via %F{green}%B${pkg}%b%f (run: %F{magenta}${helper} ${pkg}%f)\n"
     else
         print ""
     fi

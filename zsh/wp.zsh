@@ -53,6 +53,16 @@ except Exception:
                 fi
                 return 0
                 ;;
+            help|-h|--help)
+                print -P "%F{magenta}󰄛 wp - interactive wallpaper control hub%f"
+                print "  wp                    open interactive fzf picker"
+                print "  wp random [category]  roll random wallpaper (e.g. wp random anime)"
+                print "  wp reload             re-apply current wallpaper & theme"
+                print "  wp live               list all live video wallpapers"
+                print "  wp scan               rescan library & rebuild thumbnails"
+                print "  wp set <file>         apply specific image/video file"
+                return 0
+                ;;
         esac
     fi
 
