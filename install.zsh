@@ -88,7 +88,7 @@ install_dependencies() {
     case "$helper" in
         paru|yay)
             log_info "installing / updating dependencies via $helper..."
-            $helper -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "some packages failed to install, check your internet or aur build logs"
+            $helper -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "some packages failed to install, check internet or aur build logs"
             ;;
         pacman)
             log_warn "no aur helper found (paru/yay). installing official repo packages only..."
@@ -189,7 +189,9 @@ setup_directories_and_permissions() {
     mkdir -p "$WALLPAPER_DIR/downloaded"
     mkdir -p "$CACHE_DIR/quickshell/thumbnails"
     mkdir -p "$CACHE_DIR/quickshell/wallpapers"
-    mkdir -p "$HOME/.local/share/quickshell"
+    mkdir -p "$CACHE_DIR/zsh"
+    mkdir -p "$HOME/.local/share/quickshell/scratch"
+    mkdir -p "$HOME/.local/share/quicknav/marks"
     mkdir -p "$BACKUP_DIR"
 
     # make all helper scripts executable
@@ -399,14 +401,14 @@ print -P "${colors[primary]}󰄛 rice manager: keeping your setup immaculate${co
 if [[ "$mode" == "interactive" ]]; then
     print ""
     print "what do you want to do?"
-    print "  1) full install (dependencies + symlinks + theming)"
-    print "  2) update dotfiles (git pull + sync + reload shell)"
-    print "  3) symlink dotfiles only"
-    print "  4) install dependencies only"
-    print "  5) doctor / system health check"
-    print "  6) reload running shell (hyprland + quickshell)"
-    print "  7) quit"
-    print -n "choice [1-7]: "
+    print "  1) 󰏤 full install (dependencies + symlinks + theming)"
+    print "  2) 󰑐 update dotfiles (git pull + sync + reload shell)"
+    print "  3) 󰌢 symlink dotfiles only"
+    print "  4) 󰚰 install dependencies only"
+    print "  5) 󰄲 doctor / system health check"
+    print "  6) 󰁕 reload running shell (hyprland + quickshell)"
+    print "  7) 󰅚 quit"
+    print -Pn "choice [1-7]: "
     read -r choice
     case "$choice" in
         1) mode="all" ;;
