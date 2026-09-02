@@ -2,7 +2,7 @@
 
 take() {
     if [[ -z "$1" ]]; then
-        echo "take what?"
+        echo "take what, thoughex?"
         return 1
     fi
     mkdir -p "$1" && cd "$1"

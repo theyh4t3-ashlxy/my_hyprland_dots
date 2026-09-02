@@ -36,6 +36,7 @@ QtObject {
     // anim & chaos vibe
     property string animSpeed: "snappy"
     property bool unhingedFlavor: true
+    property bool dnd: false // do not disturb: silence toast popups
 
     // visibility toggles
     property bool showWorkspaces: true
@@ -137,6 +138,7 @@ QtObject {
     onFontWeightChanged: queueSave()
     onMpvPanscanChanged: queueSave()
     onMpvAudioChanged: queueSave()
+    onDndChanged: queueSave()
 
     function loadObject(data) {
         if (!data) return;
@@ -160,6 +162,7 @@ QtObject {
         if (data.awwwFilter !== undefined && root.awwwFilter !== data.awwwFilter) root.awwwFilter = data.awwwFilter;
         if (data.mpvPanscan !== undefined && root.mpvPanscan !== parseFloat(data.mpvPanscan)) root.mpvPanscan = parseFloat(data.mpvPanscan);
         if (data.mpvAudio !== undefined) root.mpvAudio = (data.mpvAudio === true || data.mpvAudio === "true");
+        if (data.dnd !== undefined) root.dnd = (data.dnd === true || data.dnd === "true");
         if (data.animSpeed !== undefined && root.animSpeed !== data.animSpeed) root.animSpeed = data.animSpeed;
         if (data.unhingedFlavor !== undefined) root.unhingedFlavor = (data.unhingedFlavor === true || data.unhingedFlavor === "true");
         if (data.showWorkspaces !== undefined) root.showWorkspaces = (data.showWorkspaces === true || data.showWorkspaces === "true");
@@ -292,6 +295,7 @@ QtObject {
             'awwwFilter="' + awwwFilter + '"',
             "mpvPanscan=" + mpvPanscan,
             "mpvAudio=" + mpvAudio,
+            "dnd=" + dnd,
             'animSpeed="' + animSpeed + '"',
             "unhingedFlavor=" + unhingedFlavor,
             "showWorkspaces=" + showWorkspaces,

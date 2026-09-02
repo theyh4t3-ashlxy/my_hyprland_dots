@@ -44,6 +44,11 @@ PanelWindow {
     Connections {
         target: NotificationService
         function onNotificationReceived(n) {
+            // silence toasts when dnd is active unless critical
+            if (Settings.dnd && n.urgency !== NotificationUrgency.Critical) {
+                return;
+            }
+
             let duration = n.expireTimeout > 0 ? n.expireTimeout : 5000
             if (n.urgency === NotificationUrgency.Critical) {
                 duration = 0

@@ -19,6 +19,7 @@ local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
 [[ -f "$zdir/dev.zsh" ]]       && source "$zdir/dev.zsh"
 [[ -f "$zdir/wp.zsh" ]]        && source "$zdir/wp.zsh"
 [[ -f "$zdir/nuke.zsh" ]]      && source "$zdir/nuke.zsh"
+[[ -f "$zdir/dnd.zsh" ]]       && source "$zdir/dnd.zsh"
 [[ -f "$zdir/settings.zsh" ]]  && source "$zdir/settings.zsh"
 [[ -f "$zdir/git.zsh" ]]       && source "$zdir/git.zsh"
 

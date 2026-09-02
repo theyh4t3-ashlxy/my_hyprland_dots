@@ -10,8 +10,8 @@ Rectangle {
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
     color: popup.open ? Theme.primary_overlay : (notifMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
-    border.color: Theme.pillBorder
-    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+    border.color: Settings.dnd ? Theme.tertiary : Theme.pillBorder
+    border.width: (Settings.dnd || Theme.pillBorder !== "transparent") ? 1 : 0
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
@@ -25,10 +25,10 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: root.notifCount > 0 ? Theme.iconBell : Theme.iconBellOutline
+            text: Settings.dnd ? Theme.iconBellOff : (root.notifCount > 0 ? Theme.iconBell : Theme.iconBellOutline)
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
-            color: root.notifCount > 0 ? Theme.primary : Theme.on_surface
+            color: Settings.dnd ? Theme.tertiary : (root.notifCount > 0 ? Theme.primary : Theme.on_surface)
         }
 
         Text {
@@ -38,7 +38,7 @@ Rectangle {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeXs
             font.weight: Font.Bold
-            color: Theme.primary
+            color: Settings.dnd ? Theme.tertiary : Theme.primary
         }
     }
 
@@ -55,14 +55,18 @@ Rectangle {
 
     PopupPanel {
         id: popup
+        cardWidth: 380
+        cardHeight: 460
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 
-            // header
+            // header with DND toggle and clear all
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+
                 Text {
                     text: "notifications"
                     font.family: Theme.fontFamily
@@ -71,6 +75,46 @@ Rectangle {
                     color: Theme.on_surface
                     Layout.fillWidth: true
                 }
+
+                // DND Toggle chip
+                Rectangle {
+                    height: 26
+                    implicitWidth: dndChipRow.implicitWidth + 14
+                    radius: Theme.radiusPill
+                    color: Settings.dnd ? Theme.tertiary_container : Theme.surface_container_highest
+                    border.color: Settings.dnd ? Theme.tertiary : "transparent"
+                    border.width: 1
+
+                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                    RowLayout {
+                        id: dndChipRow
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            text: Settings.dnd ? Theme.iconBellOff : Theme.iconBell
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 11
+                            color: Settings.dnd ? Theme.on_tertiary_container : Theme.on_surface_variant
+                        }
+
+                        Text {
+                            text: Settings.dnd ? "dnd on" : "dnd off"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Settings.dnd ? Theme.on_tertiary_container : Theme.on_surface_variant
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Settings.dnd = !Settings.dnd
+                    }
+                }
+
                 IconButton {
                     icon: Theme.iconTrash
                     iconSize: Theme.fontSizeMd
@@ -202,7 +246,7 @@ Rectangle {
                 visible: root.notifCount === 0
                 
                 Text {
-                    text: Theme.kaoSleepy + "\nall caught up"
+                    text: (Settings.dnd ? (Theme.iconBellOff + "\ndo not disturb active\n") : (Theme.kaoSleepy + "\n")) + "all caught up"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.on_surface_variant
