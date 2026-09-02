@@ -119,6 +119,13 @@ Rectangle {
 
         let url = "https://wallhaven.cc/api/v1/search?q=" + encodeURIComponent(q) + "&sorting=" + encodeURIComponent(s) + "&page=" + p
         req.open("GET", url)
+        req.timeout = 8000
+        req.ontimeout = function() {
+            root.isOnlineLoading = false
+        }
+        req.onerror = function() {
+            root.isOnlineLoading = false
+        }
         req.onreadystatechange = function() {
             if (req.readyState === XMLHttpRequest.DONE) {
                 root.isOnlineLoading = false

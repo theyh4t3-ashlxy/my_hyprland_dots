@@ -6,7 +6,7 @@ action="${1:-sync}"
 
 case "$action" in
     sync)
-        wl-paste > "$CLIP_FILE" 2>/dev/null || true
+        wl-paste --type text 2>/dev/null | head -c 100000 > "$CLIP_FILE" || true
         ;;
     copy)
         shift

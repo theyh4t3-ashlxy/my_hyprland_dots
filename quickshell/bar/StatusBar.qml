@@ -116,19 +116,19 @@ PanelWindow {
 
                 Loader {
                     active: Settings.showWallpaper && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: Settings.showWorkspaces && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Workspaces {} }
                 }
 
                 Loader {
                     active: Settings.showWindowTitle && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WindowTitle {} }
                 }
             }
@@ -136,7 +136,7 @@ PanelWindow {
             // clock in center
             Loader {
                 active: Settings.showClock && !root.isVertical
-                visible: active
+                visible: active && (item?.visible ?? true)
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
             }
@@ -151,73 +151,73 @@ PanelWindow {
 
                 Loader {
                     active: Settings.showPowerMenu && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { PowerMenu {} }
                 }
 
                 Loader {
                     active: Settings.showQuickSettings && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: Settings.showBattery && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: Settings.showVolume && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: Settings.showNetwork && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: Settings.showBluetooth && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: Settings.showSystemTray && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: Settings.showNotifications && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: Settings.showIdleInhibitor && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: Settings.showClipboard && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: Settings.showQuickNotes && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: Settings.showMedia && !root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NowPlaying {} }
                 }
             }
@@ -273,13 +273,13 @@ PanelWindow {
 
                 Loader {
                     active: Settings.showWallpaper && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: Settings.showWorkspaces && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Workspaces {} }
                 }
             }
@@ -287,7 +287,7 @@ PanelWindow {
             // clock in center
             Loader {
                 active: Settings.showClock && root.isVertical
-                visible: active
+                visible: active && (item?.visible ?? true)
                 sourceComponent: Component { Clock {} }
                 anchors.centerIn: parent
             }
@@ -301,73 +301,73 @@ PanelWindow {
 
                 Loader {
                     active: Settings.showMedia && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
                     active: Settings.showClipboard && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: Settings.showIdleInhibitor && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: Settings.showNotifications && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: Settings.showSystemTray && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: Settings.showBluetooth && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: Settings.showNetwork && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: Settings.showVolume && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: Settings.showBattery && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: Settings.showQuickSettings && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: Settings.showQuickNotes && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: Settings.showPowerMenu && root.isVertical
-                    visible: active
+                    visible: active && (item?.visible ?? true)
                     sourceComponent: Component { PowerMenu {} }
                 }
             }

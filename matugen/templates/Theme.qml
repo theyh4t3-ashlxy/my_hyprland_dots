@@ -244,6 +244,7 @@ QtObject {
     // Core System Icons
     readonly property string iconArch:              getIcon("󰣇", "\uE8A9", "")
     readonly property string iconAppLauncher:       iconArch
+    readonly property string iconWorkspaces:        getIcon("󰍹", "\uE7F4", "")
     readonly property string iconSearch:            getIcon("󰍉", "\uE721", "")
     readonly property string iconClose:             getIcon("󰅖", "\uE8BB", "")
     readonly property string iconCheck:             getIcon("󰄲", "\uE73E", "")
@@ -372,5 +373,13 @@ QtObject {
     readonly property string kaoSparkle:            "(★ω★)"
     readonly property string kaoTableFlip:          "(╯°□°)╯︵ ┻━┻"
     readonly property string kaoPutBack:            "┬─┬ノ( º _ ºノ)"
+
+    // Vibe Resolver (kaomoji / nerd / text)
+    function getVibe(kao, nerd, text) {
+        let style = Settings?.vibeStyle ?? "nerd";
+        if (style === "kaomoji") return kao;
+        if (style === "nerd") return nerd;
+        return text ?? "";
+    }
 }
 

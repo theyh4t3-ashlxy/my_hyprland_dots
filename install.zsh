@@ -212,7 +212,7 @@ initial_theming() {
         local first_wp="${sample_wp[1]}"
         log_info "applying theme from $first_wp..."
         if (( $+commands[matugen] )); then
-            matugen image "$first_wp" 2>/dev/null || true
+            matugen image "$first_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0 2>/dev/null || true
             log_ok "matugen initial theme generated"
         fi
     else
