@@ -54,7 +54,7 @@ hl.bind("XF86WLAN", hl.dsp.exec_cmd("nmcli radio wifi toggle"), { locked = true 
 
 -- lock screen (calls quickshell session lock with fallback)
 hl.bind("XF86Launch1", hl.dsp.exec_cmd("qs ipc call lock lock 2>/dev/null || hyprlock"))
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("qs ipc call lock lock 2>/dev/null || hyprlock"))
+hl.bind(mainMod .. " + END", hl.dsp.exec_cmd("qs ipc call lock lock 2>/dev/null || hyprlock"))
 
 -- screenshot
 hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region"))
