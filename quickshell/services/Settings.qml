@@ -159,7 +159,11 @@ QtObject {
         if (data.currentWallpaper !== undefined && root.currentWallpaper !== data.currentWallpaper) root.currentWallpaper = data.currentWallpaper;
         if (data.matugenMode !== undefined && root.matugenMode !== data.matugenMode) root.matugenMode = data.matugenMode;
         if (data.matugenScheme !== undefined && root.matugenScheme !== data.matugenScheme) root.matugenScheme = data.matugenScheme;
-        if (data.awwwTransitionType !== undefined && root.awwwTransitionType !== data.awwwTransitionType) root.awwwTransitionType = data.awwwTransitionType;
+        if (data.awwwTransitionType !== undefined) {
+            let valid = ["wipe", "wave", "grow", "fade", "center", "outer", "simple", "left", "right", "top", "bottom", "random", "none"];
+            let t = (valid.indexOf(data.awwwTransitionType) !== -1) ? data.awwwTransitionType : "wipe";
+            if (root.awwwTransitionType !== t) root.awwwTransitionType = t;
+        }
         if (data.awwwTransitionAngle !== undefined && root.awwwTransitionAngle !== parseInt(data.awwwTransitionAngle)) root.awwwTransitionAngle = parseInt(data.awwwTransitionAngle);
         if (data.awwwTransitionStep !== undefined && root.awwwTransitionStep !== parseInt(data.awwwTransitionStep)) root.awwwTransitionStep = parseInt(data.awwwTransitionStep);
         if (data.awwwTransitionDuration !== undefined && root.awwwTransitionDuration !== parseInt(data.awwwTransitionDuration)) root.awwwTransitionDuration = parseInt(data.awwwTransitionDuration);

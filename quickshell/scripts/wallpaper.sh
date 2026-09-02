@@ -60,6 +60,10 @@ except Exception:
         fi
         
         transition="${3:-wipe}"
+        valid_transitions="simple fade left right top bottom wipe wave grow center any outer random none"
+        if [[ ! " $valid_transitions " =~ [[:space:]]"$transition"[[:space:]] ]]; then
+            transition="wipe"
+        fi
         angle="${4:-30}"
         step="${5:-90}"
         duration="${6:-3}"

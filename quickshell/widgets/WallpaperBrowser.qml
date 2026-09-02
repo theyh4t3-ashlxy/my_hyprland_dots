@@ -1752,7 +1752,7 @@ Rectangle {
                         columnSpacing: 6
 
                         Repeater {
-                            model: ["wipe", "wave", "grow", "fade", "center", "outer", "slide", "left", "right", "top", "bottom", "any"]
+                            model: ["wipe", "wave", "grow", "fade", "center", "outer", "simple", "left", "right", "top", "bottom", "random"]
 
                             delegate: Rectangle {
                                 required property string modelData
