@@ -34,7 +34,7 @@ fif() {
 # fuzzy kill process
 fkill() {
     local pid
-    pid=$(ps -ef | sed 1d | fzf -m --header="[kill process]" | awk '{print $2}')
+    pid=$(ps -ef | sed 1d | fzf -m --header="[󰅚 kill process]" | awk '{print $2}')
     if [[ -n "$pid" ]]; then
         echo "$pid" | xargs kill -${1:-9}
     fi
@@ -44,7 +44,7 @@ fkill() {
 in() {
     if (( $+commands[paru] )); then
         local pkgs
-        pkgs=$(paru -Slq | fzf --multi --preview 'paru -Si {1}' --preview-window=right:60%:wrap --header="[install package]")
+        pkgs=$(paru -Slq | fzf --multi --preview 'paru -Si {1}' --preview-window=right:60%:wrap --header="[󰏤 install package]")
         [[ -n "$pkgs" ]] && echo "$pkgs" | xargs -ro paru -S
     fi
 }
@@ -53,7 +53,7 @@ in() {
 un() {
     if (( $+commands[paru] )); then
         local pkgs
-        pkgs=$(paru -Qq | fzf --multi --preview 'paru -Qi {1}' --preview-window=right:60%:wrap --header="[remove package]")
+        pkgs=$(paru -Qq | fzf --multi --preview 'paru -Qi {1}' --preview-window=right:60%:wrap --header="[󰀦 remove package]")
         [[ -n "$pkgs" ]] && echo "$pkgs" | xargs -ro paru -Rns
     fi
 }
@@ -61,6 +61,6 @@ un() {
 # fuzzy edit file
 fe() {
     local file
-    file=$(fzf --preview 'bat --style=numbers --color=always --line-range :100 {} 2>/dev/null || head -n 100 {}' --header="[open file]")
+    file=$(fzf --preview 'bat --style=numbers --color=always --line-range :100 {} 2>/dev/null || head -n 100 {}' --header="[󰈙 open file]")
     [[ -n "$file" ]] && ${EDITOR:-micro} "$file"
 }

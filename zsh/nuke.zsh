@@ -3,7 +3,7 @@
 nuke() {
     local target="${1:-}"
 
-    # If specific process name or PID is passed directly
+    # if specific process name or pid is passed directly
     if [[ -n "$target" && "$target" != "-i" ]]; then
         local pids=()
         if [[ "$target" =~ ^[0-9]+$ ]]; then
@@ -20,23 +20,23 @@ nuke() {
         print -P "%F{red}󰅚 nuking ${#pids[@]} process(es) matching '$target'...%f"
         for p in "${pids[@]}"; do
             if kill -9 "$p" 2>/dev/null; then
-                print -P "  %F{green}󰄲 terminated PID $p%f"
+                print -P "  %F{green}󰄲 terminated pid $p%f"
             else
-                print -P "  %F{yellow}󰀦 permission denied for PID $p, escalating to sudo...%f"
-                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated PID $p (via sudo)%f"
+                print -P "  %F{yellow}󰀦 permission denied for pid $p, escalating to sudo...%f"
+                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated pid $p (via sudo)%f"
             fi
         done
         return 0
     fi
 
-    # Interactive FZF Process Sniper
+    # interactive fzf process sniper
     if ! (( $+commands[fzf] )); then
         print "usage: nuke <process_name | pid>"
         return 1
     fi
 
     local selected=$(ps -eo pid,user,%cpu,%mem,comm,args --sort=-%cpu | sed 1d | \
-        fzf -m --header="[󰅚 NUKE PROCESS - TAB to multi-select, ENTER to kill]" \
+        fzf -m --header="[󰅚 nuke process - tab to multi-select, enter to kill]" \
             --header-first \
             --prompt="nuke ❯ " \
             --preview="echo {} | awk '{print \$6}'" \
@@ -50,10 +50,10 @@ nuke() {
         print -P "%F{red}󰅚 executing lethal force on ${#kill_pids[@]} process(es)...%f"
         for p in "${kill_pids[@]}"; do
             if kill -9 "$p" 2>/dev/null; then
-                print -P "  %F{green}󰄲 terminated PID $p%f"
+                print -P "  %F{green}󰄲 terminated pid $p%f"
             else
-                print -P "  %F{yellow}󰀦 permission denied on PID $p, requesting sudo...%f"
-                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated PID $p (via sudo)%f"
+                print -P "  %F{yellow}󰀦 permission denied on pid $p, requesting sudo...%f"
+                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated pid $p (via sudo)%f"
             fi
         done
     fi

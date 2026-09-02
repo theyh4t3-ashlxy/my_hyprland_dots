@@ -32,7 +32,7 @@ try:
         wps = json.load(f)
     live = [w for w in wps if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]]
     for w in live:
-        print(f"  • \033[38;5;141m{w["name"]}\033[0m (\033[38;5;120m{w["ext"]}\033[0m) -> {w["path"]}")
+        print(f"  󰄛 \033[38;5;141m{w["name"]}\033[0m (\033[38;5;120m{w["ext"]}\033[0m) -> {w["path"]}")
 except Exception:
     print("no live wallpaper cache found. run wp scan first.")
 '
@@ -56,7 +56,7 @@ except Exception:
         esac
     fi
 
-    # Interactive menu
+    # interactive fzf menu
     if ! (( $+commands[fzf] )); then
         print -P "%F{magenta}󰄛 wallpaper hub%f"
         print "  wp random [category]  roll random wallpaper"
@@ -68,23 +68,23 @@ except Exception:
     fi
 
     local options=(
-        "🎲 Roll Random Wallpaper (All Categories)"
-        "🌆 Select Wallpaper from Library (FZF Picker)"
-        "🎬 Select Live Video / GIF Wallpaper"
-        "🔄 Reload Current Wallpaper & Theme"
-        "🎨 Rescan Library & Generate Thumbnails"
-        "🌐 Download Wallpaper by URL"
+        "󰑐 roll random wallpaper (all categories)"
+        "󰋩 select wallpaper from library (fzf picker)"
+        "󰍹 select live video / gif wallpaper"
+        "󰁕 reload current wallpaper & theme"
+        "󰚰 rescan library & generate thumbnails"
+        "󰏤 download wallpaper by url"
     )
 
-    local choice=$(printf "%s\n" "${options[@]}" | fzf --header="[󰄛 Wallpaper Hub - What do you want to do?]" --reverse --height=35%)
+    local choice=$(printf "%s\n" "${options[@]}" | fzf --header="[󰄛 wallpaper hub - what do you want to do?]" --reverse --height=35%)
     [[ -z "$choice" ]] && return 0
 
     case "$choice" in
-        "🎲 Roll Random Wallpaper"*)
+        *"roll random wallpaper"*)
             "$wp_script" random all
             print -P "%F{magenta}󰄛 rolled fresh random wallpaper%f"
             ;;
-        "🌆 Select Wallpaper from Library"*)
+        *"select wallpaper from library"*)
             local wp_json="/tmp/qs_wallpapers.json"
             [[ ! -f "$wp_json" ]] && python3 ~/.config/quickshell/scripts/scan_wallpapers.py >/dev/null 2>&1
             local selected_file=$(python3 -c '
@@ -96,13 +96,13 @@ try:
         print(f"{w["path"]}	{w["category"]}	{w["name"]}")
 except Exception:
     pass
-' | fzf --with-nth=2,3 --delimiter="	" --header="[Select Wallpaper]" --preview="echo {} | awk '{print \$1}'" | awk -F"	" '{print $1}')
+' | fzf --with-nth=2,3 --delimiter="	" --header="[󰋩 select wallpaper]" --preview="echo {} | awk '{print \$1}'" | awk -F"	" '{print $1}')
             if [[ -n "$selected_file" && -f "$selected_file" ]]; then
                 "$wp_script" set "$selected_file"
                 print -P "%F{green}󰄲 wallpaper applied:%f %F{cyan}${selected_file:t}%f"
             fi
             ;;
-        "🎬 Select Live Video / GIF Wallpaper"*)
+        *"select live video"*)
             local selected_live=$(python3 -c '
 import json
 try:
@@ -110,24 +110,24 @@ try:
         wps = json.load(f)
     for w in wps:
         if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]:
-            print(f"{w["path"]}	[LIVE {w["ext"]}]	{w["name"]}")
+            print(f"{w["path"]}	[live {w["ext"]}]	{w["name"]}")
 except Exception:
     pass
-' | fzf --with-nth=2,3 --delimiter="	" --header="[Select Live Wallpaper]" | awk -F"	" '{print $1}')
+' | fzf --with-nth=2,3 --delimiter="	" --header="[󰍹 select live wallpaper]" | awk -F"	" '{print $1}')
             if [[ -n "$selected_live" && -f "$selected_live" ]]; then
                 "$wp_script" set "$selected_live"
                 print -P "%F{green}󰄲 live wallpaper applied:%f %F{cyan}${selected_live:t}%f"
             fi
             ;;
-        "🔄 Reload Current Wallpaper & Theme"*)
+        *"reload current wallpaper"*)
             reload-wp
             ;;
-        "🎨 Rescan Library & Generate Thumbnails"*)
+        *"rescan library"*)
             python3 ~/.config/quickshell/scripts/scan_wallpapers.py
             print -P "%F{green}󰄲 library scanned & thumbnails rebuilt%f"
             ;;
-        "🌐 Download Wallpaper by URL"*)
-            print -Pn "%F{cyan}enter wallpaper / video URL: %f"
+        *"download wallpaper"*)
+            print -Pn "%F{cyan}enter wallpaper / video url: %f"
             read -r dl_url
             if [[ -n "$dl_url" ]]; then
                 print -P "%F{magenta}󰄛 downloading and applying...%f"

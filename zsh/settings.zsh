@@ -42,35 +42,35 @@ settings() {
         local psycho_status="${ENABLE_PSYCHO_ROASTS:-true}"
 
         local items=(
-            "1. Fastfetch on terminal open: [${ff_status}]"
-            "2. Existential greeting quote: [${gr_status}]"
-            "3. Psychological roaster on typo: [${psycho_status}]"
-            "4. Git details in prompt: [${git_status}]"
-            "5. Command execution timer: [${timer_status}]"
-            "6. Recompile Zsh bytecode (speedup)"
-            "7. Exit settings"
+            "󰄛 fastfetch on open: [${ff_status}]"
+            "󰄛 existential greeting on open: [${gr_status}]"
+            "󰅚 psychological roaster on typo: [${psycho_status}]"
+            " git details in prompt: [${git_status}]"
+            "󰁕 execution timer in prompt: [${timer_status}]"
+            "󰚰 recompile zsh bytecode (speedup)"
+            "󰅚 exit settings"
         )
 
-        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 Terminal & Shell Settings - Select to toggle]" --reverse --height=40%)
-        [[ -z "$choice" || "$choice" == *"Exit settings"* ]] && break
+        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 terminal & shell settings - select to toggle]" --reverse --height=40%)
+        [[ -z "$choice" || "$choice" == *"exit settings"* ]] && break
 
         case "$choice" in
-            *"Fastfetch"*)
+            *"fastfetch"*)
                 if [[ "$ff_status" == "true" ]]; then _save_pref "SHOW_FASTFETCH" "false"; else _save_pref "SHOW_FASTFETCH" "true"; fi
                 ;;
-            *"Existential greeting"*)
+            *"existential greeting"*)
                 if [[ "$gr_status" == "true" ]]; then _save_pref "SHOW_GREETING_ROAST" "false"; else _save_pref "SHOW_GREETING_ROAST" "true"; fi
                 ;;
-            *"Psychological roaster"*)
+            *"psychological roaster"*)
                 if [[ "$psycho_status" == "true" ]]; then _save_pref "ENABLE_PSYCHO_ROASTS" "false"; else _save_pref "ENABLE_PSYCHO_ROASTS" "true"; fi
                 ;;
-            *"Git details"*)
+            *"git details"*)
                 if [[ "$git_status" == "true" ]]; then _save_pref "SHOW_GIT_PROMPT" "false"; else _save_pref "SHOW_GIT_PROMPT" "true"; fi
                 ;;
             *"execution timer"*)
                 if [[ "$timer_status" == "true" ]]; then _save_pref "SHOW_CMD_TIMER" "false"; else _save_pref "SHOW_CMD_TIMER" "true"; fi
                 ;;
-            *"Recompile Zsh"*)
+            *"recompile zsh"*)
                 zrecompile 2>/dev/null || true
                 sleep 1
                 ;;
