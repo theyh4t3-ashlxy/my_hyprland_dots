@@ -204,25 +204,28 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "top", pos: "top" },
-                                { label: "bottom", pos: "bottom" },
+                                { label: "up", pos: "up" },
+                                { label: "down", pos: "down" },
                                 { label: "left", pos: "left" },
                                 { label: "right", pos: "right" }
                             ]
 
                             delegate: Rectangle {
                                 required property var modelData
+                                readonly property bool isSelected: Settings.barPosition === modelData.pos
+                                    || (modelData.pos === "up" && Settings.barPosition === "top")
+                                    || (modelData.pos === "down" && Settings.barPosition === "bottom")
                                 Layout.fillWidth: true
                                 height: 32
                                 radius: Theme.radiusSm
-                                color: Settings.barPosition === modelData.pos ? Theme.primary : Theme.surface_container_highest
+                                color: isSelected ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeXs
                                     font.weight: Font.Bold
-                                    color: Settings.barPosition === modelData.pos ? Theme.on_primary : Theme.on_surface
+                                    color: isSelected ? Theme.on_primary : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 

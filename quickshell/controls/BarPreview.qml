@@ -5,9 +5,9 @@ import ".."
 Rectangle {
     id: root
 
-    property string barPos: Settings.barPosition
-    readonly property bool isTop: barPos === "top"
-    readonly property bool isBottom: barPos === "bottom"
+    property string barPos: Settings.barPosition ?? "up"
+    readonly property bool isTop: barPos === "up" || barPos === "top"
+    readonly property bool isBottom: barPos === "down" || barPos === "bottom"
     readonly property bool isLeft: barPos === "left"
     readonly property bool isRight: barPos === "right"
     readonly property bool isVertical: isLeft || isRight

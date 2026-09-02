@@ -15,10 +15,11 @@ PanelWindow {
     property alias cardWidth: root.panelWidth
     property alias cardHeight: root.panelHeight
 
-    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
-    readonly property bool isLeft: (Settings?.barPosition ?? "top") === "left"
-    readonly property bool isRight: (Settings?.barPosition ?? "top") === "right"
+    readonly property string pos: Settings?.barPosition ?? "up"
+    readonly property bool isTop: pos === "up" || pos === "top"
+    readonly property bool isBottom: pos === "down" || pos === "bottom"
+    readonly property bool isLeft: pos === "left"
+    readonly property bool isRight: pos === "right"
     readonly property bool isVertical: isLeft || isRight
 
     readonly property real scoopW: Theme?.scoopRadiusX ?? 16

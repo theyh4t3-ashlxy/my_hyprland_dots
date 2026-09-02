@@ -11,8 +11,9 @@ PanelWindow {
     required property var modelData
     screen: modelData
 
-    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
+    readonly property string pos: Settings?.barPosition ?? "up"
+    readonly property bool isTop: pos === "up" || pos === "top"
+    readonly property bool isBottom: pos === "down" || pos === "bottom"
     readonly property real scoopW: Theme?.scoopRadiusX ?? 16
     readonly property real scoopH: Theme?.scoopRadiusY ?? 16
 

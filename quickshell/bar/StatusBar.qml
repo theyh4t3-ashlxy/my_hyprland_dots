@@ -11,10 +11,11 @@ PanelWindow {
     screen: modelData
     color: "transparent"
 
-    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
-    readonly property bool isBottom: (Settings?.barPosition ?? "top") === "bottom"
-    readonly property bool isLeft: (Settings?.barPosition ?? "top") === "left"
-    readonly property bool isRight: (Settings?.barPosition ?? "top") === "right"
+    readonly property string pos: Settings?.barPosition ?? "up"
+    readonly property bool isTop: pos === "up" || pos === "top"
+    readonly property bool isBottom: pos === "down" || pos === "bottom"
+    readonly property bool isLeft: pos === "left"
+    readonly property bool isRight: pos === "right"
     readonly property bool isVertical: isLeft || isRight
 
     readonly property real scoopW: Theme?.scoopRadiusX ?? 16
@@ -71,7 +72,7 @@ PanelWindow {
             }
         }
 
-        // horizontal bar layout (top / bottom)
+        // horizontal bar layout (up / down)
         Item {
             x: barBg.x
             y: barBg.y
@@ -89,6 +90,9 @@ PanelWindow {
                 Rectangle {
                     id: launcherBtnH
                     visible: Settings?.showLauncher ?? true
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: Theme.barHeight - 8
                     implicitWidth: 36
                     implicitHeight: Theme.barHeight - 8
                     radius: Theme.radiusPill
@@ -122,18 +126,27 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Workspaces {} }
                 }
 
                 Loader {
                     active: (Settings?.showWindowTitle ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { WindowTitle {} }
                 }
             }
@@ -157,72 +170,108 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { PowerMenu {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: (Settings?.showMedia ?? true) && !root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { NowPlaying {} }
                 }
             }
@@ -246,6 +295,9 @@ PanelWindow {
                 Rectangle {
                     id: launcherBtnV
                     visible: Settings?.showLauncher ?? true
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: Theme.barHeight - 8
+                    Layout.preferredHeight: 36
                     implicitWidth: Theme.barHeight - 8
                     implicitHeight: 36
                     radius: Theme.radiusPill
@@ -279,12 +331,18 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Workspaces {} }
                 }
             }
@@ -307,72 +365,108 @@ PanelWindow {
                 Loader {
                     active: (Settings?.showMedia ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { NowPlaying {} }
                 }
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { NetworkStatus {} }
                 }
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { VolumeControl {} }
                 }
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { Battery {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { QuickSettings {} }
                 }
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && root.isVertical
                     visible: active && (item?.visible ?? true)
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    Layout.preferredHeight: item ? item.implicitHeight : (Theme.barHeight - 8)
                     sourceComponent: Component { PowerMenu {} }
                 }
             }

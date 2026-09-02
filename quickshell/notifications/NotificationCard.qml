@@ -12,7 +12,8 @@ Item {
     property int cardIndex: 0
     signal closed()
 
-    readonly property bool isTop: (Settings?.barPosition ?? "top") === "top"
+    readonly property string pos: Settings?.barPosition ?? "up"
+    readonly property bool isTop: pos === "up" || pos === "top"
     readonly property bool isCritical: (notifData?.urgency ?? 1) === NotificationUrgency.Critical
     readonly property bool hasTimer: (notifData?.expireTimeout ?? 5000) > 0 && !isCritical
     readonly property int timeoutMs: notifData?.expireTimeout > 0 ? notifData.expireTimeout : 5000

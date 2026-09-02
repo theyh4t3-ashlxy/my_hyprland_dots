@@ -30,15 +30,16 @@ PanelWindow {
     mask: Region {}
 
     readonly property string mode: Theme?.screenCornerMode ?? "all"
-    readonly property string barPos: Settings?.barPosition ?? "top"
+    readonly property string rawBarPos: Settings?.barPosition ?? "up"
+    readonly property string barPos: (rawBarPos === "up" || rawBarPos === "top") ? "top" : ((rawBarPos === "down" || rawBarPos === "bottom") ? "bottom" : rawBarPos)
     readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
     readonly property color cornerColor: Theme?.cornerFill ?? Theme?.background ?? "#000000"
 
     // supporting vertical rice setups so it doesn't break
-    readonly property bool showTopLeft: mode === "all" || mode === "top" || mode === "left" || (mode === "opposite" && barPos !== "top" && barPos !== "left")
-    readonly property bool showTopRight: mode === "all" || mode === "top" || mode === "right" || (mode === "opposite" && barPos !== "top" && barPos !== "right")
-    readonly property bool showBottomLeft: mode === "all" || mode === "bottom" || mode === "left" || (mode === "opposite" && barPos !== "bottom" && barPos !== "left")
-    readonly property bool showBottomRight: mode === "all" || mode === "bottom" || mode === "right" || (mode === "opposite" && barPos !== "bottom" && barPos !== "right")
+    readonly property bool showTopLeft: mode === "all" || mode === "top" || mode === "up" || mode === "left" || (mode === "opposite" && barPos !== "top" && barPos !== "left")
+    readonly property bool showTopRight: mode === "all" || mode === "top" || mode === "up" || mode === "right" || (mode === "opposite" && barPos !== "top" && barPos !== "right")
+    readonly property bool showBottomLeft: mode === "all" || mode === "bottom" || mode === "down" || mode === "left" || (mode === "opposite" && barPos !== "bottom" && barPos !== "left")
+    readonly property bool showBottomRight: mode === "all" || mode === "bottom" || mode === "down" || mode === "right" || (mode === "opposite" && barPos !== "bottom" && barPos !== "right")
 
     // don't waste compositor cycles on invisible zero-radius overlays
     visible: root.cornerRadius > 0 && root.mode !== "none"
