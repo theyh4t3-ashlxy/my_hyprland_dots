@@ -9,8 +9,22 @@ QtObject {
 
     property string currentSchemeType: Settings.matugenScheme ?? "scheme-tonal-spot"
     property string currentMode: Settings.matugenMode ?? "dark"
-    property string currentWallpaperPath: "/home/ashley/.wallpapers/hyprland/hypr.png"
+    property string currentWallpaperPath: Settings.currentWallpaper || "/home/ashley/.wallpapers/hyprland/hypr.png"
     readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/wallpaper.sh"
+
+    property FileView currentWpFile: FileView {
+        path: "/tmp/qs_current_wallpaper.txt"
+        watchChanges: true
+        printErrors: false
+        onFileChanged: {
+            reload();
+            let p = text().trim();
+            if (p !== "" && p !== service.currentWallpaperPath) {
+                service.currentWallpaperPath = p;
+                Settings.currentWallpaper = p;
+            }
+        }
+    }
 
     function setMode(mode) {
         currentMode = mode
@@ -46,6 +60,7 @@ QtObject {
 
     function applyLocalWallpaper(filePath, monitor) {
         currentWallpaperPath = filePath
+        Settings.currentWallpaper = filePath
         let tType = Settings.awwwTransitionType ?? "wipe"
         let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
         let tStep = "" + (Settings.awwwTransitionStep ?? 90)

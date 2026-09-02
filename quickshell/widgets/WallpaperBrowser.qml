@@ -173,9 +173,13 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2)
-            popup.open = !popup.open
-            if (popup.open) reloadLocalWallpapers()
+            if (Theme.isVertical) {
+                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+            } else {
+                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+            }
+            popup.open = !popup.open;
+            if (popup.open) reloadLocalWallpapers();
         }
     }
 
@@ -1023,8 +1027,8 @@ Rectangle {
                             color: Theme.surface_container_high
                             radius: Theme.widgetRadius
                             clip: true
-                            border.color: locMouse.containsMouse ? Theme.primary : "transparent"
-                            border.width: 1
+                            border.color: (path === WallpaperService.currentWallpaperPath) ? Theme.primary : (locMouse.containsMouse ? Theme.primary_overlay : "transparent")
+                            border.width: (path === WallpaperService.currentWallpaperPath) ? 2 : 1
 
                             Image {
                                 anchors.fill: parent
@@ -1032,6 +1036,27 @@ Rectangle {
                                 sourceSize: Qt.size(240, 156)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
+                            }
+
+                            // active indicator badge
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                height: 18
+                                width: 18
+                                radius: 9
+                                color: Theme.primary
+                                visible: path === WallpaperService.currentWallpaperPath
+                                z: 2
+
+                                Text {
+                                    text: Theme.iconCheck
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 10
+                                    color: Theme.on_primary
+                                    anchors.centerIn: parent
+                                }
                             }
 
                             // category badge
@@ -1046,7 +1071,7 @@ Rectangle {
 
                                 Text {
                                     id: badgeText
-                                    text: category
+                                    text: category === "root" ? "wallpapers" : category
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 8
                                     color: "#ffffff"

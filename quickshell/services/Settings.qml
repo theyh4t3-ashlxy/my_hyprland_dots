@@ -22,6 +22,7 @@ QtObject {
     property string cornerColorMode: "theme"
 
     // matugen & awww engine
+    property string currentWallpaper: "/home/ashley/.wallpapers/hyprland/hypr.png"
     property string matugenMode: "dark"
     property string matugenScheme: "scheme-tonal-spot"
     property string awwwTransitionType: "wipe"
@@ -111,6 +112,7 @@ QtObject {
     onAwwwFilterChanged: queueSave()
     onAnimSpeedChanged: queueSave()
     onUnhingedFlavorChanged: queueSave()
+    onCurrentWallpaperChanged: queueSave()
     onShowWorkspacesChanged: queueSave()
     onShowWindowTitleChanged: queueSave()
     onShowClockChanged: queueSave()
@@ -154,6 +156,7 @@ QtObject {
         if (data.screenCornerMode !== undefined && root.screenCornerMode !== data.screenCornerMode) root.screenCornerMode = data.screenCornerMode;
         if (data.cornerStyle !== undefined && root.cornerStyle !== data.cornerStyle) root.cornerStyle = data.cornerStyle;
         if (data.cornerColorMode !== undefined && root.cornerColorMode !== data.cornerColorMode) root.cornerColorMode = data.cornerColorMode;
+        if (data.currentWallpaper !== undefined && root.currentWallpaper !== data.currentWallpaper) root.currentWallpaper = data.currentWallpaper;
         if (data.matugenMode !== undefined && root.matugenMode !== data.matugenMode) root.matugenMode = data.matugenMode;
         if (data.matugenScheme !== undefined && root.matugenScheme !== data.matugenScheme) root.matugenScheme = data.matugenScheme;
         if (data.awwwTransitionType !== undefined && root.awwwTransitionType !== data.awwwTransitionType) root.awwwTransitionType = data.awwwTransitionType;
@@ -288,6 +291,7 @@ QtObject {
             'screenCornerMode="' + screenCornerMode + '"',
             'cornerStyle="' + cornerStyle + '"',
             'cornerColorMode="' + cornerColorMode + '"',
+            'currentWallpaper="' + currentWallpaper + '"',
             'matugenMode="' + matugenMode + '"',
             'matugenScheme="' + matugenScheme + '"',
             'awwwTransitionType="' + awwwTransitionType + '"',
