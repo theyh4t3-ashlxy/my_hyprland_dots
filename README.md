@@ -12,14 +12,14 @@ hi! this is my hyprland dots. gemini through antigravity and ai studio sometimes
 
 # will refine
 - [ ] lock screen (and nuke `hyprlock`
-- [ ] eradicate `nmcli` from existence, perhaps? (`Quickshell.Networking`, or maybe thats just a few things.)
-- [ ] refine zsh more and add more customization and stuff (i dont like pl10k or starship, or.. omz)
-- [ ] give me ideas too
+- [ ] eradicate `nmcli` from existence, perhaps? (`Quickshell.Networking`, or maybe thats just a few things.)  
+- [ ] refine zsh more and add more customization and stuff (i dont like pl10k or starship, or.. omz)  
+- [ ] give me ideas too  
 
 # how to complain (or "contribute")
-make an issue. i'll eventually pass it on to antigravity or google jules. whatever works.
-when jules is done codin, i'll accept its changes
-(be rude to it, or dont. idc)
+make an issue. i'll eventually pass it on to antigravity or google jules. whatever works.  
+when jules is done codin, i'll accept its changes.  
+(be rude to it, or dont. idc)  
 # if you wanna be a human coder and fix the hallucinations 
-*(which the ai will call u out and say its incorrect)*
-make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf
+*(which the ai will call u out and say its incorrect)*  
+make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf  
