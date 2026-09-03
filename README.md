@@ -1,31 +1,25 @@
 > [!WARNING]
-> THERE IS AI SLOP ALL OVER THIS REPO!
+> THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
-okay, so.. hi, this is my hyprland dots!
-im officially a pro vibecoder
-yay!!!
+hi! this is my hyprland dots. gemini through antigravity and ai studio sometimes vibecoded this.
 
-# known issues (will fix when antigravity comes back from rate limits tomorrow or i figure out how to use ai studio too so i dont have to wait)
-(`x` means that it'll get fixed)
+# known issues rn
+*(will fix when claude models go back in antigravity, which is in like 2 hours. idk)*
 
-- [x] bar got fucked up, only works in top and bottom.
-- [x] inconsistencies around the ui (specifically animations, but also some refinements)
-- [x] animations not matching. [settings](quickshell/widgets/QuickSettings.qml), (technically its all animation presets not just hyprland anims file)
+- [ ] bar got fucked up, only works in top and bottom.
+- [ ] inconsistencies around the ui (specifically animations, but also some refinements)
+- [ ] animations not matching. [settings](quickshell/widgets/QuickSettings.qml) (technically its all animation presets not just hyprland anims file)
 
-# this part is not necessarily fix but rather refine, n make it better.
-(`x` means that i will do it)
-- [x] `hyprlock` (`ext_session_lock_v1`. aka qs already has this)
-- [x] nuke `nmcli` perhaps? (`Quickshell.Networking`, or maybe thats just a few things.)
-- [x] tell me what u want too (how do u enable discussions? for now just make it an issue tho
-- [ ] replace maybe all `Process` with its python (or shell) scripts to avoid bloating shit (prob wont realistically happen)
+# will refine
+- [ ] lock screen (and nuke `hyprlock`
+- [ ] eradicate `nmcli` from existence, perhaps? (`Quickshell.Networking`, or maybe thats just a few things.)
 - [ ] refine zsh more and add more customization and stuff (i dont like pl10k or starship, or.. omz)
-# how to complain (or "contribute")
-make an issue (be rude to it, or dont. idc)
-i'll eventually pass it on to antigravity or google jules. whatever works
-pull requests
-i accept it
-yeah
+- [ ] give me ideas too
 
-# if you wanna be a human coder and fix the clanker mistakes which will definitely correct ur code again and call u incorrect
-idk how bro im new to github
-im letting antigravity do all the work so
+# how to complain (or "contribute")
+make an issue. i'll eventually pass it on to antigravity or google jules. whatever works.
+when jules is done codin, i'll accept its changes
+(be rude to it, or dont. idc)
+# if you wanna be a human coder and fix the hallucinations 
+*(which the ai will call u out and say its incorrect)*
+make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf
