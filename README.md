@@ -1,7 +1,8 @@
 > [!WARNING]
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
-hi! this is my hyprland dots. gemini through antigravity and ai studio sometimes vibecoded this.
+hi! this is my hyprland dots.   
+gemini through antigravity and ai studio (sometimes it just halucinates BAD.) vibecoded this.  
 
 # known issues rn
 *(will fix when claude models go back in antigravity, which is in like 2 hours. idk)*
