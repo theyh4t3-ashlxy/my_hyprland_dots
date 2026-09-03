@@ -12,7 +12,7 @@ gemini through antigravity and ai studio (sometimes it just halucinates BAD.) vi
 - [ ] animations not matching. [settings](quickshell/widgets/QuickSettings.qml) (technically its all animation presets not just hyprland anims file)
 
 # will refine
-- [ ] lock screen (and nuke `hyprlock`
+- [ ] lock screen (and nuke `hyprlock`)
 - [ ] eradicate `nmcli` from existence, perhaps? (`Quickshell.Networking`, or maybe thats just a few things.)  
 - [ ] refine zsh more and add more customization and stuff (i dont like pl10k or starship, or.. omz)  
 - [ ] give me ideas too  
