@@ -116,8 +116,3 @@ serve() {
     print -P "%F{green}󰄲 starting local http server at http://localhost:${port}%f"
     python3 -m http.server "$port"
 }
-
-# make directory and enter it
-mkcd() {
-    mkdir -p "$1" && cd "$1"
-}

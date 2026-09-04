@@ -40,6 +40,8 @@ settings() {
         local git_status="${SHOW_GIT_PROMPT:-true}"
         local timer_status="${SHOW_CMD_TIMER:-true}"
         local psycho_status="${ENABLE_PSYCHO_ROASTS:-true}"
+        local dnd_status="off"
+        grep -q "^dnd=true" "$HOME/.config/quickshell/settings.conf" 2>/dev/null && dnd_status="on"
 
         local items=(
             "󰄛 fastfetch on open: [${ff_status}]"
@@ -47,12 +49,14 @@ settings() {
             "󰅚 psychological roaster on typo: [${psycho_status}]"
             " git details in prompt: [${git_status}]"
             "󰁕 execution timer in prompt: [${timer_status}]"
+            "󰂛 do not disturb (mute notifications): [${dnd_status}]"
             "󰏘 vibe style (kaomoji / nerd / text)"
             "󰚰 recompile zsh bytecode (speedup)"
+            "󰀦 purge .zwc bytecode cache (reset)"
             "󰅚 exit settings"
         )
 
-        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 terminal & shell settings - select to toggle]" --reverse --height=45%)
+        local choice=$(printf "%s\n" "${items[@]}" | fzf --header="[󰄛 terminal & shell settings - select to toggle]" --reverse --height=50%)
         [[ -z "$choice" || "$choice" == *"exit settings"* ]] && break
 
         case "$choice" in
@@ -71,6 +75,10 @@ settings() {
             *"execution timer"*)
                 if [[ "$timer_status" == "true" ]]; then _save_pref "SHOW_CMD_TIMER" "false"; else _save_pref "SHOW_CMD_TIMER" "true"; fi
                 ;;
+            *"do not disturb"*)
+                dnd toggle
+                sleep 0.5
+                ;;
             *"vibe style"*)
                 local v_choice=$(printf "%s\n" "(ﾉ◕ヮ◕)ﾉ kaomoji" "󰄛 nerd fonts" "󰦨 plain text" | fzf --header="[choose your desktop vibe style]" --reverse --height=25%)
                 if [[ -n "$v_choice" ]]; then
@@ -88,6 +96,10 @@ settings() {
                 ;;
             *"recompile zsh"*)
                 zrecompile 2>/dev/null || true
+                sleep 1
+                ;;
+            *"purge .zwc"*)
+                zclean 2>/dev/null || true
                 sleep 1
                 ;;
         esac

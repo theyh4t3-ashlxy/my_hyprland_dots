@@ -21,9 +21,15 @@ _load_plugin() {
     [[ -f "$dir/$name.zsh" ]]        && target="$dir/$name.zsh"
 
     if [[ -n "$target" ]]; then
-        # byte-compile so the shell doesn't crawl like a snail
+        # byte-compile in background so the shell doesn't crawl like a snail
         if [[ ! -f "$target.zwc" || "$target" -nt "$target.zwc" ]]; then
-            zcompile "$target" 2>/dev/null
+            {
+                zcompile -R "$target" 2>/dev/null
+                for sub in "$dir"/**/*.zsh(N); do
+                    [[ "$sub" == *"test-data"* || "$sub" == *"/tests/"* ]] && continue
+                    [[ "$sub" != "$target" && (! -f "$sub.zwc" || "$sub" -nt "$sub.zwc") ]] && zcompile -R "$sub" 2>/dev/null
+                done
+            } >/dev/null 2>&1 &!
         fi
         source "$target"
     fi
@@ -37,12 +43,14 @@ _load_plugin "zsh-users/zsh-history-substring-search"
 # autosuggestion ghost colors
 export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=${MATUGEN_OUTLINE:-8}"
 
-# arrow keys for digging up your past mistakes
+# arrow keys & vi keys for digging up your past mistakes
 if (( $+functions[history-substring-search-up] )); then
     bindkey '^[[A' history-substring-search-up
     bindkey '^[OA' history-substring-search-up
     bindkey '^[[B' history-substring-search-down
     bindkey '^[OB' history-substring-search-down
+    bindkey -M vicmd 'k' history-substring-search-up
+    bindkey -M vicmd 'j' history-substring-search-down
 
     export HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_FOUND="fg=${MATUGEN_PRIMARY:-cyan},bold"
     export HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_NOT_FOUND="fg=${MATUGEN_ERROR:-red},bold"

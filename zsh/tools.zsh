@@ -5,10 +5,10 @@ if (( $+commands[zoxide] )); then
 fi
 
 if (( $+commands[eza] )); then
-    alias ls="eza --color=always --group-directories-first --icons" # ls with icons because aesthetics > everything
-    alias la="eza -a --color=always --group-directories-first --icons"
-    alias ll="eza -l --color=always --group-directories-first --icons"
-    alias lt="eza --tree --level=2 --icons"
+    alias ls="eza --color=auto --group-directories-first --icons=auto" # icons on tty, raw text on pipe
+    alias la="eza -a --color=auto --group-directories-first --icons=auto"
+    alias ll="eza -l --color=auto --group-directories-first --icons=auto"
+    alias lt="eza --tree --level=2 --icons=auto"
 fi
 
 if (( $+commands[bat] )); then

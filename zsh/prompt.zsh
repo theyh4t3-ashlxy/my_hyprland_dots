@@ -1,5 +1,6 @@
 # dynamic prompt fueled purely by wallpaper color juice
 autoload -U add-zsh-hook
+zmodload -F zsh/stat b:zstat 2>/dev/null
 setopt PROMPT_SUBST
 
 # Dynamically set clean color escape codes before every command line render
@@ -13,11 +14,13 @@ set_prompt_colors() {
 }
 add-zsh-hook precmd set_prompt_colors
 
-# instant live reload when matugen dumps new wallpaper colors
+# instant live reload when matugen dumps new wallpaper colors (zero subprocess forks)
 _check_matugen_refresh() {
     local matugen_file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
     if [[ -f "$matugen_file" ]]; then
-        local mtime=$(stat -c %Y "$matugen_file" 2>/dev/null || stat -f %m "$matugen_file" 2>/dev/null)
+        local -A st
+        zstat -H st "$matugen_file" 2>/dev/null
+        local mtime="${st[mtime]}"
         if [[ -n "$mtime" && "$mtime" != "$_LAST_MATUGEN_MTIME" ]]; then
             _LAST_MATUGEN_MTIME="$mtime"
             source "$matugen_file" 2>/dev/null || true
@@ -41,10 +44,10 @@ git_status_detailed() {
     [[ -z "$branch" ]] && return
 
     local raw_status
-    raw_status=$(git status --porcelain=v1 2>/dev/null)
+    raw_status=$(git status --porcelain=v1 -unormal --ignore-submodules=dirty 2>/dev/null)
 
     if [[ -z "$raw_status" ]]; then
-        echo " ${M_OUT}(${M_RST}${M_TER} ${branch}${M_RST}${M_OUT})${M_RST}"
+        print -r " ${M_OUT}(${M_RST}${M_TER} ${branch}${M_RST}${M_OUT})${M_RST}"
         return
     fi
 
@@ -58,19 +61,25 @@ git_status_detailed() {
     (( unstaged > 0 )) && details+="${M_SEC}*${unstaged}${M_RST}"
     (( untracked > 0 )) && details+="${M_ERR}?${untracked}${M_RST}"
 
-    echo " ${M_OUT}(${M_RST}${M_PRI} ${branch}${M_RST} ${details}${M_OUT})${M_RST}"
+    print -r " ${M_OUT}(${M_RST}${M_PRI} ${branch}${M_RST} ${details}${M_OUT})${M_RST}"
 }
 
 set_prompt_git() { 
-    MY_GIT=$(git_status_detailed) 
+    if [[ "${SHOW_GIT_PROMPT:-true}" == "true" ]]; then
+        MY_GIT=$(git_status_detailed)
+    else
+        MY_GIT=""
+    fi
 }
 add-zsh-hook precmd set_prompt_git
 
-# Python virtual environment detector
+# Python / Conda virtual environment detector
 get_venv() {
     if [[ -n "$VIRTUAL_ENV" ]]; then
         local venv_name="${VIRTUAL_ENV:t}"
-        echo " ${M_OUT}[󰌠 ${M_RST}${M_SEC}${venv_name}${M_RST}${M_OUT}]${M_RST}"
+        print -r " ${M_OUT}[󰌠 ${M_RST}${M_SEC}${venv_name}${M_RST}${M_OUT}]${M_RST}"
+    elif [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+        print -r " ${M_OUT}[󱔎 ${M_RST}${M_SEC}${CONDA_DEFAULT_ENV}${M_RST}${M_OUT}]${M_RST}"
     fi
 }
 
@@ -104,6 +113,11 @@ _cmd_timer_start() {
 add-zsh-hook preexec _cmd_timer_start
 
 _cmd_timer_stop() {
+    if [[ "${SHOW_CMD_TIMER:-true}" != "true" ]]; then
+        MY_ELAPSED=""
+        unset _CMD_START_TIME
+        return
+    fi
     if [[ -n "$_CMD_START_TIME" ]]; then
         local elapsed=$(( SECONDS - _CMD_START_TIME ))
         unset _CMD_START_TIME

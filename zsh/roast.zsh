@@ -79,9 +79,12 @@ command_not_found_handler() {
     fi
     
     # picking the specific knife to twist
-    local random_roast="${roasts[$(( RANDOM % ${#roasts[@]} + 1 ))]}"
-    print -P "
-%F{red}󰅚%f %F{244}${random_roast}%f"
+    if [[ "${ENABLE_PSYCHO_ROASTS:-true}" == "true" ]]; then
+        local random_roast="${roasts[$(( RANDOM % ${#roasts[@]} + 1 ))]}"
+        print -P "\n%F{red}󰅚%f %F{244}${random_roast}%f"
+    else
+        print -P "\n%F{red}󰅚%f %F{244}command not found: %F{white}${cmd}%f"
+    fi
     
     # figure out how to feed your binary hoarding addiction
     local pkg=""
