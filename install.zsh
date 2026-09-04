@@ -84,7 +84,6 @@ install_dependencies() {
         python
         python-pillow
         ttf-jetbrains-mono-nerd
-        ttf-segoe-fluent-icons
         noto-fonts
         noto-fonts-cjk
         noto-fonts-emoji
