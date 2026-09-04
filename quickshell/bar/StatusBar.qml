@@ -97,7 +97,7 @@ PanelWindow {
                 Rectangle {
                     id: launcherBtnH
                     visible: Settings?.showLauncher ?? true
-                    width: 36
+                    width: Math.max(36, launcherTextH.implicitWidth + 16)
                     height: Theme.barHeight - 8
                     radius: Theme.radiusPill
                     color: lMouseH.pressed ? Theme.widgetActive : lMouseH.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
@@ -108,10 +108,11 @@ PanelWindow {
                     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                     Text {
+                        id: launcherTextH
                         anchors.centerIn: parent
                         text: Theme.iconArch
                         font.family: Theme.fontIcon
-                        font.pixelSize: Theme.fontSizeLg
+                        font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontSizeSm : Theme.fontSizeLg
                         color: launcherPopup.open ? Theme.primary : Theme.on_surface
                     }
 
@@ -302,7 +303,7 @@ PanelWindow {
                     id: launcherBtnV
                     visible: Settings?.showLauncher ?? true
                     width: Theme.barHeight - 8
-                    height: 36
+                    height: Math.max(36, launcherTextV.implicitHeight + 12)
                     radius: Theme.radiusPill
                     color: lMouseV.pressed ? Theme.widgetActive : lMouseV.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
                     border.color: Theme.pillBorder
@@ -312,10 +313,11 @@ PanelWindow {
                     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                     Text {
+                        id: launcherTextV
                         anchors.centerIn: parent
                         text: Theme.iconArch
                         font.family: Theme.fontIcon
-                        font.pixelSize: Theme.fontSizeLg
+                        font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontSizeXs : Theme.fontSizeLg
                         color: launcherPopup.open ? Theme.primary : Theme.on_surface
                     }
 

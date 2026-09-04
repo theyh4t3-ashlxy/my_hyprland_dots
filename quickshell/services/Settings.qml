@@ -63,6 +63,7 @@ QtObject {
     // formatting & typography
     property string clockFormat: "HH:mm"
     property string dateFormat: "ddd, MMM d"
+    property bool showBarDate: false
     property int workspaceCount: 10
     property string iconSet: "material" // "material", "windows", "awesome"
     property string fontFamily: "Noto Sans"
@@ -134,6 +135,7 @@ QtObject {
     onShowMotionSandboxChanged: queueSave()
     onClockFormatChanged: queueSave()
     onDateFormatChanged: queueSave()
+    onShowBarDateChanged: queueSave()
     onWorkspaceCountChanged: queueSave()
     onIconSetChanged: queueSave()
     onFontFamilyChanged: queueSave()
@@ -199,6 +201,7 @@ QtObject {
         if (data.iconSet !== undefined && root.iconSet !== data.iconSet) root.iconSet = data.iconSet;
         if (data.clockFormat !== undefined && root.clockFormat !== data.clockFormat) root.clockFormat = data.clockFormat;
         if (data.dateFormat !== undefined && root.dateFormat !== data.dateFormat) root.dateFormat = data.dateFormat;
+        if (data.showBarDate !== undefined) root.showBarDate = (data.showBarDate === true || data.showBarDate === "true");
         if (data.workspaceCount !== undefined && root.workspaceCount !== parseInt(data.workspaceCount)) root.workspaceCount = parseInt(data.workspaceCount);
         if (data.fontFamily !== undefined && root.fontFamily !== data.fontFamily) root.fontFamily = data.fontFamily;
         if (data.fontMono !== undefined && root.fontMono !== data.fontMono) root.fontMono = data.fontMono;
@@ -342,6 +345,7 @@ QtObject {
             'iconSet="' + iconSet + '"',
             'clockFormat="' + clockFormat + '"',
             'dateFormat="' + dateFormat + '"',
+            "showBarDate=" + showBarDate,
             "workspaceCount=" + workspaceCount,
             'fontFamily="' + fontFamily + '"',
             'fontMono="' + fontMono + '"',
@@ -359,5 +363,68 @@ QtObject {
         let confStr = toConf();
         confFile.setText(confStr);
         resetSavingTimer.restart();
+    }
+
+    // nuke everything and go back to factory stock
+    function resetToDefaults() {
+        root._loading = true;
+        root.barPosition = "top";
+        root.barMargin = 0;
+        root.barFloating = false;
+        root.barHeight = 32;
+        root.barStyle = "glass";
+        root.scoopRadius = 16;
+        root.scoopTension = 0.55228475;
+        root.screenCornerRadius = 16;
+        root.screenCornerMode = "all";
+        root.cornerStyle = "cubic";
+        root.cornerColorMode = "theme";
+        root.currentWallpaper = "/home/ashley/.wallpapers/hyprland/hypr.png";
+        root.matugenMode = "dark";
+        root.matugenScheme = "scheme-tonal-spot";
+        root.awwwTransitionType = "wipe";
+        root.awwwTransitionAngle = 30;
+        root.awwwTransitionStep = 90;
+        root.awwwTransitionDuration = 3;
+        root.awwwTransitionFps = 60;
+        root.awwwFilter = "Lanczos3";
+        root.mpvPanscan = 1.0;
+        root.mpvAudio = false;
+        root.dnd = false;
+        root.animSpeed = "snappy";
+        root.unhingedFlavor = true;
+        root.vibeStyle = "nerd";
+        root.showWorkspaces = true;
+        root.showWindowTitle = true;
+        root.showClock = true;
+        root.showBattery = true;
+        root.showSystemTray = true;
+        root.showVolume = true;
+        root.showMedia = true;
+        root.showNotifications = true;
+        root.showLauncher = true;
+        root.showPowerMenu = true;
+        root.showNetwork = true;
+        root.showBluetooth = true;
+        root.showClipboard = true;
+        root.showIdleInhibitor = true;
+        root.showQuickSettings = true;
+        root.showWallpaper = true;
+        root.showQuickNotes = true;
+        root.showMotionSandbox = false;
+        root.clockFormat = "HH:mm";
+        root.dateFormat = "ddd, MMM d";
+        root.showBarDate = false;
+        root.workspaceCount = 10;
+        root.iconSet = "material";
+        root.fontFamily = "Noto Sans";
+        root.fontMono = "JetBrainsMono Nerd Font";
+        root.fontWindows = "Segoe Fluent Icons";
+        root.fontAwesome = "Font Awesome 6 Free";
+        root.fontScale = 1.0;
+        root.fontWeight = "regular";
+        root.networkAliases = ({});
+        root._loading = false;
+        root.save();
     }
 }

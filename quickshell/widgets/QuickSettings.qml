@@ -18,6 +18,7 @@ Rectangle {
     property string activeTab: "layout"
     property string fontTarget: "sans" // "sans" or "mono"
     property string fontSearchQuery: ""
+    property bool showResetConfirm: false
 
     readonly property var allFonts: {
         let f = Qt.fontFamilies();
@@ -138,6 +139,47 @@ Rectangle {
                             font.weight: Font.Medium
                             color: Theme.primary
                         }
+                    }
+                }
+
+                Rectangle {
+                    height: 24
+                    implicitWidth: resetBadgeRow.implicitWidth + 16
+                    radius: Theme.radiusPill
+                    color: rMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_highest
+                    border.color: rMouse.containsMouse ? Theme.error : "transparent"
+                    border.width: 1
+
+                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+
+                    RowLayout {
+                        id: resetBadgeRow
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Text {
+                            text: Theme.iconHistory
+                            font.family: Theme.fontIcon
+                            font.pixelSize: 10
+                            color: rMouse.containsMouse ? Theme.error : Theme.on_surface_variant
+                        }
+
+                        Text {
+                            text: "reset stock"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            color: rMouse.containsMouse ? Theme.error : Theme.on_surface_variant
+                        }
+                    }
+
+                    MouseArea {
+                        id: rMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showResetConfirm = true
                     }
                 }
             }
@@ -372,15 +414,20 @@ Rectangle {
                         color: Theme.on_surface_variant
                     }
 
-                    RowLayout {
+                    GridLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        columns: 3
+                        rowSpacing: 6
+                        columnSpacing: 6
 
                         Repeater {
                             model: [
                                 { label: "all 4 corners", m: "all" },
                                 { label: "top only", m: "top" },
                                 { label: "bottom only", m: "bottom" },
+                                { label: "left only", m: "left" },
+                                { label: "right only", m: "right" },
+                                { label: "bar opposite", m: "opposite" },
                                 { label: "disabled", m: "none" }
                             ]
 
@@ -1039,21 +1086,25 @@ Rectangle {
                         icon: Theme.iconSparkles
                     }
 
-                    RowLayout {
+                    GridLayout {
+                        columns: 3
                         Layout.fillWidth: true
-                        spacing: 6
+                        columnSpacing: 6
+                        rowSpacing: 6
 
                         Repeater {
                             model: [
-                                { label: "material icons", id: "material" },
-                                { label: "windows segoe", id: "windows" },
-                                { label: "font awesome", id: "awesome" }
+                                { label: "material",        id: "material" },
+                                { label: "windows segoe",   id: "windows" },
+                                { label: "font awesome",    id: "awesome" },
+                                { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", id: "kaomoji" },
+                                { label: "󰦨 plain text",    id: "text" }
                             ]
 
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 30
+                                height: 32
                                 radius: Theme.radiusSm
                                 color: Settings.iconSet === modelData.id ? Theme.primary : Theme.surface_container_highest
 
@@ -1069,7 +1120,14 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.iconSet = modelData.id
+                                    onClicked: {
+                                        Settings.iconSet = modelData.id;
+                                        if (modelData.id === "kaomoji" || modelData.id === "text") {
+                                            Settings.vibeStyle = modelData.id;
+                                        } else {
+                                            Settings.vibeStyle = "nerd";
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1253,50 +1311,7 @@ Rectangle {
                     width: parent.width - 4
                     spacing: 10
 
-                    CategoryHeader {
-                        title: "shell personality & vibes"
-                        icon: Theme.iconCoffee
-                    }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Repeater {
-                            model: [
-                                { id: "kaomoji", label: "(ﾉ◕ヮ◕)ﾉ kaomoji" },
-                                { id: "nerd",    label: "󰄛 nerd fonts" },
-                                { id: "text",    label: "󰦨 plain text" }
-                            ]
-
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                height: 34
-                                radius: Theme.radiusSm
-                                readonly property bool isCurrent: Settings.vibeStyle === modelData.id
-                                color: isCurrent ? Theme.primary_overlay : (vibeMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
-                                border.color: isCurrent ? Theme.primary : "transparent"
-                                border.width: 1
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    font.weight: isCurrent ? Font.Bold : Font.Normal
-                                    color: isCurrent ? Theme.primary : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    id: vibeMouse
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.vibeStyle = modelData.id
-                                }
-                            }
-                        }
-                    }
 
                     // Unhinged Personality Flavor Toggle
                     Rectangle {
@@ -1399,6 +1414,54 @@ Rectangle {
                         icon: Theme.iconClock
                     }
 
+                    // Show Date in Status Bar Toggle
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 44
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+                        border.color: Settings.showBarDate ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 10
+
+                            Text {
+                                text: Theme.iconCalendar
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: Settings.showBarDate ? Theme.primary : Theme.on_surface_variant
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: "show date in status bar"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+
+                                Text {
+                                    text: "keep bar clean with time only; click clock to view calendar"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            ToggleSwitch {
+                                checked: Settings.showBarDate
+                                onToggled: Settings.showBarDate = !Settings.showBarDate
+                            }
+                        }
+                    }
+
                     Text {
                         text: "clock time format"
                         font.family: Theme.fontFamily
@@ -1449,14 +1512,17 @@ Rectangle {
                         color: Theme.on_surface_variant
                     }
 
-                    RowLayout {
+                    GridLayout {
+                        columns: 2
                         Layout.fillWidth: true
-                        spacing: 6
+                        columnSpacing: 6
+                        rowSpacing: 6
 
                         Repeater {
                             model: [
+                                { label: "hidden (time only)", fmt: "none" },
                                 { label: "short (Mon, Sep 1)", fmt: "ddd, MMM d" },
-                                { label: "standard (Sep 1, 2026)", fmt: "MMM d, yyyy" },
+                                { label: "standard (Sep 1)", fmt: "MMM d, yyyy" },
                                 { label: "iso (2026-09-01)", fmt: "yyyy-MM-dd" }
                             ]
 
@@ -1465,21 +1531,29 @@ Rectangle {
                                 Layout.fillWidth: true
                                 height: 28
                                 radius: Theme.radiusSm
-                                color: Settings.dateFormat === modelData.fmt ? Theme.primary : Theme.surface_container_highest
+                                readonly property bool isCurrent: (modelData.fmt === "none" && !Settings.showBarDate) || (Settings.showBarDate && Settings.dateFormat === modelData.fmt)
+                                color: isCurrent ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.Medium
-                                    color: Settings.dateFormat === modelData.fmt ? Theme.on_primary : Theme.on_surface
+                                    color: isCurrent ? Theme.on_primary : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.dateFormat = modelData.fmt
+                                    onClicked: {
+                                        if (modelData.fmt === "none") {
+                                            Settings.showBarDate = false;
+                                        } else {
+                                            Settings.dateFormat = modelData.fmt;
+                                            Settings.showBarDate = true;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1586,6 +1660,193 @@ Rectangle {
                                     tooltip: "remove alias"
                                     onClicked: Settings.setNetworkAlias(modelData, "")
                                 }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "factory reset"
+                        icon: Theme.iconFlame
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 52
+                        radius: Theme.widgetRadius
+                        color: nukeMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_highest
+                        border.color: nukeMouse.containsMouse ? Theme.error : Theme.widgetBorder
+                        border.width: 1
+
+                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.widgetPaddingH
+                            spacing: 12
+
+                            Text {
+                                text: Theme.iconFlame
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: Theme.error
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    text: "nuke all custom settings"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+
+                                Text {
+                                    text: "wipe all tweaks and restore stock defaults"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            Rectangle {
+                                width: 72
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Theme.error
+
+                                Text {
+                                    text: "nuke"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_error
+                                    anchors.centerIn: parent
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: nukeMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.showResetConfirm = true
+                        }
+                    }
+                }
+            }
+        }
+
+        // nuke confirmation modal overlay
+        Rectangle {
+            id: resetConfirmModal
+            anchors.fill: parent
+            color: Theme.alpha(Theme.background, 0.94)
+            visible: root.showResetConfirm
+            z: 999
+            radius: Theme.popupRadius
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+            }
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                width: Math.min(parent.width - 48, 380)
+                spacing: 16
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 56
+                    height: 56
+                    radius: Theme.radiusPill
+                    color: Theme.error_overlay
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Theme.iconFlame
+                        font.family: Theme.fontIcon
+                        font.pixelSize: Theme.fontSizeXl
+                        color: Theme.error
+                    }
+                }
+
+                Text {
+                    text: "nuke all custom settings?"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeLg
+                    font.weight: Font.Bold
+                    color: Theme.on_surface
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Text {
+                    text: "are you sure? this will wipe every tweak and revert everything back to stock defaults. there is no going back."
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.on_surface_variant
+                    wrapMode: Text.Wrap
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: Theme.radiusSm
+                        color: cancelMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
+                        border.color: Theme.widgetBorder
+                        border.width: 1
+
+                        Text {
+                            text: "nevermind"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSm
+                            color: Theme.on_surface
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            id: cancelMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.showResetConfirm = false
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: Theme.radiusSm
+                        color: confirmMouse.containsMouse ? Theme.error_container : Theme.error
+
+                        Text {
+                            text: "nuke everything"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeSm
+                            font.weight: Font.Bold
+                            color: confirmMouse.containsMouse ? Theme.on_error_container : Theme.on_error
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            id: confirmMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                Settings.resetToDefaults();
+                                root.showResetConfirm = false;
                             }
                         }
                     }

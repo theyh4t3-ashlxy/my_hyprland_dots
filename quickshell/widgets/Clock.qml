@@ -49,8 +49,9 @@ Rectangle {
                      : (hrs < 18) ? Theme.getVibe(Theme.kaoCool, "󰖙", "")
                      : Theme.getVibe(Theme.kaoMusic, "󰖔", "");
             let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
-            let dateFmt = Settings.dateFormat || "";
-            let dateStr = dateFmt !== "" ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
+            let dateFmt = (Settings.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
+            let showDate = (Settings.showBarDate ?? false) && dateFmt !== "";
+            let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
             let combo = (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
             return mood !== "" ? (mood + " " + combo) : combo;
         }
