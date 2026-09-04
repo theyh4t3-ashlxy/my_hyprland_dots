@@ -64,6 +64,10 @@ install_dependencies() {
         fastfetch
         yazi
         neovim
+        micro
+        hyprpicker
+        eza
+        zoxide
         fzf
         bat
         ripgrep
@@ -80,6 +84,7 @@ install_dependencies() {
         python
         python-pillow
         ttf-jetbrains-mono-nerd
+        ttf-segoe-fluent-icons
         noto-fonts
         noto-fonts-cjk
         noto-fonts-emoji
@@ -92,7 +97,7 @@ install_dependencies() {
             ;;
         pacman)
             log_warn "no aur helper found (paru/yay). installing official repo packages only..."
-            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin, awww, mpvpaper, and quickshell-git"
+            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin, awww, mpvpaper, quickshell-git, and ttf-segoe-fluent-icons"
             ;;
         *)
             log_warn "distro not automatically mapped. install hyprland, quickshell, matugen, awww, mpvpaper, and ffmpeg manually."
@@ -181,6 +186,13 @@ link_configurations() {
             log_ok "wired ~/.zshrc -> ~/.config/zsh/sources.zsh"
         fi
     fi
+
+    # pre-compile zsh configs and plugins to .zwc bytecode for zero-delay startup
+    if (( $+commands[zsh] )) && [[ -f "$CONFIG_DIR/zsh/core.zsh" ]]; then
+        log_info "pre-compiling zsh scripts into .zwc bytecode..."
+        zsh -c "source $CONFIG_DIR/zsh/core.zsh; zrecompile" >/dev/null 2>&1 || true
+        log_ok "zsh bytecode pre-compiled"
+    fi
 }
 
 setup_directories_and_permissions() {
@@ -192,6 +204,7 @@ setup_directories_and_permissions() {
     mkdir -p "$CACHE_DIR/zsh"
     mkdir -p "$HOME/.local/share/quickshell/scratch"
     mkdir -p "$HOME/.local/share/quicknav/marks"
+    mkdir -p "$HOME/.local/share/fonts"
     mkdir -p "$BACKUP_DIR"
 
     # make all helper scripts executable
@@ -249,16 +262,19 @@ reload_shell() {
     fi
 
     # restart quickshell daemon cleanly
-    if pgrep -x "quickshell" >/dev/null; then
-        log_info "reloading quickshell daemon..."
-        pkill -x "quickshell" || true
+    log_info "reloading quickshell daemon..."
+    if (( $+commands[qs] )); then
+        qs kill >/dev/null 2>&1 || true
         sleep 0.5
-        if (( $+commands[qs] )); then
-            ( qs -d >/dev/null 2>&1 & )
-        elif (( $+commands[quickshell] )); then
-            ( quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 & )
-        fi
+        qs -d >/dev/null 2>&1
+        log_ok "quickshell daemon reloaded via qs -d"
+    elif (( $+commands[quickshell] )); then
+        pkill -f "quickshell" || true
+        sleep 0.5
+        ( quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 & )
         log_ok "quickshell reloaded in background"
+    else
+        log_warn "neither qs nor quickshell found in PATH"
     fi
 }
 
@@ -267,7 +283,6 @@ doctor_check() {
     local missing_bins=()
     local critical_bins=(
         "hyprland"
-        "quickshell"
         "matugen"
         "awww"
         "mpvpaper"
@@ -278,6 +293,14 @@ doctor_check() {
         "brightnessctl"
         "playerctl"
         "python3"
+        "micro"
+        "hyprpicker"
+        "eza"
+        "zoxide"
+        "fzf"
+        "bat"
+        "rg"
+        "fd"
     )
 
     for b in "${critical_bins[@]}"; do
@@ -289,13 +312,29 @@ doctor_check() {
         fi
     done
 
+    # check quickshell CLI
+    if (( $+commands[qs] || $+commands[quickshell] )); then
+        local qs_bin="qs"
+        (( $+commands[qs] )) || qs_bin="quickshell"
+        print -P "  ${colors[success]}󰄲${colors[reset]} quickshell found: ${colors[dim]}$(which $qs_bin)${colors[reset]}"
+    else
+        print -P "  ${colors[error]}󰅚${colors[reset]} quickshell: ${colors[bold]}MISSING${colors[reset]}"
+        missing_bins+=( "quickshell" )
+    fi
+
     # check fonts safely without pipefail sigpipe
     print ""
-    log_info "checking essential fonts..."
+    log_info "checking typography & glyph packs..."
     if fc-list : family | grep -i "JetBrainsMono" >/dev/null 2>&1; then
         print -P "  ${colors[success]}󰄲${colors[reset]} JetBrainsMono Nerd Font found"
     else
         print -P "  ${colors[warn]}󰀦${colors[reset]} JetBrainsMono Nerd Font missing (nerd icons might look weird)"
+    fi
+
+    if fc-list : family | grep -i "Segoe Fluent Icons" >/dev/null 2>&1 || [[ -f "$HOME/.local/share/fonts/SegoeIcons.ttf" ]]; then
+        print -P "  ${colors[success]}󰄲${colors[reset]} Segoe Fluent Icons font found"
+    else
+        print -P "  ${colors[warn]}󰀦${colors[reset]} Segoe Fluent Icons missing (install ttf-segoe-fluent-icons or drop SegoeIcons.ttf into ~/.local/share/fonts)"
     fi
 
     if fc-list : family | grep -i "Noto Sans" >/dev/null 2>&1; then
@@ -319,9 +358,9 @@ doctor_check() {
         fi
     done
 
-    # verify quickshell configuration
+    # verify quickshell daemon and configuration
     print ""
-    log_info "testing quickshell syntax & config compilation..."
+    log_info "testing quickshell syntax & compilation..."
     if (( $+commands[qs] )); then
         if timeout 4s qs >/tmp/qs_install_test.log 2>&1 || [[ $? -eq 124 ]]; then
             if grep -s "Configuration Loaded" /tmp/qs_install_test.log >/dev/null 2>&1; then
@@ -331,6 +370,20 @@ doctor_check() {
             fi
         fi
         rm -f /tmp/qs_install_test.log
+    fi
+
+    # check running daemon
+    if pgrep -f "^qs|^quickshell" >/dev/null; then
+        print -P "  ${colors[success]}󰄲${colors[reset]} quickshell daemon is currently ${colors[bold]}running${colors[reset]}"
+    else
+        print -P "  ${colors[warn]}󰀦${colors[reset]} quickshell daemon is not running (start with: ${colors[primary]}qs -d${colors[reset]})"
+    fi
+
+    # check zsh bytecode
+    if [[ -f "$CONFIG_DIR/zsh/core.zsh.zwc" ]]; then
+        print -P "  ${colors[success]}󰄲${colors[reset]} zsh bytecode: pre-compiled .zwc active"
+    else
+        print -P "  ${colors[warn]}󰀦${colors[reset]} zsh bytecode not compiled (run: zrecompile)"
     fi
 
     print ""

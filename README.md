@@ -24,6 +24,32 @@ ok actual shell starts here dont cry
 - [x] hyprland 0.55 lua dispatch syntax restored for workspaces
 - [x] zsh overhauled: compinit cached, bytecode auto-compilation, zero dead imports, 50+ existential roasts
 
+dont run this as root unless you want your drive atomized
+
+# how to install (or destroy your system)
+
+clone this repo somewhere that won't give u an existential crisis:
+
+```bash
+git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git ~/my-hyprland-dots
+cd ~/my-hyprland-dots
+```
+
+then run the installer so you don't have to copy-paste symlinks like an animal:
+
+```bash
+chmod +x install.zsh
+./install.zsh
+```
+
+it gives you an interactive menu. if you want zero questions and maximum commitment:
+- `./install.zsh --all`: grabs all packages, backs up your existing trash into `~/.cache/dotfiles-backups`, symlinks everything, generates wallpaper colors, pre-compiles zsh bytecode, and boots quickshell.
+- `./install.zsh --doctor`: inspects missing binaries, checks font glyph packs (Segoe, JetBrainsMono, Noto), verifies quickshell compilation, and tells you what's broken.
+- `./install.zsh --update`: pulls latest git commits, syncs links, and reloads without nuking your stuff.
+- `./install.zsh --reload`: reloads running hyprland and restarts `qs -d` in the background.
+
+if your desktop looks naked, throw some wallpapers into `~/.wallpapers/` and type `wp random` or open the wallpaper chooser widget.
+
 this section is cursed do not linger
 
 # known issues rn
