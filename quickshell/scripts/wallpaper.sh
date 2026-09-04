@@ -120,6 +120,7 @@ except Exception:
                 --filter "$filter" 2>/dev/null || true
 
             matugen image "$img_path" -m "$mode" -t "$scheme" --source-color-index 0 2>/dev/null || true
+            touch "$HOME/.config/quickshell/shell.qml" 2>/dev/null || true
         fi
         ;;
 
@@ -130,6 +131,7 @@ except Exception:
 
         pkill -x mpvpaper 2>/dev/null || true
         matugen color hex "$hex_color" -m "$mode" -t "$scheme" 2>/dev/null || true
+        touch "$HOME/.config/quickshell/shell.qml" 2>/dev/null || true
         ;;
 
     reapply)
@@ -139,11 +141,20 @@ except Exception:
         if [[ -f "$CUR_WP_FILE" ]]; then
             cur_wp=$(cat "$CUR_WP_FILE")
         fi
+        if [[ -z "$cur_wp" || ! -f "$cur_wp" ]]; then
+            if [[ -f "$HOME/.config/quickshell/settings.conf" ]]; then
+                cur_wp=$(grep -E '^currentWallpaper=' "$HOME/.config/quickshell/settings.conf" | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+            fi
+        fi
+        if [[ -z "$cur_wp" || ! -f "$cur_wp" ]]; then
+            cur_wp="/home/ashley/.wallpapers/hyprland/hypr.png"
+        fi
 
         if [[ -n "$cur_wp" && -f "$cur_wp" ]]; then
             "$0" set "$cur_wp" "wipe" "30" "90" "3" "60" "Lanczos3" "$mode" "$scheme" "all" "1.0" "false"
         else
             matugen color hex "#787756" -m "$mode" -t "$scheme" 2>/dev/null || true
+            touch "$HOME/.config/quickshell/shell.qml" 2>/dev/null || true
         fi
         ;;
 

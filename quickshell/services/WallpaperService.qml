@@ -116,9 +116,8 @@ QtObject {
     }
 
     function reapplyTheme() {
-        let mode = currentMode ?? "dark"
-        let scheme = currentSchemeType ?? "scheme-tonal-spot"
-        Quickshell.execDetached([scriptPath, "reapply", mode, scheme])
+        let wp = currentWallpaperPath || Settings.currentWallpaper || "/home/ashley/.wallpapers/hyprland/hypr.png"
+        applyLocalWallpaper(wp)
     }
 
     Component.onCompleted: {

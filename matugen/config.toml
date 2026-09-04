@@ -17,6 +17,7 @@ output_path = "~/.config/fastfetch/config.jsonc"
 [templates.quickshell]
 input_path = "~/.config/matugen/templates/Theme.qml"
 output_path = "~/.config/quickshell/Theme.qml"
+post_hook = "touch ~/.config/quickshell/shell.qml 2>/dev/null || true"
 
 
 [templates.palette]
