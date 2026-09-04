@@ -32,9 +32,10 @@ if [[ -o interactive && -t 0 && -t 1 ]]; then
 
     if [[ "${SHOW_GREETING_ROAST:-true}" == "true" ]]; then
         zmodload -i zsh/datetime 2>/dev/null
-        local hour=12
+        local hour=12 dow="Thu"
         if (( $+EPOCHSECONDS )); then
             hour=$(strftime "%-H" "$EPOCHSECONDS" 2>/dev/null || echo 12)
+            dow=$(strftime "%a" "$EPOCHSECONDS" 2>/dev/null || echo "Thu")
         fi
 
         local greetings=(
@@ -53,12 +54,57 @@ if [[ -o interactive && -t 0 && -t 1 ]]; then
             "welcome back. you've been optimizing your environment for 4 years to prepare for work you still haven't started."
             "session alive. your childhood heroes were changing the world at your age, but hey, nice prompt icon."
             "the machine is ready. your executive function, however, is nowhere to be found."
+            "session spawned. you bought a high refresh rate monitor just to watch monospace text scroll."
+            "welcome back. you have 17 terminal tabs open and not a single one has an uncommitted file that actually works."
+            "allocated shell. somewhere out there, people are having conversations not mediated by stdout."
+            "welcome. you spent 3 hours writing a shell script to automate a task that takes 4 seconds."
+            "new session. your coffee is cold, your neck is strained, and your terminal theme is immaculate."
+            "spawning buffer. you are one broken config line away from re-installing arch for the 9th time."
+            "welcome back. you could be touching grass, but instead you are touching mechanical linear switches."
+            "session online. another day of confusing hyperfocus with emotional stability."
+            "welcome. your git history looks like a crime scene and your commit messages are cries for help."
+            "fresh shell. you opened this window with intense purpose and immediately forgot what it was."
+            "welcome back. your dotfiles have more commits than your actual degree."
+            "session initialized. the void between who you want to be and who you are is currently filled by quickshell blur."
+            "welcome back. your ram usage is at 82%% and most of it is electron apps you swore you'd rewrite in rust."
+            "spawning shell. you have 200 tabs open in your browser and 4 terminal splits all running fzf on nothing."
+            "welcome back. you've spent more time benchmarking shell startup than talking to real human beings this week."
+            "terminal spawned. your inner child is watching you right now, wondering why you're arguing with a package manager."
+            "welcome. your commit messages are 'wip', 'fix', 'pls work', and 'final final real this time'."
+            "session online. you could be solving real problems, but today we tune container padding by 2 pixels."
+            "welcome back. your spine is shaped like a boiled shrimp. sit up straight."
+            "session spawned. you use tiling window managers because you can't tile your own life."
+            "welcome back. your todo list has dust on it, but hey, nice hyprpicker hex value."
+            "spawning shell. you recompiled your bytecode just to shave 3ms off an existential crisis."
+            "welcome back. you are one 'rm -rf' away from absolute serenity."
+            "session ready. you've perfected your prompt layout so everyone knows how efficiently you procrastinate."
         )
 
         if (( hour >= 0 && hour < 5 )); then
             greetings+=(
                 "it is ${hour}am. you just opened a new terminal. you are actively running away from tomorrow."
                 "new shell at ${hour}am. you aren't grinding, you are dissociating under blue light."
+                "it is ${hour}am. you aren't an engineer right now, you are a cryptid staring into a luminescent rectangle."
+                "terminal opened at ${hour}am. the sleep debt you're accumulating will collect interest tomorrow morning."
+                "it is ${hour}am. go to bed. the bugs will still be here waiting for you in the morning."
+            )
+        elif (( hour >= 13 && hour <= 16 )); then
+            greetings+=(
+                "afternoon slump detected. your eyelids weigh 40 pounds and you're staring blankly at stdout."
+                "it is ${hour}:00. you are on your third coffee pretending it's fixing your lack of sleep."
+                "afternoon session. you are 10 minutes away from taking a 3-hour 'nap'."
+            )
+        fi
+
+        if [[ "$dow" == "Fri" && hour -ge 18 ]]; then
+            greetings+=(
+                "it is Friday night. normal people are out having fun. you are ricing your zsh configuration."
+                "Friday night shell spawned. this is peak introversion and we both know it."
+            )
+        elif [[ "$dow" == "Sun" && hour -ge 20 ]]; then
+            greetings+=(
+                "Sunday night panic creeping in. tomorrow morning is coming whether this code compiles or not."
+                "Sunday evening. preparing dotfiles for another week of doing the bare minimum."
             )
         fi
 

@@ -54,6 +54,26 @@ command_not_found_handler() {
         "'$cmd' does not exist. your posture is actively decaying your spine while you debug things that won't matter in six months."
         "zsh: '$cmd' unresolvable. you optimize your workflow to save 3 seconds, then spend 4 hours doomscrolling in bed anyway."
         "error: '$cmd' not found. you hide behind technical perfectionism because if you never finish anything, you can never be judged."
+        "command '$cmd' not found. you typed that with astonishing confidence for someone who has no idea what they're doing."
+        "'$cmd' is not recognized. your mechanical keyboard sounded loud and productive, but the result is literally nothing."
+        "zsh: cannot find '$cmd\. maybe try reading the documentation instead of treating the prompt like a slot machine."
+        "error: '$cmd' missing. you have 6 different font glyph packs configured and zero functional commands."
+        "command '$cmd' failed. was that an actual command or did your cat walk across the homerow?"
+        "zsh: '$cmd' undefined. your shell is silently judging you and honestly so is the rest of the kernel."
+        "failed to execute '$cmd\. you just mashed backspace like that was gonna un-embarrass you."
+        "'$cmd' not found. you're running on caffeine, adrenaline, and pure denial."
+        "zsh: command '$cmd' failed. you have 8 custom alias files and still managed to mistype that."
+        "command '$cmd' missing. even tab-completion threw its hands up and refused to participate in this."
+        "error: '$cmd' does not exist. you're fighting the terminal and the terminal is currently 10-0 against you."
+        "zsh: '$cmd' not found. your dopamine receptors are fried. take your hands off the keyboard."
+        "command '$cmd' failed. this is what happens when you code entirely via vibes and no documentation."
+        "'$cmd' is undefined. you're debugging your terminal while your real life problems compile in the background."
+        "zsh: command '$cmd' not found. your shell history is just a chronicle of someone desperately guessing syntax."
+        "'$cmd' does not exist. you spent 45 minutes finding the perfect blur shader just to typo 'ls'."
+        "error: '$cmd' unresolvable. closing this terminal tab won't undo what you just did."
+        "failed to execute '$cmd\. you're typing at 120 wpm directly into a brick wall."
+        "zsh: '$cmd' missing. maybe if you buy another mechanical keyboard with slightly heavier switches this command will work."
+        "command '$cmd' not found. you could have checked '--help', but you chose violence instead."
     )
 
     # 3am sanity check modifiers
@@ -65,6 +85,8 @@ command_not_found_handler() {
             "command '$cmd' not found. it's ${hour}am. nobody is watching. nobody is impressed. go the fuck to sleep."
             "'$cmd' missing. this late night productivity is just insomnia disguised as ambition."
             "zsh: '$cmd' not found. typing into the dark won't make tomorrow hurt any less."
+            "command '$cmd' failed at ${hour}am. you're entering commands with the cognitive function of a sleepy toddler."
+            "'$cmd' does not exist. close the laptop. the terminal will survive without you until morning."
         )
     fi
 
@@ -75,6 +97,8 @@ command_not_found_handler() {
             "'$cmd' not found. ${_EXISTENTIAL_FAILS} consecutive failures. you're rage-typing into an unfeeling terminal emulator."
             "zsh: '$cmd' missing. you are losing motor control. drink some fucking water."
             "error: '$cmd' not found. ${_EXISTENTIAL_FAILS} misfires back-to-back. the keyboard isn't broken, you are just spiraling."
+            "zsh: '${cmd}' failed. streak of ${_EXISTENTIAL_FAILS} errors. you are basically playing dark souls in a terminal right now."
+            "command '$cmd' not found. ${_EXISTENTIAL_FAILS} typos in a row. your ancestors survived ice ages for you to miss the enter key."
         )
     fi
     
