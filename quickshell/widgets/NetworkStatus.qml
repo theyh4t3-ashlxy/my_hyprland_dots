@@ -17,15 +17,13 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
-    readonly property string netIcon: {
-        if (NetworkService.isWiredConnected) return Theme.iconEthernet;
-        if (!NetworkService.wifiEnabled || !NetworkService.isWifiConnected) return Theme.iconWifiOff;
-        let sig = NetworkService.signalStrength;
-        if (sig >= 75) return Theme.iconWifiHigh;
-        if (sig >= 40) return Theme.iconWifiMed;
-        return Theme.iconWifiLow;
-    }
+    readonly property string netIcon: Theme.getWifiIcon(
+        NetworkService.signalStrength,
+        NetworkService.wifiEnabled && NetworkService.isWifiConnected,
+        NetworkService.isWiredConnected
+    )
 
     Row {
         id: netRow
@@ -50,6 +48,7 @@ Rectangle {
             color: NetworkService.isConnected ? Theme.primary : Theme.on_surface_variant
             elide: Text.ElideRight
             maximumLineCount: 1
+            width: Math.min(implicitWidth, 140)
         }
     }
 
@@ -128,17 +127,24 @@ Rectangle {
 
             // active connection card
             Rectangle {
+                id: activeCard
                 Layout.fillWidth: true
-                height: 56
+                implicitHeight: isRenamingActive ? 64 : 56
                 color: NetworkService.isConnected ? Theme.primary_overlay : Theme.surface_container_highest
                 radius: Theme.radiusMd
                 border.color: NetworkService.isConnected ? Theme.primary : Theme.widgetBorder
                 border.width: 1
 
+                property bool isRenamingActive: false
+
+                Behavior on implicitHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                // Normal view
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: 12
+                    visible: !activeCard.isRenamingActive
 
                     Text {
                         text: NetworkService.isWiredConnected ? Theme.iconEthernet : (NetworkService.isWifiConnected ? Theme.iconWifiHigh : Theme.iconWifiOff)
@@ -151,23 +157,44 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 2
 
-                        Text {
-                            text: NetworkService.activeSsid
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
-                            font.weight: Font.Bold
-                            color: NetworkService.isConnected ? Theme.primary : Theme.on_surface
+                        RowLayout {
+                            spacing: 6
                             Layout.fillWidth: true
-                            elide: Text.ElideRight
+
+                            Text {
+                                text: NetworkService.activeSsid
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSm
+                                font.weight: Font.Bold
+                                color: NetworkService.isConnected ? Theme.primary : Theme.on_surface
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                            }
+
+                            IconButton {
+                                visible: NetworkService.isConnected
+                                icon: Theme.iconEdit
+                                iconSize: 10
+                                tooltip: "rename display name"
+                                onClicked: {
+                                    aliasEditInput.text = Settings.getNetworkAlias(NetworkService.rawActiveSsid);
+                                    activeCard.isRenamingActive = true;
+                                    aliasEditInput.forceActiveFocus();
+                                }
+                            }
                         }
 
                         Text {
                             text: NetworkService.isConnected 
-                                ? (NetworkService.isWiredConnected ? "wired gigabit • connected" : ("connected • " + NetworkService.signalStrength + "% signal"))
+                                ? (NetworkService.isWiredConnected 
+                                    ? "wired gigabit • connected" 
+                                    : ("connected • " + NetworkService.signalStrength + "% signal" + (NetworkService.rawActiveSsid !== NetworkService.activeSsid ? " (" + NetworkService.rawActiveSsid + ")" : "")))
                                 : "disconnected • offline"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             color: Theme.on_surface_variant
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
                         }
                     }
 
@@ -202,6 +229,65 @@ Rectangle {
                                 }
                             }
                         }
+                    }
+                }
+
+                // Inline Rename view
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 6
+                    visible: activeCard.isRenamingActive
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 32
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+                        border.color: aliasEditInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        TextInput {
+                            id: aliasEditInput
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            verticalAlignment: TextInput.AlignVCenter
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            color: Theme.on_surface
+                            onAccepted: {
+                                Settings.setNetworkAlias(NetworkService.rawActiveSsid, text);
+                                activeCard.isRenamingActive = false;
+                            }
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme.iconCheck
+                        iconSize: Theme.fontSizeXs
+                        tooltip: "save local display name"
+                        onClicked: {
+                            Settings.setNetworkAlias(NetworkService.rawActiveSsid, aliasEditInput.text);
+                            activeCard.isRenamingActive = false;
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme.iconTrash
+                        iconSize: Theme.fontSizeXs
+                        tooltip: "reset to real ssid"
+                        onClicked: {
+                            Settings.setNetworkAlias(NetworkService.rawActiveSsid, "");
+                            activeCard.isRenamingActive = false;
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme.iconClose
+                        iconSize: Theme.fontSizeXs
+                        tooltip: "cancel"
+                        onClicked: activeCard.isRenamingActive = false
                     }
                 }
             }
@@ -288,7 +374,8 @@ Rectangle {
                                 spacing: 1
 
                                 Text {
-                                    text: netItem.networkName !== "" ? netItem.networkName : "hidden network"
+                                    readonly property string aliasName: Settings.getNetworkAlias(netItem.networkName)
+                                    text: aliasName !== "" ? aliasName : (netItem.networkName !== "" ? netItem.networkName : "hidden network")
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
                                     font.weight: netItem.isItemConnected ? Font.Bold : Font.Medium
@@ -300,7 +387,9 @@ Rectangle {
                                 RowLayout {
                                     spacing: 4
                                     Text {
-                                        text: netItem.isItemConnected ? "active connection" : (Math.round(netItem.signal <= 1.0 ? netItem.signal * 100 : netItem.signal) + "% signal")
+                                        readonly property string aliasName: Settings.getNetworkAlias(netItem.networkName)
+                                        readonly property string rawHint: (aliasName !== "" && aliasName !== netItem.networkName) ? ("raw: " + netItem.networkName + " • ") : ""
+                                        text: rawHint + (netItem.isItemConnected ? "active connection" : (Math.round(netItem.signal <= 1.0 ? netItem.signal * 100 : netItem.signal) + "% signal"))
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
                                         color: Theme.on_surface_variant

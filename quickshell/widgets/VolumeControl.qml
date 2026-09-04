@@ -32,10 +32,7 @@ Rectangle {
         Text {
             id: volIcon
             anchors.verticalCenter: parent.verticalCenter
-            text: volRoot.muted || volRoot.vol === 0 ? Theme.iconVolMute
-                : volRoot.vol < 0.33                 ? Theme.iconVolLow
-                : volRoot.vol < 0.66                 ? Theme.iconVolMid
-                : Theme.iconVolHigh
+            text: Theme.getVolumeIcon(volRoot.vol, volRoot.muted)
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.primary : (volRoot.muted ? Theme.on_surface_disabled : Theme.on_surface)
@@ -56,6 +53,15 @@ Rectangle {
         }
     }
 
+    function syncAnchor() {
+        const coords = volRoot.mapToItem(null, 0, 0);
+        if (Theme.isVertical) {
+            popup.targetRelativeY = coords.y + (volRoot.height / 2);
+        } else {
+            popup.targetRelativeX = coords.x + (volRoot.width / 2);
+        }
+    }
+
     MouseArea {
         id: vMouse
         anchors.fill: parent
@@ -65,12 +71,8 @@ Rectangle {
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                if (Theme.isVertical) {
-                    popup.targetRelativeY = volRoot.mapToItem(null, 0, 0).y + (volRoot.height / 2);
-                } else {
-                    popup.targetRelativeX = volRoot.mapToItem(null, 0, 0).x + (volRoot.width / 2);
-                }
-                popup.open = !popup.open
+                volRoot.syncAnchor();
+                popup.open = !popup.open;
             } else if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["pavucontrol"]);
             } else if (mouse.button === Qt.MiddleButton) {
@@ -93,7 +95,6 @@ Rectangle {
         id: popup
         cardWidth: 420
         cardHeight: 520
-        targetRelativeX: volRoot.mapToItem(null, 0, 0).x + (volRoot.width / 2)
 
         content: ColumnLayout {
             anchors.fill: parent

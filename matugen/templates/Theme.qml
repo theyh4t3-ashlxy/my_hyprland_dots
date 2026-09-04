@@ -51,7 +51,7 @@ QtObject {
     readonly property color inverse_primary:        "{{colors.inverse_primary.default.hex}}"
     readonly property color source_color:           "{{colors.source_color.default.hex}}"
 
-    // transparent magic so things don't look like concrete
+    // transparent magic so things dont look like concrete
     function alpha(c: color, a: real): color { return Qt.rgba(c.r, c.g, c.b, a) }
 
     readonly property color primary_overlay:        alpha(primary, 0.18)
@@ -70,13 +70,20 @@ QtObject {
     readonly property color textStroke:             "#000000"
     readonly property color textShadow:             "#000000"
 
-    // fonts so text doesn't look like enchantment table hieroglyphs
-    readonly property string fontSans:              Settings.fontFamily ? Settings.fontFamily : "Noto Sans"
-    readonly property string fontMono:              Settings.fontMono ? Settings.fontMono : "JetBrainsMono Nerd Font"
-    readonly property string fontDisplay:           fontSans
+    // fonts so text doesnt look like enchantment table hieroglyphs
+    readonly property string fontSans:              Settings?.fontSans ?? Settings?.fontFamily ?? "Noto Sans"
+    readonly property string fontMono:              Settings?.fontMono ?? "JetBrainsMono Nerd Font"
+    readonly property string fontDisplay:           Settings?.fontDisplay ?? fontSans
+    readonly property string fontVibe:              "Noto Sans, Noto Sans CJK JP, Noto Color Emoji, " + fontSans
     readonly property string fontFamily:            fontSans
 
-    readonly property real   fontScale:             Settings.fontScale ?? 1.0
+    readonly property int    fontWeightLight:       300
+    readonly property int    fontWeightRegular:     400
+    readonly property int    fontWeightMedium:      500
+    readonly property int    fontWeightDemiBold:    600
+    readonly property int    fontWeightBold:        700
+
+    readonly property real   fontScale:             Settings?.fontScale ?? 1.0
     readonly property int    fontSizeXs:            Math.round(9 * fontScale)
     readonly property int    fontSizeSm:            Math.round(11 * fontScale)
     readonly property int    fontSizeMd:            Math.round(13 * fontScale)
@@ -84,13 +91,13 @@ QtObject {
     readonly property int    fontSizeXl:            Math.round(18 * fontScale)
     readonly property int    fontSizeTitle:         Math.round(22 * fontScale)
 
-    // sizing so we don't end up with microscopic shit
+    // sizing so we dont end up with microscopic shit
     readonly property int    radiusSm:              2
     readonly property int    radiusMd:              4
     readonly property int    radiusLg:              8
     readonly property int    radiusPill:            9999
 
-    readonly property int    barHeight:             Settings.barHeight ?? 32
+    readonly property int    barHeight:             Settings?.barHeight ?? 32
     readonly property int    barRadius:             0
     readonly property int    widgetRadius:          radiusSm
     readonly property int    popupRadius:           radiusMd
@@ -121,11 +128,12 @@ QtObject {
     }
 
     readonly property color  cornerFill: {
-        let cm = Settings?.cornerColorMode ?? "theme";
-        if (cm === "pure-black") return "#000000";
-        if (cm === "accent") return primary;
+        let cm = Settings?.cornerColorMode ?? "bar";
         if (cm === "bar") return barBg;
-        return background;
+        if (cm === "accent") return primary;
+        if (cm === "pure-black") return "#000000";
+        if (cm === "theme") return surface_container_low;
+        return barBg;
     }
 
     readonly property color  widgetBg: {
@@ -223,17 +231,25 @@ QtObject {
     readonly property int    popupSpacing:          10
     readonly property int    thumbSize:             180
 
-    // fast transitions so clicking doesn't feel like dial-up
-    readonly property real   animSpeedMult:         Settings?.animSpeed === "hyper" ? 0.5 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)
+    // fast transitions so clicking doesnt feel like dial-up
+    readonly property real   animSpeedMult:         Settings?.animSpeed === "instant" ? 0.01 : (Settings?.animSpeed === "snappy" ? 0.7 : (Settings?.animSpeed === "hyper" ? 0.4 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)))
     readonly property bool   isVertical:            Settings?.barPosition === "left" || Settings?.barPosition === "right"
     readonly property int    animFast:              Math.round(120 * animSpeedMult)
     readonly property int    animNormal:            Math.round(200 * animSpeedMult)
     readonly property int    animSlow:              Math.round(350 * animSpeedMult)
     readonly property var    animEasing:            Easing.OutCubic
 
-    // Icon Set Selection & Dynamic Font
     readonly property string iconSet:               Settings?.iconSet ?? "material"
-    readonly property string fontIcon:              (iconSet === "windows") ? "Segoe Fluent Icons" : fontMono
+    readonly property string fontIcon: {
+        if (iconSet === "windows") return Settings?.fontWindows ?? "Segoe Fluent Icons";
+        if (iconSet === "awesome") {
+            let families = Qt.fontFamilies();
+            let target = Settings?.fontAwesome ?? "Font Awesome 6 Free";
+            if (families.indexOf(target) >= 0) return target;
+            return fontMono;
+        }
+        return Settings?.fontIcon ?? fontMono;
+    }
 
     function getIcon(mat: string, win: string, fa: string): string {
         if (iconSet === "windows") return win;
@@ -241,13 +257,95 @@ QtObject {
         return mat;
     }
 
-    // Core System Icons
+    function getBatteryIcon(pct: int, isCharging: bool, isSaver: bool, isVertical: bool): string {
+        let p = (pct === undefined || pct === null || isNaN(pct)) ? -1 : Math.max(0, Math.min(100, Math.round(pct)));
+        let lvl = p < 0 ? -1 : Math.min(10, Math.floor(p / 10));
+
+        if (iconSet === "windows") {
+            if (lvl < 0) return isVertical ? "\uF608" : "\uE996";
+            if (isVertical) {
+                if (isCharging) {
+                    const chargingV = ["\uF5FD", "\uF5FE", "\uF5FF", "\uF600", "\uF601", "\uF602", "\uF603", "\uF604", "\uF605", "\uF606", "\uF607"];
+                    return chargingV[lvl];
+                }
+                const dischargingV = ["\uF5F2", "\uF5F3", "\uF5F4", "\uF5F5", "\uF5F6", "\uF5F7", "\uF5F8", "\uF5F9", "\uF5FA", "\uF5FB", "\uF5FC"];
+                return dischargingV[lvl];
+            } else {
+                if (isCharging) {
+                    const chargingH = ["\uE85A", "\uE85B", "\uE85C", "\uE85D", "\uE85E", "\uE85F", "\uE860", "\uE861", "\uE862", "\uE83E", "\uEA93"];
+                    return chargingH[lvl];
+                }
+                if (isSaver) {
+                    const saverH = ["\uE863", "\uE864", "\uE865", "\uE866", "\uE867", "\uE868", "\uE869", "\uE86A", "\uE86B", "\uEA94", "\uEA95"];
+                    return saverH[lvl];
+                }
+                const dischargingH = ["\uE850", "\uE851", "\uE852", "\uE853", "\uE854", "\uE855", "\uE856", "\uE857", "\uE858", "\uE859", "\uE83F"];
+                return dischargingH[lvl];
+            }
+        }
+
+        if (iconSet === "awesome") {
+            if (lvl < 0) return "";
+            if (isCharging) return "";
+            if (lvl >= 9) return "";
+            if (lvl >= 7) return "";
+            if (lvl >= 5) return "";
+            if (lvl >= 2) return "";
+            return "";
+        }
+
+        // default: material / nerd font
+        if (lvl < 0) return "󰂎";
+        if (isCharging) {
+            const matCharging = ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"];
+            return matCharging[lvl];
+        }
+        const matDischarging = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"];
+        return matDischarging[lvl];
+    }
+
+    function getVolumeIcon(volRatio: real, isMuted: bool): string {
+        if (isMuted || volRatio <= 0.001) {
+            return iconVolMute;
+        }
+        let pct = Math.round(volRatio * 100);
+        if (iconSet === "windows") {
+            if (pct <= 33) return "\uE993";
+            if (pct <= 66) return "\uE994";
+            return "\uE995";
+        }
+        if (iconSet === "awesome") {
+            if (pct <= 50) return "";
+            return "";
+        }
+        if (pct <= 33) return "󰕿";
+        if (pct <= 66) return "󰖀";
+        return "󰕾";
+    }
+
+    function getWifiIcon(signalPct: int, isConnected: bool, isEthernet: bool): string {
+        if (isEthernet) return iconEthernet;
+        if (!isConnected) return iconWifiOff;
+        let sig = (signalPct === undefined || signalPct === null) ? 0 : signalPct;
+        if (iconSet === "windows") {
+            if (sig < 35) return "\uE872";
+            if (sig < 70) return "\uE873";
+            return "\uE874";
+        }
+        if (iconSet === "awesome") {
+            return "";
+        }
+        if (sig < 35) return "󰤢";
+        if (sig < 70) return "󰤥";
+        return "󰤨";
+    }
+
     readonly property string iconArch:              getIcon("󰣇", "\uE700", "")
     readonly property string iconAppLauncher:       iconArch
     readonly property string iconWorkspaces:        getIcon("󰍹", "\uF0E2", "")
     readonly property string iconSearch:            getIcon("󰍉", "\uE721", "")
     readonly property string iconClose:             getIcon("󰅖", "\uE711", "")
-    readonly property string iconCheck:             getIcon("󰄲", "\uE73E", "")
+    readonly property string iconCheck:             getIcon("󰄬", "\uE73E", "")
     readonly property string iconCheckCircle:       getIcon("󰄲", "\uF13E", "")
     readonly property string iconSettings:          getIcon("󰒓", "\uE713", "")
     readonly property string iconGear:              iconSettings
@@ -255,21 +353,21 @@ QtObject {
     readonly property string iconRefresh:           getIcon("󰑐", "\uE895", "")
     readonly property string iconTrash:             getIcon("󰩹", "\uE74D", "")
     readonly property string iconClipboard:         getIcon("󰅌", "\uF0E3", "")
-    readonly property string iconGrid:              getIcon("󰕰", "\uF0E2", "")
+    readonly property string iconGrid:              getIcon("󰕰", "\uE74C", "")
     readonly property string iconNote:              getIcon("󰏫", "\uE70F", "")
-    readonly property string iconCoffee:            getIcon("󰅐", "\uE703", "")
-    readonly property string iconClock:             getIcon("󰅐", "\uE917", "")
+    readonly property string iconEdit:              iconNote
+    readonly property string iconCoffee:            getIcon("󰅠", "\uE703", "")
+    readonly property string iconClock:             getIcon("󰅐", "\uEC92", "")
     readonly property string iconCpu:               getIcon("󰍛", "\uE9F5", "")
     readonly property string iconMem:               getIcon("󰘚", "\uE772", "")
     readonly property string iconThermo:            getIcon("󰔏", "\uE9CA", "")
     readonly property string iconEye:               getIcon("󰈈", "\uE890", "")
-    readonly property string iconEyeOff:            getIcon("󰈉", "\uE890", "")
+    readonly property string iconEyeOff:            getIcon("󰈉", "\uED1A", "")
     readonly property string iconHeart:             getIcon("󰋑", "\uEB51", "")
     readonly property string iconDownload:          getIcon("󰇚", "\uE896", "")
     readonly property string iconFolder:            getIcon("󰉋", "\uE838", "")
     readonly property string iconGlobe:             getIcon("󰖟", "\uE774", "")
 
-    // Volume & Audio
     readonly property string iconVolMute:           getIcon("󰝟", "\uE74F", "")
     readonly property string iconVolLow:            getIcon("󰕿", "\uE992", "")
     readonly property string iconVolMid:            getIcon("󰖀", "\uE994", "")
@@ -280,19 +378,16 @@ QtObject {
     readonly property string iconHeadphones:        getIcon("󰋋", "\uE7F6", "")
     readonly property string iconEqualizer:         getIcon("󰎎", "\uE9E9", "")
 
-    // Battery
     readonly property string iconBatFull:           getIcon("󰁹", "\uE83F", "")
     readonly property string iconBatHalf:           getIcon("󰁾", "\uE855", "")
     readonly property string iconBatQuarter:        getIcon("󰁼", "\uE852", "")
     readonly property string iconBatEmpty:          getIcon("󰁺", "\uE850", "")
     readonly property string iconBatCharge:         getIcon("󰂄", "\uE83E", "")
 
-    // Display & Brightness
     readonly property string iconSun:               getIcon("󰃠", "\uE706", "")
     readonly property string iconMoon:              getIcon("󰃞", "\uE708", "")
     readonly property string iconBrightness:        iconSun
 
-    // Media & Music
     readonly property string iconMusic:             getIcon("󰝚", "\uE8D6", "")
     readonly property string iconPlay:              getIcon("󰐊", "\uE768", "")
     readonly property string iconPause:             getIcon("󰏤", "\uE769", "")
@@ -300,16 +395,14 @@ QtObject {
     readonly property string iconPrev:              getIcon("󰒮", "\uE892", "")
     readonly property string iconShuffle:           getIcon("󰒝", "\uE8B1", "")
     readonly property string iconRepeat:            getIcon("󰑖", "\uE8EE", "")
-    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8EE", "")
+    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "")
 
-    // Notifications & Wallpapers
     readonly property string iconWallhaven:         getIcon("󰸉", "\uE91B", "")
     readonly property string iconWallpaper:         getIcon("󰸉", "\uE91B", "")
-    readonly property string iconBell:              getIcon("󰂚", "\uE7E7", "")
+    readonly property string iconBell:              getIcon("󰂙", "\uE7E7", "")
     readonly property string iconBellOutline:       getIcon("󰂚", "\uE7E7", "")
     readonly property string iconBellOff:           getIcon("󰂛", "\uEE79", "")
 
-    // Connectivity
     readonly property string iconEthernet:          getIcon("󰈀", "\uE839", "")
     readonly property string iconWifi:              getIcon("󰤨", "\uE701", "")
     readonly property string iconWifiHigh:          getIcon("󰤨", "\uE874", "")
@@ -320,7 +413,6 @@ QtObject {
     readonly property string iconBluetoothConnected:getIcon("󰂱", "\uE702", "")
     readonly property string iconBluetoothOff:      getIcon("󰂲", "\uE702", "")
 
-    // Power & Session
     readonly property string iconPower:             getIcon("󰐥", "\uE7E8", "")
     readonly property string iconShutdown:          iconPower
     readonly property string iconLock:              getIcon("󰌾", "\uE72E", "")
@@ -329,7 +421,6 @@ QtObject {
     readonly property string iconSuspend:           getIcon("󰤄", "\uE708", "")
     readonly property string iconHibernate:         getIcon("󰒲", "\uE708", "")
 
-    // Navigation & Chevrons
     readonly property string iconChevronRight:      getIcon("󰅂", "\uE974", "")
     readonly property string iconChevronLeft:       getIcon("󰅁", "\uE973", "")
     readonly property string iconChevronDown:       getIcon("󰅀", "\uE972", "")
@@ -337,8 +428,18 @@ QtObject {
     readonly property string iconFlame:             getIcon("󰈸", "\uE7E8", "")
     readonly property string iconSparkles:          getIcon("󰓏", "\uE7C5", "")
     readonly property string iconRadio:             getIcon("󰐹", "\uE8D6", "")
-    readonly property string iconSliders:           getIcon("󰝚", "\uE9E9", "")
-    readonly property string iconTerminal:          getIcon("", "\uE756", "")
+    readonly property string iconSliders:           getIcon("󰘮", "\uE9E9", "")
+    readonly property string iconTerminal:          getIcon("󰆍", "\uE756", "")
+    readonly property string iconCalendar:          getIcon("󰸉", "\uE787", "")
+    readonly property string iconHistory:           getIcon("󰋚", "\uE81C", "")
+    readonly property string iconCopy:              getIcon("󰆏", "\uE8C8", "")
+    readonly property string iconExternalLink:      getIcon("󰌹", "\uE8A7", "")
+    readonly property string iconSignal:            getIcon("󰈀", "\uE874", "")
+    readonly property string iconFilter:            getIcon("󰈲", "\uE71C", "")
+    readonly property string iconUser:              getIcon("󰄛", "\uE77B", "")
+    readonly property string iconShield:            getIcon("󰞌", "\uEA18", "")
+    readonly property string iconExpand:            getIcon("󰁌", "\uE740", "")
+    readonly property string iconCollapse:          getIcon("󰁋", "\uE73F", "")
 
     // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
@@ -374,12 +475,63 @@ QtObject {
     readonly property string kaoTableFlip:          "(╯°□°)╯︵ ┻━┻"
     readonly property string kaoPutBack:            "┬─┬ノ( º _ ºノ)"
 
-    // Vibe Resolver (kaomoji / nerd / text)
-    function getVibe(kao, nerd, text) {
+    function getVibe(kao: string, nerd: string, text: string): string {
         let style = Settings?.vibeStyle ?? "nerd";
         if (style === "kaomoji") return kao;
         if (style === "nerd") return nerd;
         return text ?? "";
     }
-}
 
+    // unhinged flavor generator for contextual system quotes
+    function getFlavor(category: string, fallback: string): string {
+        if (!Settings?.unhingedFlavor) return fallback ?? "";
+        let quotes = {
+            "network_on": [
+                "beaming photons into brain",
+                "locked into the grid",
+                "surveillance feed online",
+                "5G brain waves active"
+            ],
+            "network_off": [
+                "off the grid, touching grass",
+                "wifi machine broke",
+                "radio silence",
+                "airgapped paranoia"
+            ],
+            "battery_charging": [
+                "injecting pure voltage",
+                "drinking from the wall",
+                "fast charging go brrr"
+            ],
+            "battery_low": [
+                "running on fumes",
+                "im literally dying",
+                "plug me in coward"
+            ],
+            "battery_full": [
+                "overflowing with juice",
+                "100% pure power",
+                "ready for chaos"
+            ],
+            "media_quiet": [
+                "dead silence",
+                "eerie calm",
+                "no bangers playing"
+            ],
+            "notes_empty": [
+                "head empty, no thoughts",
+                "void of ideas",
+                "not a single braincell"
+            ],
+            "system": [
+                "barely holding together",
+                "no crashes yet (suspicious)",
+                "kernel is vibing"
+            ]
+        };
+        let list = quotes[category];
+        if (!list || list.length === 0) return fallback ?? "";
+        let idx = Math.floor(Date.now() / 60000) % list.length;
+        return list[idx];
+    }
+}

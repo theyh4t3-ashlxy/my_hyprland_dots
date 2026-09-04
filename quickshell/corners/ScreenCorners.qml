@@ -1,8 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import ".."
-import "../corners" // or "." depending on where this lives
+import "../corners"
 
 PanelWindow {
     id: root
@@ -29,6 +30,8 @@ PanelWindow {
     // ghost mode — click straight through this fullscreen overlay
     mask: Region {}
 
+    readonly property bool isFullscreen: Hyprland.focusedWorkspace?.hasFullscreen ?? false
+
     readonly property string mode: Theme?.screenCornerMode ?? "all"
     readonly property string rawBarPos: Settings?.barPosition ?? "up"
     readonly property string barPos: (rawBarPos === "up" || rawBarPos === "top") ? "top" : ((rawBarPos === "down" || rawBarPos === "bottom") ? "bottom" : rawBarPos)
@@ -41,11 +44,12 @@ PanelWindow {
     readonly property bool showBottomLeft: mode === "all" || mode === "bottom" || mode === "down" || mode === "left" || (mode === "opposite" && barPos !== "bottom" && barPos !== "left")
     readonly property bool showBottomRight: mode === "all" || mode === "bottom" || mode === "down" || mode === "right" || (mode === "opposite" && barPos !== "bottom" && barPos !== "right")
 
-    // don't waste compositor cycles on invisible zero-radius overlays
-    visible: root.cornerRadius > 0 && root.mode !== "none"
+    visible: root.cornerRadius > 0 && root.mode !== "none" && !root.isFullscreen
 
     Item {
         anchors.fill: parent
+        opacity: root.isFullscreen ? 0.0 : 1.0
+        Behavior on opacity { NumberAnimation { duration: Theme.animNormal } }
 
         // top left screen scoop
         ConcaveCorner {

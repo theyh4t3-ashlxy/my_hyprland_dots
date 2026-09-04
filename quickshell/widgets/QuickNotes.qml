@@ -81,7 +81,7 @@ Rectangle {
             });
         }
         let jsonStr = JSON.stringify(arr, null, 2);
-        Quickshell.execDetached(["python3", "-c", 'import sys, json, os; os.makedirs("/home/ashley/.local/share/quickshell", exist_ok=True); open("/home/ashley/.local/share/quickshell/notes.json", "w").write(sys.argv[1])', jsonStr]);
+        notesFile.setText(jsonStr);
     }
 
     Component.onCompleted: {
@@ -163,7 +163,7 @@ Rectangle {
                     onClicked: {
                         if (notesModel.count > root.activeIndex) {
                             let textToCopy = notesModel.get(root.activeIndex).content;
-                            Quickshell.execDetached(["wl-copy", textToCopy]);
+                            Quickshell.clipboardText = textToCopy;
                             root.copiedFeedback = true;
                             copyTimer.restart();
                         }

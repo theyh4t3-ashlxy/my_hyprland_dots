@@ -35,7 +35,12 @@ Rectangle {
 
                 IconImage {
                     id: trayIconV
-                    source: modelData.icon || ""
+                    source: {
+                        let ic = modelData.icon || "";
+                        if (!ic) return "";
+                        if (ic.startsWith("/") || ic.startsWith("file://") || ic.startsWith("image://")) return ic;
+                        return Quickshell.iconPath(ic);
+                    }
                     anchors.centerIn: parent
                     width: 16
                     height: 16
@@ -79,7 +84,12 @@ Rectangle {
 
                 IconImage {
                     id: trayIconH
-                    source: modelData.icon || ""
+                    source: {
+                        let ic = modelData.icon || "";
+                        if (!ic) return "";
+                        if (ic.startsWith("/") || ic.startsWith("file://") || ic.startsWith("image://")) return ic;
+                        return Quickshell.iconPath(ic);
+                    }
                     anchors.centerIn: parent
                     width: 16
                     height: 16

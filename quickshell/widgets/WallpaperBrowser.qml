@@ -549,9 +549,9 @@ Rectangle {
                                 icon: Theme.iconClipboard
                                 tooltip: "paste url from clipboard"
                                 onClicked: {
-                                    let pasteProc = Qt.createQmlObject("import Quickshell.Io; Process { id: proc; command: [\"wl-paste\"]; stdout: SplitParser { onRead: data => { liveUrlInput.text = data.trim(); } } }", root, "pasteProc");
-                                    pasteProc.exited.connect(function() { pasteProc.destroy(); });
-                                    pasteProc.running = true;
+                                    if (Quickshell.clipboardText) {
+                                        liveUrlInput.text = Quickshell.clipboardText.trim();
+                                    }
                                 }
                             }
 

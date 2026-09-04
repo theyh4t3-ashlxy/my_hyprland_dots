@@ -28,6 +28,12 @@ Rectangle {
         }
     }
 
+    function getDayOfYear(d) {
+        let start = new Date(d.getFullYear(), 0, 0);
+        let diff = (d - start) + ((start.getTimezoneOffset() - d.getTimezoneOffset()) * 60 * 1000);
+        return Math.floor(diff / 86400000);
+    }
+
     Text {
         id: timeText
         anchors.centerIn: parent
@@ -43,7 +49,10 @@ Rectangle {
                      : (hrs < 18) ? Theme.getVibe(Theme.kaoCool, "󰖙", "")
                      : Theme.getVibe(Theme.kaoMusic, "󰖔", "");
             let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
-            return mood !== "" ? (mood + " " + timeStr) : timeStr;
+            let dateFmt = Settings.dateFormat || "";
+            let dateStr = dateFmt !== "" ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
+            let combo = (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
+            return mood !== "" ? (mood + " " + combo) : combo;
         }
         font.family: Theme.fontFamily
         font.pixelSize: Theme.isVertical ? 10 : Theme.fontSizeMd
@@ -61,8 +70,8 @@ Rectangle {
             calPopup.targetRelativeY = clockRoot.mapToItem(null, 0, 0).y + (clockRoot.height / 2)
             calPopup.open = !calPopup.open
             if (calPopup.open) {
-                clockRoot.selectedYear = clockRoot.now.getFullYear();
-                clockRoot.selectedMonth = clockRoot.now.getMonth();
+                clockRoot.selectedYear = clockRoot.now.getFullYear()
+                clockRoot.selectedMonth = clockRoot.now.getMonth()
             }
         }
     }
@@ -70,18 +79,18 @@ Rectangle {
     // Welded Calendar & Date Overview Popup
     PopupPanel {
         id: calPopup
-        cardWidth: 420
-        cardHeight: 460
+        cardWidth: 360
+        cardHeight: 480
 
         content: ColumnLayout {
             anchors.fill: parent
-            spacing: Theme.popupSpacing
+            spacing: Theme.widgetSpacing
 
-            // Header with full date, digital time with live seconds & kaomoji
+            // Calendar Header: Current Date & Time
             Rectangle {
                 Layout.fillWidth: true
-                height: 70
-                radius: Theme.radiusMd
+                height: 64
+                radius: Theme.widgetRadius
                 color: Theme.surface_container_highest
                 border.color: Theme.widgetBorder
                 border.width: 1
@@ -96,7 +105,7 @@ Rectangle {
                         spacing: 2
 
                         Text {
-                            text: Qt.formatDateTime(clockRoot.now, "dddd, MMMM d, yyyy")
+                            text: Qt.formatDateTime(clockRoot.now, (Settings.dateFormat && Settings.dateFormat !== "") ? Settings.dateFormat : "dddd, MMMM d, yyyy")
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
                             font.weight: Font.Bold
@@ -104,7 +113,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: "day " + Qt.formatDateTime(clockRoot.now, "DDD") + " of " + clockRoot.now.getFullYear()
+                            text: "day " + clockRoot.getDayOfYear(clockRoot.now) + " of " + clockRoot.now.getFullYear()
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             color: Theme.on_surface_variant
@@ -154,8 +163,8 @@ Rectangle {
                 }
 
                 IconButton {
-                    icon: ""
-                    iconSize: Theme.fontSizeXs
+                    icon: Theme.iconChevronLeft
+                    iconSize: Theme.fontSizeSm
                     tooltip: "previous month"
                     onClicked: {
                         if (clockRoot.selectedMonth === 0) {
@@ -168,8 +177,8 @@ Rectangle {
                 }
 
                 IconButton {
-                    icon: ""
-                    iconSize: Theme.fontSizeXs
+                    icon: Theme.iconClock
+                    iconSize: Theme.fontSizeSm
                     tooltip: "jump to today"
                     onClicked: {
                         clockRoot.selectedYear = clockRoot.now.getFullYear();
@@ -178,8 +187,8 @@ Rectangle {
                 }
 
                 IconButton {
-                    icon: ""
-                    iconSize: Theme.fontSizeXs
+                    icon: Theme.iconChevronRight
+                    iconSize: Theme.fontSizeSm
                     tooltip: "next month"
                     onClicked: {
                         if (clockRoot.selectedMonth === 11) {
@@ -224,7 +233,7 @@ Rectangle {
                 }
             }
 
-            // Calendar Days Grid (6 rows x 7 columns)
+            // Calendar Days Grid (5 or 6 rows x 7 columns)
             GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -236,19 +245,23 @@ Rectangle {
                     model: {
                         let y = clockRoot.selectedYear;
                         let m = clockRoot.selectedMonth;
-                        let firstDay = new Date(y, m, 1).getDay(); // 0 = Sun, 1 = Mon
-                        let offset = (firstDay === 0) ? 6 : firstDay - 1; // standard Monday-first
+                        let firstDay = new Date(y, m, 1).getDay();
+                        let offset = (firstDay === 0) ? 6 : firstDay - 1;
                         let daysInMonth = new Date(y, m + 1, 0).getDate();
+                        let prevDaysInMonth = new Date(y, m, 0).getDate();
                         let cells = [];
-                        for (let i = 0; i < offset; i++) {
-                            cells.push({ day: 0, currentMonth: false });
+
+                        for (let i = offset - 1; i >= 0; i--) {
+                            cells.push({ day: prevDaysInMonth - i, currentMonth: false, isToday: false });
                         }
                         for (let d = 1; d <= daysInMonth; d++) {
                             let isToday = (y === clockRoot.now.getFullYear() && m === clockRoot.now.getMonth() && d === clockRoot.now.getDate());
                             cells.push({ day: d, currentMonth: true, isToday: isToday });
                         }
-                        while (cells.length < 35) {
-                            cells.push({ day: 0, currentMonth: false });
+                        let totalCells = (cells.length > 35) ? 42 : 35;
+                        let nextDay = 1;
+                        while (cells.length < totalCells) {
+                            cells.push({ day: nextDay++, currentMonth: false, isToday: false });
                         }
                         return cells;
                     }
@@ -258,31 +271,52 @@ Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         radius: Theme.radiusSm
-                        color: (modelData.day > 0 && modelData.isToday)
+                        color: (modelData.currentMonth && modelData.isToday)
                             ? Theme.primary
-                            : (modelData.day > 0 && dayMouse.containsMouse)
+                            : (dayMouse.containsMouse && modelData.day > 0)
                                 ? Theme.surface_container_highest
                                 : "transparent"
 
-                        border.color: (modelData.day > 0 && modelData.isToday) ? Theme.primary : "transparent"
+                        border.color: (modelData.currentMonth && modelData.isToday) ? Theme.primary : "transparent"
                         border.width: 1
 
                         Text {
                             anchors.centerIn: parent
-                            text: modelData.day > 0 ? modelData.day : ""
+                            text: modelData.day
                             font.family: Theme.fontMono
                             font.pixelSize: 11
                             font.weight: modelData.isToday ? Font.Bold : Font.Normal
-                            color: modelData.isToday
+                            color: (modelData.currentMonth && modelData.isToday)
                                 ? Theme.on_primary
-                                : (modelData.currentMonth ? Theme.on_surface : Theme.on_surface_variant)
+                                : (modelData.currentMonth ? Theme.on_surface : Theme.on_surface_disabled)
                         }
 
                         MouseArea {
                             id: dayMouse
                             anchors.fill: parent
-                            enabled: modelData.day > 0
                             hoverEnabled: true
+                            cursorShape: modelData.currentMonth ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            onClicked: {
+                                if (!modelData.currentMonth) {
+                                    if (modelData.day > 15) {
+                                        // clicked day in previous month
+                                        if (clockRoot.selectedMonth === 0) {
+                                            clockRoot.selectedMonth = 11;
+                                            clockRoot.selectedYear--;
+                                        } else {
+                                            clockRoot.selectedMonth--;
+                                        }
+                                    } else {
+                                        // clicked day in next month
+                                        if (clockRoot.selectedMonth === 11) {
+                                            clockRoot.selectedMonth = 0;
+                                            clockRoot.selectedYear++;
+                                        } else {
+                                            clockRoot.selectedMonth++;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

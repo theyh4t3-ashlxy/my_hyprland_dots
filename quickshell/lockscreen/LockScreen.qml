@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
 import Quickshell.Services.UPower
+import Quickshell.Services.Pam
 
 Scope {
     id: lockRoot
@@ -36,27 +37,24 @@ Scope {
         }
     }
 
-    function tryUnlock(pw) {
-        if (isChecking || !pw || pw.length === 0) return;
+    property string pendingPassword: ""
 
-        isChecking = true;
-        authFailed = false;
+    PamContext {
+        id: pam
+        config: "login"
+        user: Quickshell.env("USER")
 
-        // write via stdin to keep it out of ps aux
-        authProc.running = true;
-        authProc.write(pw + "\n");
-    }
+        onPamMessage: {
+            if (responseRequired && lockRoot.pendingPassword) {
+                pam.respond(lockRoot.pendingPassword);
+            }
+        }
 
-    Process {
-        id: authProc
-        command: [
-            "python3",
-            Quickshell.env("HOME") + "/.config/quickshell/scripts/auth.py"
-        ]
-        running: false
-        onExited: (code) => {
+        onCompleted: (result) => {
             lockRoot.isChecking = false;
-            if (code === 0) {
+            lockRoot.pendingPassword = "";
+            let success = (result === 0 || PamResult.toString(result) === "Success");
+            if (success) {
                 lockRoot.locked = false;
                 lockRoot.authFailed = false;
             } else {
@@ -65,6 +63,23 @@ Scope {
                 shakeTimer.restart();
             }
         }
+
+        onError: (err) => {
+            lockRoot.isChecking = false;
+            lockRoot.pendingPassword = "";
+            lockRoot.authFailed = true;
+            shakeAnim.restart();
+            shakeTimer.restart();
+        }
+    }
+
+    function tryUnlock(pw) {
+        if (isChecking || !pw || pw.length === 0) return;
+
+        isChecking = true;
+        authFailed = false;
+        pendingPassword = pw;
+        pam.start();
     }
 
     Timer {

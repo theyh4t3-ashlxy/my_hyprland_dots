@@ -1,317 +1,294 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../controls"
 import Quickshell
 import Quickshell.Widgets
-import Quickshell.Services.Notifications
 
-Item {
-    id: cardRoot
+Rectangle {
+    id: root
 
-    property var notifData: null
-    property int cardIndex: 0
-    signal closed()
+    required property var notificationItem
+    readonly property var notif: notificationItem
+    signal dismissed()
 
-    readonly property string pos: Settings?.barPosition ?? "up"
-    readonly property bool isTop: pos === "up" || pos === "top"
-    readonly property bool isCritical: (notifData?.urgency ?? 1) === NotificationUrgency.Critical
-    readonly property bool hasTimer: (notifData?.expireTimeout ?? 5000) > 0 && !isCritical
-    readonly property int timeoutMs: notifData?.expireTimeout > 0 ? notifData.expireTimeout : 5000
+    property int timeoutMs: {
+        if (!notif) return 5000;
+        if (notif.expireTimeout > 0) return notif.expireTimeout;
+        if (notif.expireTimeout === 0) return 0;
+        return notif.urgency === 2 ? 10000 : 5000;
+    }
+
+    property bool dockTop: false
+    property bool dockBottom: false
+    property bool dockLeft: false
+    property bool dockRight: false
 
     width: 360
-    implicitHeight: cardBody.height
-    height: implicitHeight
+    implicitHeight: col.implicitHeight + 24
+    readonly property real defaultRadius: Theme?.widgetRadius ?? 14
+    topLeftRadius: (dockTop || dockLeft) ? 0 : defaultRadius
+    topRightRadius: (dockTop || dockRight) ? 0 : defaultRadius
+    bottomLeftRadius: (dockBottom || dockLeft) ? 0 : defaultRadius
+    bottomRightRadius: (dockBottom || dockRight) ? 0 : defaultRadius
+    color: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+    border.color: notif?.urgency === 2 ? Theme.error : (Theme?.widgetBorder ?? "#33ffffff")
+    border.width: 1
+    clip: true
 
-    property real morphProgress: 0.0
+    // safely resolve icon path to prevent qrc missing-icon warnings
+    readonly property string resolvedIcon: {
+        if (!root.notif?.appIcon) return "";
+        let path = Quickshell.iconPath(root.notif.appIcon);
+        return path || "";
+    }
+
+    // dynamic slide & fade entrance/exit
+    property real slideOffset: 80
+    property real cardOpacity: 0.0
+
+    transform: Translate {
+        x: root.slideOffset
+    }
+    opacity: root.cardOpacity
+
+    Component.onCompleted: {
+        enterAnim.restart();
+    }
 
     ParallelAnimation {
-        id: morphAnim
+        id: enterAnim
         NumberAnimation {
-            target: cardRoot
-            property: "morphProgress"
+            target: root
+            property: "slideOffset"
+            from: 80
+            to: 0
+            duration: 240
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: root
+            property: "cardOpacity"
             from: 0.0
             to: 1.0
-            duration: 180
+            duration: 200
             easing.type: Easing.OutCubic
         }
     }
 
     ParallelAnimation {
-        id: dismissAnim
-        NumberAnimation { target: cardRoot; property: "morphProgress"; to: 0.0; duration: 140; easing.type: Easing.InCubic }
-        onFinished: {
-            // telling dbus we killed it so the client app stops waiting
-            if (cardRoot.notifData?.notifRef?.dismiss) {
-                cardRoot.notifData.notifRef.dismiss();
-            }
-            cardRoot.closed();
+        id: exitAnim
+        NumberAnimation {
+            target: root
+            property: "slideOffset"
+            to: 80
+            duration: 180
+            easing.type: Easing.InCubic
         }
+        NumberAnimation {
+            target: root
+            property: "cardOpacity"
+            to: 0.0
+            duration: 150
+            easing.type: Easing.InCubic
+        }
+        onFinished: root.dismissed()
     }
 
-    Component.onCompleted: {
-        morphAnim.restart();
-        if (hasTimer) progressAnim.start();
+    function dismissToast() {
+        progressTimer.stop();
+        exitAnim.restart();
     }
 
-    function dismiss() {
-        if (!dismissAnim.running) dismissAnim.start();
-    }
+    readonly property bool isHovered: cardMouse.containsMouse
 
-    // physical card body
-    Rectangle {
-        id: cardBody
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: 360
-        height: Math.max(1, cardRoot.morphProgress * (contentLayout.implicitHeight + 24 + (cardRoot.hasTimer ? 3 : 0)))
-        radius: Theme.popupRadius ?? 16
-        color: cardRoot.isCritical ? Theme.error_container : Theme.popupBg
-        clip: true
+    // elapsed timer avoids setPaused() warnings on NumberAnimation
+    property real elapsedMs: 0
+    readonly property real progressRatio: root.timeoutMs > 0 ? Math.max(0.0, 1.0 - (elapsedMs / root.timeoutMs)) : 1.0
 
-        border.color: cardRoot.isCritical ? Theme.error : (isHovered ? Theme.primary : Theme.popupBorderColor)
-        border.width: cardRoot.isCritical ? 2 : 1
-
-        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-
-        // persistent hover so child buttons don't resume timer
-        readonly property bool isHovered: cardMouse.containsMouse || closeMouse.containsMouse
-
-        onIsHoveredChanged: {
-            if (!cardRoot.hasTimer) return;
-            if (isHovered && progressAnim.running) {
-                progressAnim.pause();
-            } else if (!isHovered && progressAnim.paused) {
-                progressAnim.resume();
+    Timer {
+        id: progressTimer
+        interval: 40
+        repeat: true
+        running: root.timeoutMs > 0 && !root.isHovered
+        onTriggered: {
+            root.elapsedMs += 40;
+            if (root.elapsedMs >= root.timeoutMs) {
+                root.dismissToast();
             }
         }
+    }
 
-        MouseArea {
-            id: cardMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
+    MouseArea {
+        id: cardMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.ArrowCursor
+    }
 
-            onClicked: {
-                // invoke default dbus action on card click
-                const acts = notifData?.notifRef?.actions ?? notifData?.actions;
-                if (acts) {
-                    const count = acts.count ?? acts.length ?? 0;
-                    for (let i = 0; i < count; i++) {
-                        const act = acts.get ? acts.get(i) : acts[i];
-                        if (act && (act.id === "default" || act.id === "0")) {
-                            act.invoke();
-                            break;
-                        }
+    ColumnLayout {
+        id: col
+        anchors.fill: parent
+        anchors.margins: 14
+        anchors.bottomMargin: root.timeoutMs > 0 ? 18 : 14
+        spacing: 8
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Rectangle {
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                radius: Theme?.radiusSm ?? 6
+                color: Theme?.surface_container_highest ?? "#2a2a3c"
+                clip: true
+
+                IconImage {
+                    id: notifIconImg
+                    anchors.centerIn: parent
+                    width: 16
+                    height: 16
+                    source: root.resolvedIcon
+                    visible: root.resolvedIcon !== "" && notifIconImg.status !== Image.Error
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: root.resolvedIcon === "" || notifIconImg.status === Image.Error
+                    text: Theme?.iconBell ?? "󰂚"
+                    font.family: Theme?.fontIcon ?? Theme?.fontMono
+                    font.pixelSize: 12
+                    color: Theme?.primary ?? "#89b4fa"
+                }
+            }
+
+            Text {
+                text: (root.notif?.appName || "system").toLowerCase()
+                font.family: Theme?.fontFamily ?? "sans-serif"
+                font.pixelSize: Theme?.fontSizeXs ?? 11
+                font.weight: Font.Bold
+                color: Theme?.primary ?? "#89b4fa"
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+
+            IconButton {
+                icon: Theme?.iconClose ?? "󰅖"
+                iconSize: 12
+                Layout.preferredWidth: 20
+                Layout.preferredHeight: 20
+                tooltip: "dismiss"
+                onClicked: {
+                    root.dismissToast();
+                    if (root.notif && typeof root.notif.dismiss === "function") {
+                        try { root.notif.dismiss(); } catch (e) {}
                     }
                 }
-                cardRoot.dismiss();
             }
         }
 
-        // unrolling inner content without visual seizures
-        Item {
-            width: cardBody.width
-            height: contentLayout.implicitHeight + 24
-            y: cardRoot.isTop ? (cardRoot.morphProgress - 1.0) * 16 : (1.0 - cardRoot.morphProgress) * 16
-            opacity: Math.max(0.0, (cardRoot.morphProgress - 0.2) / 0.8)
+        Text {
+            text: root.notif?.summary ?? ""
+            font.family: Theme?.fontFamily ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeMd ?? 14
+            font.weight: Font.DemiBold
+            color: Theme?.on_surface ?? "#cdd6f4"
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            visible: text !== ""
+        }
 
-            ColumnLayout {
-                id: contentLayout
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: 12
-                spacing: 8
+        Text {
+            text: root.notif?.body ?? ""
+            font.family: Theme?.fontFamily ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeSm ?? 12
+            color: Theme?.on_surface_variant ?? "#a6adc8"
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            textFormat: Text.AutoText
+            visible: text !== ""
+            maximumLineCount: 6
+            elide: Text.ElideRight
+        }
 
-                // header row
-                RowLayout {
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 120
+            radius: Theme?.radiusSm ?? 6
+            color: "transparent"
+            clip: true
+            visible: Boolean(root.notif?.image)
+
+            Image {
+                anchors.fill: parent
+                source: root.notif?.image ?? ""
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            visible: Boolean(root.notif?.actions && root.notif.actions.length > 0)
+
+            Repeater {
+                model: root.notif?.actions ?? []
+
+                delegate: Rectangle {
+                    required property var modelData
                     Layout.fillWidth: true
-                    spacing: 8
+                    height: 28
+                    radius: Theme?.radiusSm ?? 6
+                    color: actMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                    border.color: Theme?.widgetBorder ?? "#33ffffff"
+                    border.width: 1
 
-                    Rectangle {
-                        Layout.preferredWidth: 24
-                        Layout.preferredHeight: 24
-                        radius: Theme.radiusSm ?? 6
-                        color: cardRoot.isCritical ? Theme.error : Theme.surface_container_high
-
-                        IconImage {
-                            id: appIconImg
-                            anchors.centerIn: parent
-                            width: 16
-                            height: 16
-                            source: {
-                                let ic = notifData?.icon || notifData?.appIcon || "";
-                                return (ic && ic.trim() !== "") ? Quickshell.iconPath(ic, "") : "";
-                            }
-                            visible: status === Image.Ready && source !== ""
-                        }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: cardRoot.isCritical ? "󰅚" : Theme.iconBell
-                            font.family: Theme.fontMono
-                            font.pixelSize: 12
-                            color: cardRoot.isCritical ? Theme.on_error : Theme.primary
-                            visible: !appIconImg.visible
-                        }
-                    }
+                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 120 } }
 
                     Text {
-                        text: (notifData?.appName || "system").toLowerCase()
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
-                        font.weight: Font.Bold
-                        color: cardRoot.isCritical ? Theme.on_error_container : Theme.primary
-                        Layout.fillWidth: true
+                        anchors.centerIn: parent
+                        text: (modelData.text || modelData.id || "action").toLowerCase()
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 11
+                        font.weight: Font.Medium
+                        color: actMouse.containsMouse ? Theme.primary : Theme.on_surface
                         elide: Text.ElideRight
+                        width: parent.width - 12
+                        horizontalAlignment: Text.AlignHCenter
                     }
 
-                    Rectangle {
-                        id: closeBtn
-                        Layout.preferredWidth: 22
-                        Layout.preferredHeight: 22
-                        radius: 11
-                        color: closeMouse.containsMouse ? Theme.surface_variant : "transparent"
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: Theme.iconClose
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 10
-                            color: Theme.on_surface_variant
-                        }
-
-                        MouseArea {
-                            id: closeMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: cardRoot.dismiss()
-                        }
-                    }
-                }
-
-                // summary / title
-                Text {
-                    text: notifData?.summary ?? ""
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeMd
-                    font.weight: Font.Bold
-                    textFormat: Text.StyledText
-                    color: cardRoot.isCritical ? Theme.on_error_container : Theme.on_surface
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text !== ""
-                }
-
-                // rich attachment preview
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 130
-                    radius: Theme.radiusMd ?? 8
-                    color: Theme.surface_container_highest
-                    clip: true
-                    visible: notifData?.image !== undefined && notifData?.image !== ""
-
-                    Image {
+                    MouseArea {
+                        id: actMouse
                         anchors.fill: parent
-                        source: notifData?.image ? (notifData.image.startsWith("/") ? ("file://" + notifData.image) : notifData.image) : ""
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                    }
-                }
-
-                // body text
-                Text {
-                    text: notifData?.body ?? ""
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeSm
-                    textFormat: Text.StyledText
-                    color: cardRoot.isCritical ? Theme.on_error_container : Theme.on_surface_variant
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 6
-                    elide: Text.ElideRight
-                    visible: text !== ""
-                }
-
-                // action buttons (safe extraction for both raw arrays and QQmlListModel)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    visible: filteredActions.length > 0
-
-                    // extracting actions before qt listmodel throws another tantrum
-                    readonly property var filteredActions: {
-                        const acts = cardRoot.notifData?.notifRef?.actions ?? cardRoot.notifData?.actions;
-                        if (!acts) return [];
-
-                        const result = [];
-                        const count = acts.count ?? acts.length ?? 0;
-                        for (let i = 0; i < count; i++) {
-                            const act = acts.get ? acts.get(i) : acts[i];
-                            if (act && act.id !== "default" && act.id !== "0") {
-                                result.push(act);
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modelData && typeof modelData.invoke === "function") {
+                                modelData.invoke();
                             }
-                        }
-                        return result;
-                    }
-
-                    Repeater {
-                        model: parent.filteredActions
-
-                        delegate: Rectangle {
-                            required property var modelData
-                            Layout.fillWidth: true
-                            height: 28
-                            radius: Theme.radiusPill ?? 14
-                            color: actBtnMouse.containsMouse ? Theme.primary : Theme.surface_container_high
-
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-                            Text {
-                                text: modelData.text || modelData.id
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
-                                font.weight: Font.Medium
-                                color: actBtnMouse.containsMouse ? Theme.on_primary : Theme.on_surface
-                                anchors.centerIn: parent
-                                elide: Text.ElideRight
-                            }
-
-                            MouseArea {
-                                id: actBtnMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    modelData.invoke();
-                                    cardRoot.dismiss();
-                                }
-                            }
+                            root.dismissToast();
                         }
                     }
                 }
             }
         }
+    }
 
-        // countdown timer bar
+    Rectangle {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 3
+        color: Theme?.surface_container_highest ?? "#2a2a3c"
+        visible: root.timeoutMs > 0
+
         Rectangle {
             id: progressBar
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            height: 2
-            color: cardRoot.isCritical ? Theme.error : Theme.primary
-            visible: cardRoot.hasTimer
-
-            NumberAnimation {
-                id: progressAnim
-                target: progressBar
-                property: "width"
-                from: 360
-                to: 0
-                duration: cardRoot.timeoutMs
-                onFinished: cardRoot.dismiss()
-            }
+            height: parent.height
+            color: notif?.urgency === 2 ? Theme.error : Theme.primary
+            width: parent.width * root.progressRatio
         }
     }
 }

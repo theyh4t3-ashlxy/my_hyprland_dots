@@ -15,13 +15,10 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
-    readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/caffeine.sh"
-    property bool active: !IdleService.enabled
+    readonly property bool active: !IdleService.enabled
 
     function toggleInhibit() {
         IdleService.enabled = !IdleService.enabled;
-        active = !IdleService.enabled;
-        Quickshell.execDetached([scriptPath, active ? "start" : "stop"]);
     }
 
     Row {

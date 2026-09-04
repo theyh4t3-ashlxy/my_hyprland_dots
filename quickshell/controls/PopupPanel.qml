@@ -22,10 +22,15 @@ PanelWindow {
     readonly property bool isRight: pos === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
-    readonly property real scoopH: Theme?.scoopRadiusY ?? 16
+    readonly property real scoopW: Math.max(16, Theme?.scoopRadiusX ?? 16)
+    readonly property real scoopH: Math.max(16, Theme?.scoopRadiusY ?? 16)
     readonly property real marginX: scoopW + 8
     readonly property real marginY: scoopH + 8
+
+    readonly property real maxAllowedWidth: Math.max(260, root.width - (root.isVertical ? Theme.barHeight + 32 : 32))
+    readonly property real maxAllowedHeight: Math.max(200, root.height - (root.isVertical ? 32 : Theme.barHeight + 32))
+    readonly property real effectiveWidth: Math.min(panelWidth, maxAllowedWidth)
+    readonly property real effectiveHeight: Math.min(panelHeight, maxAllowedHeight)
 
     // animated expansion factor for smooth liquid welding
     readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.01, root.morphProgress * 1.35))
@@ -34,17 +39,17 @@ PanelWindow {
 
     // clamped dock positioning
     readonly property real desiredBodyX: isVertical
-        ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - panelWidth))
-        : (targetRelativeX - (panelWidth / 2))
+        ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - effectiveWidth))
+        : (targetRelativeX - (effectiveWidth / 2))
     readonly property real clampedBodyX: isVertical
         ? desiredBodyX
-        : Math.max(marginX, Math.min(root.width - marginX - panelWidth, desiredBodyX))
+        : Math.max(marginX, Math.min(root.width - marginX - effectiveWidth, desiredBodyX))
 
     readonly property real desiredBodyY: isVertical
-        ? (targetRelativeY > 0 ? targetRelativeY - (panelHeight / 2) : (root.height / 2) - (panelHeight / 2))
-        : (isTop ? Theme.barHeight : (root.height - Theme.barHeight - panelHeight))
+        ? (targetRelativeY > 0 ? targetRelativeY - (effectiveHeight / 2) : (root.height / 2) - (effectiveHeight / 2))
+        : (isTop ? Theme.barHeight : (root.height - Theme.barHeight - effectiveHeight))
     readonly property real clampedBodyY: isVertical
-        ? Math.max(marginY, Math.min(root.height - marginY - panelHeight, desiredBodyY))
+        ? Math.max(marginY, Math.min(root.height - marginY - effectiveHeight, desiredBodyY))
         : desiredBodyY
 
     default property alias content: contentItem.data
@@ -202,8 +207,8 @@ PanelWindow {
             id: popupBody
             x: root.clampedBodyX
             y: root.clampedBodyY
-            width: root.panelWidth
-            height: Math.max(1, root.morphProgress * root.panelHeight)
+            width: root.effectiveWidth
+            height: Math.max(1, root.morphProgress * root.effectiveHeight)
             color: Theme.popupBg
             border.width: 0
             clip: true
@@ -221,8 +226,8 @@ PanelWindow {
 
             Item {
                 id: contentWrapper
-                width: root.panelWidth
-                height: root.panelHeight
+                width: root.effectiveWidth
+                height: root.effectiveHeight
                 y: root.isTop ? (root.morphProgress - 1.0) * 16
                  : root.isBottom ? (1.0 - root.morphProgress) * 16
                  : 0

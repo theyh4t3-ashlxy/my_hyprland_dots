@@ -67,26 +67,27 @@ QtObject {
     property string iconSet: "material" // "material", "windows", "awesome"
     property string fontFamily: "Noto Sans"
     property string fontMono: "JetBrainsMono Nerd Font"
+    property string fontWindows: "Segoe Fluent Icons"
+    property string fontAwesome: "Font Awesome 6 Free"
     property real fontScale: 1.0
     property string fontWeight: "regular"
+    property var networkAliases: ({})
 
-    readonly property string saveScriptPath: "/home/ashley/.config/quickshell/scripts/save_settings.py"
-
-    // auto-save mechanics so you never have to click a stupid save button again
     property bool _initialized: false
+    property bool _loading: false
 
     property Timer autoSaveTimer: Timer {
         interval: 80
         repeat: false
         onTriggered: {
-            if (root._initialized) {
+            if (root._initialized && !root._loading) {
                 root.save();
             }
         }
     }
 
     function queueSave() {
-        if (root._initialized) {
+        if (root._initialized && !root._loading) {
             autoSaveTimer.restart();
         }
     }
@@ -143,6 +144,7 @@ QtObject {
     onMpvAudioChanged: queueSave()
     onDndChanged: queueSave()
     onVibeStyleChanged: queueSave()
+    onNetworkAliasesChanged: queueSave()
 
     function loadObject(data) {
         if (!data) return;
@@ -192,13 +194,47 @@ QtObject {
         if (data.showQuickSettings !== undefined) root.showQuickSettings = (data.showQuickSettings === true || data.showQuickSettings === "true");
         if (data.showWallpaper !== undefined) root.showWallpaper = (data.showWallpaper === true || data.showWallpaper === "true");
         if (data.showQuickNotes !== undefined) root.showQuickNotes = (data.showQuickNotes === true || data.showQuickNotes === "true");
+        if (data.barStyle !== undefined && root.barStyle !== data.barStyle) root.barStyle = data.barStyle;
+        if (data.showMotionSandbox !== undefined) root.showMotionSandbox = (data.showMotionSandbox === true || data.showMotionSandbox === "true");
+        if (data.iconSet !== undefined && root.iconSet !== data.iconSet) root.iconSet = data.iconSet;
         if (data.clockFormat !== undefined && root.clockFormat !== data.clockFormat) root.clockFormat = data.clockFormat;
         if (data.dateFormat !== undefined && root.dateFormat !== data.dateFormat) root.dateFormat = data.dateFormat;
         if (data.workspaceCount !== undefined && root.workspaceCount !== parseInt(data.workspaceCount)) root.workspaceCount = parseInt(data.workspaceCount);
         if (data.fontFamily !== undefined && root.fontFamily !== data.fontFamily) root.fontFamily = data.fontFamily;
         if (data.fontMono !== undefined && root.fontMono !== data.fontMono) root.fontMono = data.fontMono;
+        if (data.fontWindows !== undefined && root.fontWindows !== data.fontWindows) root.fontWindows = data.fontWindows;
+        if (data.fontAwesome !== undefined && root.fontAwesome !== data.fontAwesome) root.fontAwesome = data.fontAwesome;
         if (data.fontScale !== undefined && root.fontScale !== parseFloat(data.fontScale)) root.fontScale = parseFloat(data.fontScale);
         if (data.fontWeight !== undefined && root.fontWeight !== data.fontWeight) root.fontWeight = data.fontWeight;
+        if (data.networkAliases !== undefined) {
+            try {
+                let parsed = typeof data.networkAliases === "string" ? JSON.parse(data.networkAliases) : data.networkAliases;
+                if (parsed && typeof parsed === "object") {
+                    root.networkAliases = parsed;
+                }
+            } catch(e) {}
+        }
+    }
+
+    function getNetworkAlias(ssid) {
+        if (!ssid) return "";
+        if (root.networkAliases && root.networkAliases[ssid]) {
+            return root.networkAliases[ssid];
+        }
+        return ssid;
+    }
+
+    function setNetworkAlias(ssid, alias) {
+        if (!ssid) return;
+        let next = Object.assign({}, root.networkAliases);
+        let trimmed = alias ? alias.trim() : "";
+        if (!trimmed || trimmed === ssid) {
+            delete next[ssid];
+        } else {
+            next[ssid] = trimmed;
+        }
+        root.networkAliases = next;
+        queueSave();
     }
 
     function loadConf(str) {
@@ -217,16 +253,12 @@ QtObject {
                 data[key] = val;
             }
         }
+        root._loading = true;
         loadObject(data);
+        root._loading = false;
+        root._initialized = true;
     }
 
-    function loadFromFile() {
-        confFile.reload();
-        let str = confFile.text();
-        if (str && str.trim() !== "") {
-            root.loadConf(str);
-        }
-    }
 
     property bool _isSaving: false
 
@@ -242,45 +274,23 @@ QtObject {
         path: "/home/ashley/.config/quickshell/settings.conf"
         watchChanges: true
         printErrors: false
+        onLoaded: root.loadFromFile()
         onFileChanged: {
             if (!root._isSaving) {
-                loadTimer.restart();
+                confFile.reload();
             }
-        }
-    }
-
-    property Timer loadTimer: Timer {
-        interval: 50
-        repeat: false
-        onTriggered: root.loadFromFile()
-    }
-
-    property Timer startupTimer1: Timer {
-        interval: 10
-        repeat: false
-        onTriggered: root.loadFromFile()
-    }
-
-    property Timer startupTimer2: Timer {
-        interval: 150
-        repeat: false
-        onTriggered: root.loadFromFile()
-    }
-
-    property Timer startupTimer3: Timer {
-        interval: 500
-        repeat: false
-        onTriggered: {
-            root.loadFromFile();
-            root._initialized = true;
         }
     }
 
     Component.onCompleted: {
         root.loadFromFile();
-        startupTimer1.restart();
-        startupTimer2.restart();
-        startupTimer3.restart();
+    }
+
+    function loadFromFile() {
+        let str = confFile.text();
+        if (str && str.trim() !== "") {
+            root.loadConf(str);
+        }
     }
 
     function toConf() {
@@ -289,6 +299,7 @@ QtObject {
             "barMargin=" + barMargin,
             "barFloating=" + barFloating,
             "barHeight=" + barHeight,
+            'barStyle="' + barStyle + '"',
             "scoopRadius=" + scoopRadius,
             "scoopTension=" + scoopTension,
             "screenCornerRadius=" + screenCornerRadius,
@@ -327,14 +338,18 @@ QtObject {
             "showQuickSettings=" + showQuickSettings,
             "showWallpaper=" + showWallpaper,
             "showQuickNotes=" + showQuickNotes,
+            "showMotionSandbox=" + showMotionSandbox,
             'iconSet="' + iconSet + '"',
             'clockFormat="' + clockFormat + '"',
             'dateFormat="' + dateFormat + '"',
             "workspaceCount=" + workspaceCount,
             'fontFamily="' + fontFamily + '"',
             'fontMono="' + fontMono + '"',
+            'fontWindows="' + fontWindows + '"',
+            'fontAwesome="' + fontAwesome + '"',
             "fontScale=" + fontScale,
-            'fontWeight="' + fontWeight + '"'
+            'fontWeight="' + fontWeight + '"',
+            'networkAliases=\'' + JSON.stringify(root.networkAliases || {}) + '\''
         ];
         return lines.join("\n");
     }
@@ -342,7 +357,7 @@ QtObject {
     function save() {
         root._isSaving = true;
         let confStr = toConf();
-        Quickshell.execDetached([saveScriptPath, confStr]);
+        confFile.setText(confStr);
         resetSavingTimer.restart();
     }
 }

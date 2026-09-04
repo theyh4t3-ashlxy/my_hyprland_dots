@@ -3,6 +3,9 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import ".."
+import "../widgets"
+import "../controls"
+import "../corners"
 
 PanelWindow {
     id: root
@@ -29,8 +32,8 @@ PanelWindow {
         right: root.isRight || !root.isVertical
     }
 
-    implicitWidth: root.isVertical ? (Theme.barHeight + root.scoopW) : 0
-    implicitHeight: root.isVertical ? 0 : (Theme.barHeight + root.scoopH)
+    implicitWidth: root.isVertical ? (Theme.barHeight + root.scoopW) : (root.screen?.width ?? 1920)
+    implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + root.scoopH)
     exclusiveZone: Theme.barHeight
     exclusionMode: ExclusionMode.Normal
 
@@ -39,6 +42,10 @@ PanelWindow {
     // ensure the full bar area accepts user input
     mask: Region {
         item: barRootItem
+    }
+
+    IdleInhibitor {
+        enabled: !IdleService.enabled
     }
 
     AppLauncher {
@@ -55,8 +62,8 @@ PanelWindow {
             id: barBg
             x: root.isRight ? root.scoopW : 0
             y: root.isBottom ? root.scoopH : 0
-            width: root.isVertical ? Theme.barHeight : parent.width
-            height: root.isVertical ? parent.height : Theme.barHeight
+            width: root.isVertical ? Theme.barHeight : barRootItem.width
+            height: root.isVertical ? barRootItem.height : Theme.barHeight
             color: Theme.barBg
             border.width: 0
 
@@ -122,7 +129,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -131,7 +138,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -140,7 +147,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showWindowTitle ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -151,7 +158,7 @@ PanelWindow {
             // center clock
             Loader {
                 active: (Settings?.showClock ?? true) && !root.isVertical
-                visible: active && (item?.visible ?? true)
+                visible: active
                 width: item ? item.implicitWidth : 100
                 height: item ? item.implicitHeight : (Theme.barHeight - 8)
                 sourceComponent: Component { Clock {} }
@@ -168,7 +175,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -177,7 +184,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -186,7 +193,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -195,7 +202,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -204,7 +211,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -213,7 +220,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -222,7 +229,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -231,7 +238,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -240,7 +247,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -249,7 +256,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -258,7 +265,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -267,7 +274,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showMedia ?? true) && !root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
@@ -326,7 +333,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showWallpaper ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -335,7 +342,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showWorkspaces ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -346,7 +353,7 @@ PanelWindow {
             // center clock
             Loader {
                 active: (Settings?.showClock ?? true) && root.isVertical
-                visible: active && (item?.visible ?? true)
+                visible: active
                 width: item ? item.implicitWidth : (Theme.barHeight - 8)
                 height: item ? item.implicitHeight : 38
                 sourceComponent: Component { Clock {} }
@@ -362,7 +369,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showMedia ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -371,7 +378,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showClipboard ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -380,7 +387,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -389,7 +396,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showNotifications ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -398,7 +405,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showSystemTray ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -407,7 +414,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showBluetooth ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -416,7 +423,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showNetwork ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -425,7 +432,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showVolume ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -434,7 +441,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showBattery ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -443,7 +450,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showQuickSettings ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -452,7 +459,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showQuickNotes ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -461,7 +468,7 @@ PanelWindow {
 
                 Loader {
                     active: (Settings?.showPowerMenu ?? true) && root.isVertical
-                    visible: active && (item?.visible ?? true)
+                    visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter

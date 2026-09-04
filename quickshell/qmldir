@@ -6,6 +6,7 @@ singleton WallpaperService services/WallpaperService.qml
 singleton NetworkService   services/NetworkService.qml
 singleton NotificationService services/NotificationService.qml
 singleton IdleService       services/IdleService.qml
+singleton BrightnessService services/BrightnessService.qml
 
 # bar, corners & overlays
 StatusBar                bar/StatusBar.qml
@@ -13,6 +14,7 @@ ScreenCorners            corners/ScreenCorners.qml
 ConcaveCorner            corners/ConcaveCorner.qml
 NotificationToasts       notifications/NotificationToasts.qml
 NotificationCard         notifications/NotificationCard.qml
+OSD                      osd/OSD.qml
 
 # controls
 IconButton               controls/IconButton.qml

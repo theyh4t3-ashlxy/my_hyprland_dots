@@ -1,3 +1,4 @@
+//@ pragma UseQApplication
 import Quickshell
 import "widgets"
 
@@ -22,6 +23,11 @@ ShellRoot {
         MotionSandbox {
             open: Settings.showMotionSandbox
         }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        OSD {}
     }
 
     LockScreen {

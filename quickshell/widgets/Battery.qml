@@ -33,11 +33,7 @@ Rectangle {
         Text {
             id: batIcon
             anchors.verticalCenter: parent.verticalCenter
-            text: container.isCharging ? Theme.iconBatCharge
-                : container.pct >= 90  ? Theme.iconBatFull
-                : container.pct >= 50  ? Theme.iconBatHalf
-                : container.pct >= 20  ? Theme.iconBatQuarter
-                                       : Theme.iconBatEmpty
+            text: Theme.getBatteryIcon(container.pct, container.isCharging, false, container.isVertical)
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: container.isLow ? Theme.error : Theme.on_surface

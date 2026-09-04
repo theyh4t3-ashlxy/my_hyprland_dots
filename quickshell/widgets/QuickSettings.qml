@@ -19,11 +19,46 @@ Rectangle {
     property string fontTarget: "sans" // "sans" or "mono"
     property string fontSearchQuery: ""
 
-    readonly property var allFonts: Qt.fontFamilies()
+    readonly property var allFonts: {
+        let f = Qt.fontFamilies();
+        return f.slice().sort();
+    }
     readonly property var filteredFonts: {
-        if (!fontSearchQuery || fontSearchQuery.trim() === "") return allFonts
-        const q = fontSearchQuery.trim().toLowerCase()
-        return allFonts.filter(f => f.toLowerCase().includes(q))
+        if (!fontSearchQuery || fontSearchQuery.trim() === "") return allFonts;
+        const q = fontSearchQuery.trim().toLowerCase();
+        return allFonts.filter(f => f.toLowerCase().includes(q));
+    }
+
+    component CategoryHeader: RowLayout {
+        id: catHdr
+        property string title: ""
+        property string icon: ""
+        Layout.fillWidth: true
+        spacing: 8
+        Layout.topMargin: 8
+        Layout.bottomMargin: 2
+
+        Text {
+            visible: catHdr.icon !== ""
+            text: catHdr.icon
+            font.family: Theme.fontIcon
+            font.pixelSize: Theme.fontSizeSm
+            color: Theme.primary
+        }
+
+        Text {
+            text: catHdr.title
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            font.weight: Font.Bold
+            color: Theme.primary
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.widgetBorder
+        }
     }
 
     Row {
@@ -187,15 +222,18 @@ Rectangle {
                 ColumnLayout {
                     id: layoutCol
                     width: parent.width - 4
-                    spacing: 12
+                    spacing: 10
 
-                    // Bar Position Selector
+                    CategoryHeader {
+                        title: "bar geometry & position"
+                        icon: Theme.iconGrid
+                    }
+
                     Text {
-                        text: "bar position & orientation"
+                        text: "screen placement"
                         font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
                     }
 
                     RowLayout {
@@ -204,8 +242,8 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "up", pos: "up" },
-                                { label: "down", pos: "down" },
+                                { label: "top", pos: "top" },
+                                { label: "bottom", pos: "bottom" },
                                 { label: "left", pos: "left" },
                                 { label: "right", pos: "right" }
                             ]
@@ -213,8 +251,8 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 readonly property bool isSelected: Settings.barPosition === modelData.pos
-                                    || (modelData.pos === "up" && Settings.barPosition === "top")
-                                    || (modelData.pos === "down" && Settings.barPosition === "bottom")
+                                    || (modelData.pos === "top" && Settings.barPosition === "up")
+                                    || (modelData.pos === "bottom" && Settings.barPosition === "down")
                                 Layout.fillWidth: true
                                 height: 32
                                 radius: Theme.radiusSm
@@ -238,139 +276,294 @@ Rectangle {
                         }
                     }
 
-                    // Bar Height Slider
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
+                    Text {
+                        text: "bar thickness: " + Settings.barHeight + "px"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
-                                text: "bar height: " + Settings.barHeight + "px"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
-                                color: Theme.on_surface
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [28, 32, 36, 40, 48]
+                            delegate: Rectangle {
+                                required property int modelData
                                 Layout.fillWidth: true
-                            }
-                        }
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.barHeight === modelData ? Theme.primary : Theme.surface_container_highest
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
+                                Text {
+                                    text: modelData + "px"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.barHeight === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
 
-                            Repeater {
-                                model: [28, 32, 36, 40, 48]
-                                delegate: Rectangle {
-                                    required property int modelData
-                                    Layout.fillWidth: true
-                                    height: 28
-                                    radius: Theme.radiusSm
-                                    color: Settings.barHeight === modelData ? Theme.primary : Theme.surface_container_highest
-
-                                    Text {
-                                        text: modelData + "px"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Settings.barHeight === modelData ? Theme.on_primary : Theme.on_surface
-                                        anchors.centerIn: parent
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Settings.barHeight = modelData
-                                    }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.barHeight = modelData
                                 }
                             }
                         }
                     }
 
-                    // Scoop Radius Fillets
-                    ColumnLayout {
+                    Text {
+                        text: "aesthetic theme & materials"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    GridLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        columns: 2
+                        rowSpacing: 6
+                        columnSpacing: 6
 
-                        Text {
-                            text: "concave scoop radius: " + Settings.scoopRadius + "px"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
-                            color: Theme.on_surface
-                        }
+                        Repeater {
+                            model: [
+                                { label: "glass theme", s: "glass" },
+                                { label: "pure black (oled)", s: "pure-black" },
+                                { label: "translucent (glass)", s: "translucent" },
+                                { label: "accent glow (cyber)", s: "accent-glow" },
+                                { label: "monochrome", s: "monochrome" }
+                            ]
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 30
+                                radius: Theme.radiusSm
+                                color: Settings.barStyle === modelData.s ? Theme.primary : Theme.surface_container_highest
 
-                            Repeater {
-                                model: [0, 10, 16, 20, 24]
-                                delegate: Rectangle {
-                                    required property int modelData
-                                    Layout.fillWidth: true
-                                    height: 28
-                                    radius: Theme.radiusSm
-                                    color: Settings.scoopRadius === modelData ? Theme.primary : Theme.surface_container_highest
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: Settings.barStyle === modelData.s ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
 
-                                    Text {
-                                        text: modelData === 0 ? "none" : (modelData + "px")
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Settings.scoopRadius === modelData ? Theme.on_primary : Theme.on_surface
-                                        anchors.centerIn: parent
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Settings.scoopRadius = modelData
-                                    }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.barStyle = modelData.s
                                 }
                             }
                         }
                     }
 
-                    // Screen Corners Mode
-                    ColumnLayout {
+                    CategoryHeader {
+                        title: "screen corners & scoops"
+                        icon: Theme.iconSparkles
+                    }
+
+                    Text {
+                        text: "screen corner fillets"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: 6
 
-                        Text {
-                            text: "screen corner fillets"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
-                            color: Theme.on_surface
+                        Repeater {
+                            model: [
+                                { label: "all 4 corners", m: "all" },
+                                { label: "top only", m: "top" },
+                                { label: "bottom only", m: "bottom" },
+                                { label: "disabled", m: "none" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.screenCornerMode === modelData.m ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.screenCornerMode === modelData.m ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.screenCornerMode = modelData.m
+                                }
+                            }
                         }
+                    }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
+                    Text {
+                        text: "corner curvature style"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
 
-                            Repeater {
-                                model: [
-                                    { label: "all 4 corners", m: "all" },
-                                    { label: "bottom only", m: "bottom" },
-                                    { label: "disabled", m: "none" }
-                                ]
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
 
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    height: 28
-                                    radius: Theme.radiusSm
-                                    color: Settings.screenCornerMode === modelData.m ? Theme.primary : Theme.surface_container_highest
+                        Repeater {
+                            model: [
+                                { label: "cubic", s: "cubic" },
+                                { label: "squircle", s: "squircle" },
+                                { label: "chamfer 45°", s: "chamfer" },
+                                { label: "flared", s: "flared" },
+                                { label: "stepped", s: "stepped" }
+                            ]
 
-                                    Text {
-                                        text: modelData.label
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Settings.screenCornerMode === modelData.m ? Theme.on_primary : Theme.on_surface
-                                        anchors.centerIn: parent
-                                    }
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.cornerStyle === modelData.s ? Theme.primary : Theme.surface_container_highest
 
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Settings.screenCornerMode = modelData.m
-                                    }
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.cornerStyle === modelData.s ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.cornerStyle = modelData.s
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "corner color mode"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "bar match", c: "bar" },
+                                { label: "matugen theme", c: "theme" },
+                                { label: "accent", c: "accent" },
+                                { label: "pure black", c: "pure-black" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.cornerColorMode === modelData.c ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.cornerColorMode === modelData.c ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.cornerColorMode = modelData.c
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "screen corner radius: " + Settings.screenCornerRadius + "px"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [0, 10, 14, 16, 20, 24]
+                            delegate: Rectangle {
+                                required property int modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.screenCornerRadius === modelData ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData === 0 ? "none" : (modelData + "px")
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.screenCornerRadius === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.screenCornerRadius = modelData
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "concave scoop radius: " + Settings.scoopRadius + "px"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [0, 10, 16, 20, 24]
+                            delegate: Rectangle {
+                                required property int modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.scoopRadius === modelData ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData === 0 ? "none" : (modelData + "px")
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.scoopRadius === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.scoopRadius = modelData
                                 }
                             }
                         }
@@ -393,28 +586,142 @@ Rectangle {
                     width: parent.width - 4
                     spacing: 8
 
-                    Text {
-                        text: "visible bar widgets"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                    CategoryHeader {
+                        title: "launcher & workspace navigation"
+                        icon: Theme.iconWorkspaces
                     }
 
                     Repeater {
                         model: [
                             { prop: "showLauncher", label: "application launcher" },
                             { prop: "showWorkspaces", label: "workspaces switcher" },
-                            { prop: "showWindowTitle", label: "window title" },
+                            { prop: "showWindowTitle", label: "window title" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            height: 38
+                            radius: Theme.widgetRadius
+                            color: Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.widgetPaddingH
+                                spacing: 8
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings[modelData.prop]
+                                    onToggled: Settings[modelData.prop] = !Settings[modelData.prop]
+                                }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "status & media players"
+                        icon: Theme.iconMusic
+                    }
+
+                    Repeater {
+                        model: [
                             { prop: "showClock", label: "clock & date" },
                             { prop: "showMedia", label: "now playing / mpris" },
                             { prop: "showWallpaper", label: "wallpaper & theme browser" },
-                            { prop: "showVolume", label: "volume & audio mixer" },
+                            { prop: "showVolume", label: "volume & audio mixer" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            height: 38
+                            radius: Theme.widgetRadius
+                            color: Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.widgetPaddingH
+                                spacing: 8
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings[modelData.prop]
+                                    onToggled: Settings[modelData.prop] = !Settings[modelData.prop]
+                                }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "connectivity & hardware"
+                        icon: Theme.iconWifi
+                    }
+
+                    Repeater {
+                        model: [
                             { prop: "showNetwork", label: "network / wifi" },
                             { prop: "showBluetooth", label: "bluetooth" },
                             { prop: "showBattery", label: "battery status" },
                             { prop: "showSystemTray", label: "system tray" },
-                            { prop: "showNotifications", label: "notifications center" },
+                            { prop: "showNotifications", label: "notifications center" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            height: 38
+                            radius: Theme.widgetRadius
+                            color: Theme.cardBg
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Theme.widgetPaddingH
+                                spacing: 8
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings[modelData.prop]
+                                    onToggled: Settings[modelData.prop] = !Settings[modelData.prop]
+                                }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "tools & system utilities"
+                        icon: Theme.iconSliders
+                    }
+
+                    Repeater {
+                        model: [
                             { prop: "showIdleInhibitor", label: "caffeine / idle inhibitor" },
                             { prop: "showClipboard", label: "clipboard history" },
                             { prop: "showQuickNotes", label: "quick notes & scratchpad" },
@@ -453,197 +760,317 @@ Rectangle {
                 }
             }
 
-            // TAB 3: FONTS (GRANULAR GNOME TWEAKS STYLE)
-            ColumnLayout {
+            // TAB 3: FONTS & TYPOGRAPHY
+            Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.activeTab === "fonts"
-                spacing: 8
+                clip: true
+                contentWidth: width
+                contentHeight: fontCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
 
-                // Target Font Selector (Interface Sans vs Monospace)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
+                ColumnLayout {
+                    id: fontCol
+                    width: parent.width - 4
+                    spacing: 10
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 32
-                        radius: Theme.radiusSm
-                        color: root.fontTarget === "sans" ? Theme.primary : Theme.surface_container_highest
-
-                        Text {
-                            text: "interface font: " + Settings.fontFamily
-                            font.family: Settings.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
-                            font.weight: Font.Bold
-                            color: root.fontTarget === "sans" ? Theme.on_primary : Theme.on_surface
-                            anchors.centerIn: parent
-                            elide: Text.ElideRight
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.fontTarget = "sans"
-                        }
+                    CategoryHeader {
+                        title: "font target & search"
+                        icon: Theme.iconNote
                     }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 32
-                        radius: Theme.radiusSm
-                        color: root.fontTarget === "mono" ? Theme.primary : Theme.surface_container_highest
-
-                        Text {
-                            text: "monospace: " + Settings.fontMono
-                            font.family: Settings.fontMono
-                            font.pixelSize: Theme.fontSizeXs
-                            font.weight: Font.Bold
-                            color: root.fontTarget === "mono" ? Theme.on_primary : Theme.on_surface
-                            anchors.centerIn: parent
-                            elide: Text.ElideRight
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.fontTarget = "mono"
-                        }
-                    }
-                }
-
-                // Font Search Input
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 36
-                    color: Theme.cardBg
-                    radius: Theme.widgetRadius
-                    border.color: fontSearchInput.activeFocus ? Theme.primary : Theme.cardBorder
-                    border.width: 1
 
                     RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: Theme.widgetPaddingH
-                        spacing: 8
+                        Layout.fillWidth: true
+                        spacing: 6
 
-                        Text {
-                            text: Theme.iconSearch
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface_variant
-                        }
-
-                        TextInput {
-                            id: fontSearchInput
+                        Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            verticalAlignment: TextInput.AlignVCenter
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface
-                            onTextChanged: root.fontSearchQuery = text.toLowerCase()
-                        }
-                    }
-                }
-
-                // Live Font List Browser
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: Theme.surface_container_low
-                    radius: Theme.widgetRadius
-                    border.color: Theme.widgetBorder
-                    border.width: 1
-                    clip: true
-
-                    ListView {
-                        id: fontListView
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        model: root.filteredFonts
-                        boundsBehavior: Flickable.StopAtBounds
-
-                        delegate: Rectangle {
-                            required property string modelData
-                            width: fontListView.width
                             height: 32
                             radius: Theme.radiusSm
-                            readonly property bool isCurrent: (root.fontTarget === "sans" && Settings.fontFamily === modelData)
-                                                           || (root.fontTarget === "mono" && Settings.fontMono === modelData)
-                            color: isCurrent ? Theme.primary : (fItemMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+                            color: root.fontTarget === "sans" ? Theme.primary : Theme.surface_container_highest
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 6
-                                spacing: 8
-
-                                Text {
-                                    text: modelData
-                                    font.family: modelData
-                                    font.pixelSize: 12
-                                    color: isCurrent ? Theme.on_primary : Theme.on_surface
-                                    Layout.fillWidth: true
-                                    elide: Text.ElideRight
-                                }
-
-                                Text {
-                                    text: isCurrent ? (Theme.iconCheck + " active") : "The quick brown fox 123"
-                                    font.family: modelData
-                                    font.pixelSize: 10
-                                    color: isCurrent ? Theme.on_primary : Theme.on_surface_variant
-                                }
+                            Text {
+                                text: "interface: " + Settings.fontFamily
+                                font.family: Settings.fontFamily
+                                font.pixelSize: Theme.fontSizeXs
+                                font.weight: Font.Bold
+                                color: root.fontTarget === "sans" ? Theme.on_primary : Theme.on_surface
+                                anchors.centerIn: parent
+                                elide: Text.ElideRight
                             }
 
                             MouseArea {
-                                id: fItemMouse
                                 anchors.fill: parent
-                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onClicked: root.fontTarget = "sans"
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 32
+                            radius: Theme.radiusSm
+                            color: root.fontTarget === "mono" ? Theme.primary : Theme.surface_container_highest
+
+                            Text {
+                                text: "monospace: " + Settings.fontMono
+                                font.family: Settings.fontMono
+                                font.pixelSize: Theme.fontSizeXs
+                                font.weight: Font.Bold
+                                color: root.fontTarget === "mono" ? Theme.on_primary : Theme.on_surface
+                                anchors.centerIn: parent
+                                elide: Text.ElideRight
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.fontTarget = "mono"
+                            }
+                        }
+                    }
+
+                    // Font Search Input
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 36
+                        color: Theme.cardBg
+                        radius: Theme.widgetRadius
+                        border.color: fontSearchInput.activeFocus ? Theme.primary : Theme.cardBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.widgetPaddingH
+                            spacing: 8
+
+                            Text {
+                                text: Theme.iconSearch
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.on_surface_variant
+                            }
+
+                            TextInput {
+                                id: fontSearchInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.on_surface
+                                onTextChanged: root.fontSearchQuery = text.toLowerCase()
+                            }
+
+                            IconButton {
+                                visible: fontSearchInput.text !== ""
+                                icon: Theme.iconClose
+                                iconSize: 10
+                                tooltip: "clear search"
                                 onClicked: {
-                                    if (root.fontTarget === "sans") {
-                                        Settings.fontFamily = modelData
-                                    } else {
-                                        Settings.fontMono = modelData
+                                    fontSearchInput.text = "";
+                                    root.fontSearchQuery = "";
+                                }
+                            }
+                        }
+                    }
+
+                    // Live Font List Browser
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 160
+                        color: Theme.surface_container_low
+                        radius: Theme.widgetRadius
+                        border.color: Theme.widgetBorder
+                        border.width: 1
+                        clip: true
+
+                        ListView {
+                            id: fontListView
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            model: root.filteredFonts
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            delegate: Rectangle {
+                                required property string modelData
+                                width: fontListView.width
+                                height: 32
+                                radius: Theme.radiusSm
+                                readonly property bool isCurrent: (root.fontTarget === "sans" && Settings.fontFamily === modelData)
+                                                               || (root.fontTarget === "mono" && Settings.fontMono === modelData)
+                                color: isCurrent ? Theme.primary : (fItemMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: 8
+
+                                    Text {
+                                        text: modelData
+                                        font.family: modelData
+                                        font.pixelSize: 12
+                                        color: isCurrent ? Theme.on_primary : Theme.on_surface
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        text: isCurrent ? (Theme.iconCheck + " active") : "The quick brown fox 123"
+                                        font.family: modelData
+                                        font.pixelSize: 10
+                                        color: isCurrent ? Theme.on_primary : Theme.on_surface_variant
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: fItemMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (root.fontTarget === "sans") {
+                                            Settings.fontFamily = modelData;
+                                        } else {
+                                            Settings.fontMono = modelData;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                // Scaling Factor Buttons
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
+                    CategoryHeader {
+                        title: "typography scale & weight"
+                        icon: Theme.iconSliders
+                    }
 
-                    Repeater {
-                        model: [
-                            { label: "85%", s: 0.85 },
-                            { label: "95%", s: 0.95 },
-                            { label: "100%", s: 1.0 },
-                            { label: "110%", s: 1.1 },
-                            { label: "125%", s: 1.25 }
-                        ]
+                    Text {
+                        text: "interface font scaling"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
 
-                        delegate: Rectangle {
-                            required property var modelData
-                            Layout.fillWidth: true
-                            height: 26
-                            radius: Theme.radiusSm
-                            color: Math.abs(Settings.fontScale - modelData.s) < 0.04 ? Theme.primary : Theme.surface_container_highest
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
 
-                            Text {
-                                text: modelData.label
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                color: Math.abs(Settings.fontScale - modelData.s) < 0.04 ? Theme.on_primary : Theme.on_surface
-                                anchors.centerIn: parent
+                        Repeater {
+                            model: [
+                                { label: "85%", s: 0.85 },
+                                { label: "95%", s: 0.95 },
+                                { label: "100%", s: 1.0 },
+                                { label: "110%", s: 1.1 },
+                                { label: "125%", s: 1.25 }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 26
+                                radius: Theme.radiusSm
+                                color: Math.abs(Settings.fontScale - modelData.s) < 0.04 ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Math.abs(Settings.fontScale - modelData.s) < 0.04 ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.fontScale = modelData.s
+                                }
                             }
+                        }
+                    }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Settings.fontScale = modelData.s
+                    Text {
+                        text: "font weight: " + Settings.fontWeight
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "light", w: "light" },
+                                { label: "regular", w: "regular" },
+                                { label: "medium", w: "medium" },
+                                { label: "demibold", w: "demibold" },
+                                { label: "bold", w: "bold" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 26
+                                radius: Theme.radiusSm
+                                color: Settings.fontWeight === modelData.w ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.fontWeight === modelData.w ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.fontWeight = modelData.w
+                                }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "icon glyph pack"
+                        icon: Theme.iconSparkles
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [
+                                { label: "material icons", id: "material" },
+                                { label: "windows segoe", id: "windows" },
+                                { label: "font awesome", id: "awesome" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                height: 30
+                                radius: Theme.radiusSm
+                                color: Settings.iconSet === modelData.id ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Medium
+                                    color: Settings.iconSet === modelData.id ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.iconSet = modelData.id
+                                }
                             }
                         }
                     }
@@ -663,22 +1090,18 @@ Rectangle {
                 ColumnLayout {
                     id: animCol
                     width: parent.width - 4
-                    spacing: 12
+                    spacing: 10
 
-                    Text {
-                        text: "animation profiles & timing"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                    CategoryHeader {
+                        title: "shell animation profiles"
+                        icon: Theme.iconFlame
                     }
 
-                    // Profile Cards
                     Repeater {
                         model: [
-                            { id: "hyprland", label: "hyprland sync (default)", desc: "matches hyprland bezier curves & timing perfectly" },
+                            { id: "hyprland", label: "hyprland sync (default)", desc: "matches hyprland bezier curves & timing" },
                             { id: "snappy", label: "snappy & responsive", desc: "110ms ultra-fast transitions with zero delay" },
-                            { id: "chill", label: "smooth & relaxed", desc: "luxurious 300ms cubic ease for smooth aesthetic" },
+                            { id: "chill", label: "smooth & relaxed", desc: "luxurious 300ms cubic ease for aesthetic flow" },
                             { id: "instant", label: "instant / zero lag", desc: "50ms minimal motion for raw performance" }
                         ]
 
@@ -734,26 +1157,27 @@ Rectangle {
                         }
                     }
 
-                    // Unified Motion & Physics Sandbox Card
+                    CategoryHeader {
+                        title: "interactive physics lab"
+                        icon: Theme.iconSliders
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 72
+                        height: 64
                         radius: Theme.radiusMd
                         color: sandboxBtnMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
                         border.color: Settings.showMotionSandbox ? Theme.primary : Theme.widgetBorder
                         border.width: 1
 
-                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 12
+                            anchors.margins: 10
                             spacing: 12
 
                             Rectangle {
-                                width: 44
-                                height: 44
+                                width: 40
+                                height: 40
                                 radius: Theme.radiusSm
                                 color: Settings.showMotionSandbox ? Theme.primary_overlay : Theme.surface_container_high
 
@@ -778,7 +1202,7 @@ Rectangle {
                                     color: Theme.on_surface
                                 }
                                 Text {
-                                    text: Settings.showMotionSandbox ? "sandbox active on screen edge (click to close)" : "open interactive canvas with 4-way docking & free dragging"
+                                    text: Settings.showMotionSandbox ? "sandbox active on screen edge (click to close)" : "open interactive canvas with 4-way docking & physics"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.on_surface_variant
@@ -786,15 +1210,15 @@ Rectangle {
                             }
 
                             Rectangle {
-                                height: 28
-                                implicitWidth: launchText.implicitWidth + 16
+                                height: 26
+                                implicitWidth: launchText.implicitWidth + 14
                                 radius: Theme.radiusPill
                                 color: Settings.showMotionSandbox ? Theme.primary : Theme.primary_overlay
 
                                 Text {
                                     id: launchText
                                     anchors.centerIn: parent
-                                    text: Settings.showMotionSandbox ? "active " : "test physics "
+                                    text: Settings.showMotionSandbox ? "active " : "test "
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     font.weight: Font.Bold
@@ -814,7 +1238,7 @@ Rectangle {
                 }
             }
 
-            // TAB 5: VIBE & SYSTEM FLAVOR
+            // TAB 5: VIBE, PERSONALITY & FORMATS
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -827,15 +1251,11 @@ Rectangle {
                 ColumnLayout {
                     id: vibeCol
                     width: parent.width - 4
-                    spacing: 12
+                    spacing: 10
 
-                    // Vibe & Icon Flavor Style Selector
-                    Text {
-                        text: "vibe & flavor mode"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.on_surface
+                    CategoryHeader {
+                        title: "shell personality & vibes"
+                        icon: Theme.iconCoffee
                     }
 
                     RowLayout {
@@ -852,14 +1272,12 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 36
+                                height: 34
                                 radius: Theme.radiusSm
                                 readonly property bool isCurrent: Settings.vibeStyle === modelData.id
                                 color: isCurrent ? Theme.primary_overlay : (vibeMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
                                 border.color: isCurrent ? Theme.primary : "transparent"
                                 border.width: 1
-
-                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                 Text {
                                     text: modelData.label
@@ -880,13 +1298,112 @@ Rectangle {
                         }
                     }
 
-                    // Clock Format Presets
+                    // Unhinged Personality Flavor Toggle
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 44
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+                        border.color: Settings.unhingedFlavor ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 10
+
+                            Text {
+                                text: Theme.iconFlame
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: Settings.unhingedFlavor ? Theme.primary : Theme.on_surface_variant
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: "unhinged flavor text"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+
+                                Text {
+                                    text: "chaotic system status vibes"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            ToggleSwitch {
+                                checked: Settings.unhingedFlavor
+                                onToggled: Settings.unhingedFlavor = !Settings.unhingedFlavor
+                            }
+                        }
+                    }
+
+                    // Do Not Disturb Toggle
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 44
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+                        border.color: Settings.dnd ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 10
+
+                            Text {
+                                text: Settings.dnd ? Theme.iconBellOff : Theme.iconBell
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: Settings.dnd ? Theme.primary : Theme.on_surface_variant
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: "do not disturb"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+
+                                Text {
+                                    text: "silence incoming notification toasts"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            ToggleSwitch {
+                                checked: Settings.dnd
+                                onToggled: Settings.dnd = !Settings.dnd
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "clock & date display formats"
+                        icon: Theme.iconClock
+                    }
+
                     Text {
                         text: "clock time format"
                         font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
                     }
 
                     RowLayout {
@@ -903,7 +1420,7 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 30
+                                height: 28
                                 radius: Theme.radiusSm
                                 color: Settings.clockFormat === modelData.fmt ? Theme.primary : Theme.surface_container_highest
 
@@ -925,13 +1442,11 @@ Rectangle {
                         }
                     }
 
-                    // Date Format Presets
                     Text {
                         text: "date display format"
                         font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
                     }
 
                     RowLayout {
@@ -948,7 +1463,7 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 30
+                                height: 28
                                 radius: Theme.radiusSm
                                 color: Settings.dateFormat === modelData.fmt ? Theme.primary : Theme.surface_container_highest
 
@@ -970,13 +1485,11 @@ Rectangle {
                         }
                     }
 
-                    // Workspace Count Selector
                     Text {
                         text: "workspace capacity: " + Settings.workspaceCount
                         font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
                     }
 
                     RowLayout {
@@ -1003,145 +1516,75 @@ Rectangle {
 
                                 MouseArea {
                                     anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.workspaceCount = modelData
                                 }
                             }
                         }
                     }
 
-                    // Icon Glyph Set
-                    Text {
-                        text: "icon glyph pack: " + Settings.iconSet
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                    CategoryHeader {
+                        title: "local network aliases"
+                        icon: Theme.iconWifi
                     }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
+                    readonly property var aliasKeys: Object.keys(Settings.networkAliases || {})
 
-                        Repeater {
-                            model: [
-                                { label: "material", id: "material" },
-                                { label: "windows segoe", id: "windows" },
-                                { label: "font awesome", id: "awesome" }
-                            ]
+                    Text {
+                        visible: vibeCol.aliasKeys.length === 0
+                        text: "no custom network aliases saved yet.\nclick the pencil icon on your active network in the wi-fi popup to name it."
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        color: Theme.on_surface_variant
+                        lineHeight: 1.3
+                    }
 
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                height: 30
-                                radius: Theme.radiusSm
-                                color: Settings.iconSet === modelData.id ? Theme.primary : Theme.surface_container_highest
+                    Repeater {
+                        model: vibeCol.aliasKeys
+
+                        delegate: Rectangle {
+                            required property string modelData
+                            Layout.fillWidth: true
+                            height: 36
+                            radius: Theme.radiusSm
+                            color: Theme.surface_container_highest
+                            border.color: Theme.widgetBorder
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 8
 
                                 Text {
-                                    text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.Medium
-                                    color: Settings.iconSet === modelData.id ? Theme.on_primary : Theme.on_surface
-                                    anchors.centerIn: parent
+                                    text: Theme.iconWifi
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeXs
+                                    color: Theme.primary
                                 }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.iconSet = modelData.id
-                                }
-                            }
-                        }
-                    }
-
-                    // Bar Style & Aesthetic Theme
-                    Text {
-                        text: "bar aesthetic style"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                    }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 2
-                        rowSpacing: 6
-                        columnSpacing: 6
-
-                        Repeater {
-                            model: [
-                                { label: "glass theme", s: "glass" },
-                                { label: "pure black (oled)", s: "pure-black" },
-                                { label: "translucent (glass)", s: "translucent" },
-                                { label: "accent glow (cyber)", s: "accent-glow" },
-                                { label: "monochrome", s: "monochrome" }
-                            ]
-
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                height: 32
-                                radius: Theme.radiusSm
-                                color: Settings.barStyle === modelData.s ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
-                                    text: modelData.label
+                                    text: (Settings.networkAliases && Settings.networkAliases[modelData]) || ""
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.Medium
-                                    color: Settings.barStyle === modelData.s ? Theme.on_primary : Theme.on_surface
-                                    anchors.centerIn: parent
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
                                 }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.barStyle = modelData.s
-                                }
-                            }
-                        }
-                    }
-
-                    // Screen Corner Curvature Style
-                    Text {
-                        text: "screen corner curvature style"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Repeater {
-                            model: [
-                                { label: "cubic smooth", s: "cubic" },
-                                { label: "chamfer 45°", s: "chamfer" },
-                                { label: "flared", s: "flared" },
-                                { label: "stepped retro", s: "stepped" }
-                            ]
-
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                height: 28
-                                radius: Theme.radiusSm
-                                color: Settings.cornerStyle === modelData.s ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
-                                    text: modelData.label
+                                    text: "(" + modelData + ")"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
-                                    color: Settings.cornerStyle === modelData.s ? Theme.on_primary : Theme.on_surface
-                                    anchors.centerIn: parent
+                                    color: Theme.on_surface_variant
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
                                 }
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.cornerStyle = modelData.s
+                                IconButton {
+                                    icon: Theme.iconTrash
+                                    iconSize: 10
+                                    tooltip: "remove alias"
+                                    onClicked: Settings.setNetworkAlias(modelData, "")
                                 }
                             }
                         }

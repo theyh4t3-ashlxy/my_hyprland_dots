@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../corners"
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Services.Notifications
 
 PanelWindow {
-    id: toastWindow
+    id: root
 
     required property var modelData
     screen: modelData
@@ -14,137 +14,190 @@ PanelWindow {
     readonly property string pos: Settings?.barPosition ?? "up"
     readonly property bool isTop: pos === "up" || pos === "top"
     readonly property bool isBottom: pos === "down" || pos === "bottom"
-    readonly property real scoopW: Theme?.scoopRadiusX ?? 16
-    readonly property real scoopH: Theme?.scoopRadiusY ?? 16
+    readonly property bool isLeft: pos === "left"
+    readonly property bool isRight: pos === "right"
+    readonly property bool isVertical: isLeft || isRight
+
+    readonly property real scoopW: Math.max(16, Theme?.scoopRadiusX ?? 16)
+    readonly property real scoopH: Math.max(16, Theme?.scoopRadiusY ?? 16)
+
+    color: "transparent"
+    focusable: false
+    exclusionMode: ExclusionMode.Ignore
+
+    WlrLayershell.namespace: "quickshell:notifications"
+    WlrLayershell.layer: WlrLayer.Overlay
 
     anchors {
-        top: toastWindow.isTop
-        bottom: !toastWindow.isTop
+        top: true
+        bottom: true
+        left: true
         right: true
     }
 
-    margins {
-        top: toastWindow.isTop ? Theme.barHeight : 0
-        bottom: toastWindow.isBottom ? Theme.barHeight : 0
-        right: 16
-    }
+    // active toast list
+    property var toastList: []
 
-    exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "quickshell:notifications"
-    color: "transparent"
-
-    implicitWidth: 380
-    implicitHeight: Math.max(1, toastList.contentHeight + 24)
-
-    // hide surface completely when zero toasts exist so clicks pass through
-    visible: toastModel.count > 0
+    visible: toastList.length > 0
 
     mask: Region {
-        item: toastList
-    }
-
-    ListModel {
-        id: toastModel
+        item: toastBox
     }
 
     Connections {
         target: NotificationService
-        function onNotificationReceived(n) {
-            if (Settings?.dnd && n.urgency !== NotificationUrgency.Critical) {
-                return;
-            }
 
-            let duration = n.expireTimeout > 0 ? n.expireTimeout : 5000;
-            if (n.urgency === NotificationUrgency.Critical) {
-                duration = 0;
-            }
+        function onNotificationReceived(notif) {
+            if (Settings?.dnd) return;
+            if (!notif) return;
 
-            toastModel.insert(0, {
-                notifRef: n,
-                appName: n.appName || "system",
-                summary: n.summary || "",
-                body: n.body || "",
-                icon: n.appIcon || "",
-                image: n.image || "",
-                urgency: n.urgency || 1,
-                expireTimeout: duration,
-                actions: n.actions || []
-            });
-
-            if (toastModel.count > 5) {
-                toastModel.remove(5, toastModel.count - 5);
-            }
-        }
-    }
-
-    // left welding scoop connecting the top toast directly to the status bar
-    ConcaveCorner {
-        x: (toastWindow.width - 360) / 2 - toastWindow.scoopW
-        y: toastWindow.isTop ? 0 : (toastWindow.height - toastWindow.scoopH)
-        radiusX: toastWindow.scoopW
-        radiusY: toastWindow.scoopH
-        fillColor: Theme.popupBg
-        flipX: true
-        flipY: !toastWindow.isTop
-        visible: toastModel.count > 0 && toastWindow.scoopW > 0
-    }
-
-    // right welding scoop connecting to the status bar
-    ConcaveCorner {
-        x: (toastWindow.width - 360) / 2 + 360
-        y: toastWindow.isTop ? 0 : (toastWindow.height - toastWindow.scoopH)
-        radiusX: toastWindow.scoopW
-        radiusY: toastWindow.scoopH
-        fillColor: Theme.popupBg
-        flipX: false
-        flipY: !toastWindow.isTop
-        visible: toastModel.count > 0 && toastWindow.scoopW > 0
-    }
-
-    ListView {
-        id: toastList
-        anchors.fill: parent
-        anchors.topMargin: toastWindow.isTop ? 4 : 0
-        anchors.bottomMargin: !toastWindow.isTop ? 4 : 0
-        spacing: 10
-        interactive: false
-        model: toastModel
-
-        delegate: NotificationCard {
-            required property var modelData
-            required property int index
-
-            cardIndex: index
-            notifData: modelData
-            onClosed: {
-                if (index >= 0 && index < toastModel.count) {
-                    toastModel.remove(index);
+            let updated = [...root.toastList];
+            // limit to max 5 simultaneous toasts to avoid clutter
+            if (updated.length >= 5) {
+                let dropped = updated.shift();
+                if (dropped && typeof dropped.dismiss === "function") {
+                    dropped.dismiss();
                 }
             }
+            updated.push(notif);
+            root.toastList = updated;
+        }
+    }
+
+    function removeToast(notif) {
+        let updated = root.toastList.filter(n => n !== notif);
+        root.toastList = updated;
+    }
+
+    // positioning container relative to bar
+    Item {
+        id: toastBox
+        width: 360
+        height: Math.max(1, toastCol.implicitHeight)
+
+        x: isLeft ? Theme.barHeight
+         : isRight ? (root.width - Theme.barHeight - width)
+         : (root.width - width - root.scoopW - 20)
+
+        y: isBottom ? (root.height - Theme.barHeight - height)
+         : isTop ? Theme.barHeight
+         : (20 + root.scoopH)
+
+        Behavior on x { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
+
+        // top bar welding scoops
+        ConcaveCorner {
+            x: -root.scoopW
+            y: 0
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: true
+            flipY: false
+            visible: root.isTop && root.toastList.length > 0
+        }
+        ConcaveCorner {
+            x: toastBox.width
+            y: 0
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: false
+            flipY: false
+            visible: root.isTop && root.toastList.length > 0
         }
 
-        add: Transition {
-            NumberAnimation {
-                property: "opacity"
-                from: 0.0
-                to: 1.0
-                duration: 160
-                easing.type: Easing.OutCubic
-            }
-            NumberAnimation {
-                property: "y"
-                from: toastWindow.isTop ? -24 : 24
-                duration: 160
-                easing.type: Easing.OutCubic
-            }
+        // bottom bar welding scoops
+        ConcaveCorner {
+            x: -root.scoopW
+            y: toastBox.height - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: true
+            flipY: true
+            visible: root.isBottom && root.toastList.length > 0
+        }
+        ConcaveCorner {
+            x: toastBox.width
+            y: toastBox.height - root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: false
+            flipY: true
+            visible: root.isBottom && root.toastList.length > 0
         }
 
-        displaced: Transition {
-            NumberAnimation {
-                property: "y"
-                duration: 140
-                easing.type: Easing.OutCubic
+        // left bar welding scoops
+        ConcaveCorner {
+            x: 0
+            y: -root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: false
+            flipY: true
+            visible: root.isLeft && root.toastList.length > 0
+        }
+        ConcaveCorner {
+            x: 0
+            y: toastBox.height
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: false
+            flipY: false
+            visible: root.isLeft && root.toastList.length > 0
+        }
+
+        // right bar welding scoops
+        ConcaveCorner {
+            x: toastBox.width - root.scoopW
+            y: -root.scoopH
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: true
+            flipY: true
+            visible: root.isRight && root.toastList.length > 0
+        }
+        ConcaveCorner {
+            x: toastBox.width - root.scoopW
+            y: toastBox.height
+            radiusX: root.scoopW
+            radiusY: root.scoopH
+            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+            flipX: true
+            flipY: false
+            visible: root.isRight && root.toastList.length > 0
+        }
+
+        ColumnLayout {
+            id: toastCol
+            width: parent.width
+            spacing: 10
+
+            Repeater {
+                model: root.toastList
+
+                delegate: NotificationCard {
+                    required property var modelData
+                    required property int index
+                    notificationItem: modelData
+                    Layout.fillWidth: true
+
+                    dockTop: root.isTop && index === 0
+                    dockBottom: root.isBottom && index === (root.toastList.length - 1)
+                    dockLeft: root.isLeft
+                    dockRight: root.isRight
+
+                    onDismissed: {
+                        root.removeToast(modelData);
+                    }
+                }
             }
         }
     }
