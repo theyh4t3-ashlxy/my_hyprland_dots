@@ -175,7 +175,7 @@ Scope {
                             spacing: 4
 
                             Text {
-                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clock24h ? "HH:mm" : "hh:mm A")
+                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clockFormat ?? (Settings?.clock24h ? "HH:mm" : "hh:mm A"))
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 84
                                 font.weight: Font.Bold

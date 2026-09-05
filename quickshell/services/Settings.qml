@@ -74,6 +74,11 @@ QtObject {
     property string fontWeight: "regular"
     property var networkAliases: ({})
 
+    readonly property string fontSans: fontFamily
+    readonly property string fontDisplay: fontFamily
+    readonly property string fontIcon: fontMono
+    readonly property bool clock24h: clockFormat.indexOf("HH") !== -1
+
     property bool _initialized: false
     property bool _loading: false
 
@@ -140,6 +145,8 @@ QtObject {
     onIconSetChanged: queueSave()
     onFontFamilyChanged: queueSave()
     onFontMonoChanged: queueSave()
+    onFontWindowsChanged: queueSave()
+    onFontAwesomeChanged: queueSave()
     onFontScaleChanged: queueSave()
     onFontWeightChanged: queueSave()
     onMpvPanscanChanged: queueSave()
@@ -368,6 +375,7 @@ QtObject {
     // nuke everything and go back to factory stock
     function resetToDefaults() {
         root._loading = true;
+        Quickshell.execDetached(["rm", "-f", "/home/ashley/.config/quickshell/settings.conf", "/home/ashley/my-hyprland-dots/quickshell/settings.conf"]);
         root.barPosition = "top";
         root.barMargin = 0;
         root.barFloating = false;

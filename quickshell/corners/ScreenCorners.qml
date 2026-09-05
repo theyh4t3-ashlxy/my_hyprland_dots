@@ -35,7 +35,14 @@ PanelWindow {
     readonly property string mode: Settings?.screenCornerMode ?? Theme?.screenCornerMode ?? "all"
     readonly property string rawBarPos: Settings?.barPosition ?? "up"
     readonly property string barPos: (rawBarPos === "up" || rawBarPos === "top") ? "top" : ((rawBarPos === "down" || rawBarPos === "bottom") ? "bottom" : rawBarPos)
-    readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
+    readonly property int cornerRadius: {
+        let scr = Settings?.screenCornerRadius;
+        let scp = Settings?.scoopRadius;
+        if (scr !== undefined && scr > 0) return scr;
+        if (scp !== undefined && scp > 0) return scp;
+        if (scr === 0 || scp === 0) return 0;
+        return Theme?.screenCornerRadius ?? 16;
+    }
     readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
 
     // supporting vertical rice setups so it doesn't break

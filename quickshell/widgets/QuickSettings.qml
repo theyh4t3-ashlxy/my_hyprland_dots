@@ -573,7 +573,10 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.screenCornerRadius = modelData
+                                    onClicked: {
+                                        Settings.screenCornerRadius = modelData;
+                                        Settings.scoopRadius = modelData;
+                                    }
                                 }
                             }
                         }
@@ -591,7 +594,7 @@ Rectangle {
                         spacing: 6
 
                         Repeater {
-                            model: [0, 10, 16, 20, 24]
+                            model: [0, 10, 14, 16, 20, 24]
                             delegate: Rectangle {
                                 required property int modelData
                                 Layout.fillWidth: true
@@ -610,7 +613,10 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.scoopRadius = modelData
+                                    onClicked: {
+                                        Settings.scoopRadius = modelData;
+                                        Settings.screenCornerRadius = modelData;
+                                    }
                                 }
                             }
                         }

@@ -306,13 +306,16 @@ PanelWindow {
                 Loader {
                     id: sysTrayLoaderH
                     active: (Settings?.showSystemTray ?? true) && !root.isVertical
-                    visible: active && (item ? (item.visible && item.implicitWidth > 0) : false)
-                    width: (item && visible) ? item.implicitWidth : 0
+                    readonly property bool shouldShow: Boolean(active && (item?.visible ?? false))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
                     clip: true
 
                     Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
                     sourceComponent: Component { SystemTray {} }
                 }
@@ -613,13 +616,16 @@ PanelWindow {
                 Loader {
                     id: sysTrayLoaderV
                     active: (Settings?.showSystemTray ?? true) && root.isVertical
-                    visible: active && (item ? (item.visible && item.implicitHeight > 0) : false)
+                    readonly property bool shouldShow: Boolean(active && (item?.visible ?? false))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: (item && visible) ? item.implicitHeight : 0
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
                     clip: true
 
                     Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
                     sourceComponent: Component { SystemTray {} }
                 }

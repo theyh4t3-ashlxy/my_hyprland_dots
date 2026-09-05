@@ -268,6 +268,7 @@ QtObject {
         "refresh": "(↺)",
         "trash": "(🗑)",
         "clipboard": "(📋)",
+        "tray": "[..]",
         "grid": "[#]",
         "note": "(✎)",
         "edit": "(✎)",
@@ -363,6 +364,7 @@ QtObject {
         "refresh": "reload",
         "trash": "del",
         "clipboard": "clip",
+        "tray": "tray",
         "grid": "grid",
         "note": "note",
         "edit": "edit",
@@ -588,6 +590,7 @@ QtObject {
     readonly property string iconRefresh:           getIcon("󰑐", "\uE895", "", "refresh")
     readonly property string iconTrash:             getIcon("󰩹", "\uE74D", "", "trash")
     readonly property string iconClipboard:         getIcon("󰅌", "\uF0E3", "", "clipboard")
+    readonly property string iconTray:              getIcon("󱊖", "\uE718", "", "tray")
     readonly property string iconGrid:              getIcon("󰕰", "\uE74C", "", "grid")
     readonly property string iconNote:              getIcon("󰏫", "\uE70F", "", "note")
     readonly property string iconEdit:              iconNote

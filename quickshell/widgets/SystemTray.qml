@@ -6,11 +6,14 @@ import Quickshell.Services.SystemTray
 
 Rectangle {
     id: trayRoot
-    readonly property int itemCount: SystemTray.items.values ? SystemTray.items.values.length : 0
-    visible: Settings.showSystemTray && itemCount > 0
+    readonly property int itemCount: (SystemTray.items && SystemTray.items.values) ? SystemTray.items.values.length : 0
+    visible: Settings?.showSystemTray ?? true
 
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : (trayRow.implicitWidth + 16)
-    implicitHeight: Theme.isVertical ? (trayCol.implicitHeight + 16) : Theme.barHeight - 8
+    readonly property real contentW: itemCount > 0 ? (itemCount * 20 + Math.max(0, itemCount - 1) * Theme.widgetSpacing + 16) : (Theme.barHeight - 8)
+    readonly property real contentH: itemCount > 0 ? (itemCount * 20 + Math.max(0, itemCount - 1) * Theme.widgetSpacing + 16) : (Theme.barHeight - 8)
+
+    implicitWidth: Theme.isVertical ? (Theme.barHeight - 8) : contentW
+    implicitHeight: Theme.isVertical ? contentH : (Theme.barHeight - 8)
     radius: Theme.radiusPill
     color: Theme.pillBg
     border.color: Theme.pillBorder
@@ -19,9 +22,19 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
+    Text {
+        anchors.centerIn: parent
+        visible: trayRoot.itemCount === 0
+        text: Theme.iconTray
+        font.family: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontFamily : Theme.fontIcon
+        font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontSizeXs : Theme.fontSizeSm
+        color: Theme.on_surface_variant
+        opacity: 0.65
+    }
+
     Column {
         id: trayCol
-        visible: Theme.isVertical
+        visible: Theme.isVertical && trayRoot.itemCount > 0
         anchors.centerIn: parent
         spacing: Theme.widgetSpacing
 
@@ -70,7 +83,7 @@ Rectangle {
 
     Row {
         id: trayRow
-        visible: !Theme.isVertical
+        visible: !Theme.isVertical && trayRoot.itemCount > 0
         anchors.centerIn: parent
         spacing: Theme.widgetSpacing
 
