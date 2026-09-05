@@ -10,7 +10,8 @@ QtObject {
     property string currentSchemeType: Settings.matugenScheme ?? "scheme-tonal-spot"
     property string currentMode: Settings.matugenMode ?? "dark"
     property string currentWallpaperPath: Settings.currentWallpaper || "/home/ashley/.wallpapers/hyprland/hypr.png"
-    readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/wallpaper.sh"
+    readonly property string scriptsDir: "/home/ashley/.config/quickshell/scripts"
+    readonly property string scriptPath: scriptsDir + "/wallpaper.sh"
 
     property FileView currentWpFile: FileView {
         path: "/tmp/qs_current_wallpaper.txt"
@@ -58,55 +59,35 @@ QtObject {
         Quickshell.execDetached([scriptPath, "scan"])
     }
 
+    function _buildCommonArgs(monitor) {
+        return [
+            Settings.awwwTransitionType ?? "wipe",
+            "" + (Settings.awwwTransitionAngle ?? 30),
+            "" + (Settings.awwwTransitionStep ?? 90),
+            "" + (Settings.awwwTransitionDuration ?? 3),
+            "" + (Settings.awwwTransitionFps ?? 60),
+            Settings.awwwFilter ?? "Lanczos3",
+            currentMode ?? "dark",
+            currentSchemeType ?? "scheme-tonal-spot",
+            monitor || targetMonitor || "all",
+            "" + (Settings.mpvPanscan ?? 1.0),
+            Settings.mpvAudio ? "true" : "false"
+        ]
+    }
+
     function applyLocalWallpaper(filePath, monitor) {
         currentWallpaperPath = filePath
         Settings.currentWallpaper = filePath
-        let tType = Settings.awwwTransitionType ?? "wipe"
-        let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
-        let tStep = "" + (Settings.awwwTransitionStep ?? 90)
-        let tDur = "" + (Settings.awwwTransitionDuration ?? 3)
-        let tFps = "" + (Settings.awwwTransitionFps ?? 60)
-        let tFilter = Settings.awwwFilter ?? "Lanczos3"
-        let mode = currentMode ?? "dark"
-        let scheme = currentSchemeType ?? "scheme-tonal-spot"
-        let mon = monitor || targetMonitor || "all"
-        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
-        let audio = Settings.mpvAudio ? "true" : "false"
-
-        Quickshell.execDetached([scriptPath, "set", filePath, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
+        Quickshell.execDetached([scriptPath, "set", filePath].concat(_buildCommonArgs(monitor)))
     }
 
     function applyRandomWallpaper(category, monitor) {
         let cat = category ?? "all"
-        let tType = Settings.awwwTransitionType ?? "wipe"
-        let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
-        let tStep = "" + (Settings.awwwTransitionStep ?? 90)
-        let tDur = "" + (Settings.awwwTransitionDuration ?? 3)
-        let tFps = "" + (Settings.awwwTransitionFps ?? 60)
-        let tFilter = Settings.awwwFilter ?? "Lanczos3"
-        let mode = currentMode ?? "dark"
-        let scheme = currentSchemeType ?? "scheme-tonal-spot"
-        let mon = monitor || targetMonitor || "all"
-        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
-        let audio = Settings.mpvAudio ? "true" : "false"
-
-        Quickshell.execDetached([scriptPath, "random", cat, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
+        Quickshell.execDetached([scriptPath, "random", cat].concat(_buildCommonArgs(monitor)))
     }
 
     function setWallpaper(url, monitor) {
-        let tType = Settings.awwwTransitionType ?? "wipe"
-        let tAngle = "" + (Settings.awwwTransitionAngle ?? 30)
-        let tStep = "" + (Settings.awwwTransitionStep ?? 90)
-        let tDur = "" + (Settings.awwwTransitionDuration ?? 3)
-        let tFps = "" + (Settings.awwwTransitionFps ?? 60)
-        let tFilter = Settings.awwwFilter ?? "Lanczos3"
-        let mode = currentMode ?? "dark"
-        let scheme = currentSchemeType ?? "scheme-tonal-spot"
-        let mon = monitor || targetMonitor || "all"
-        let panscan = "" + (Settings.mpvPanscan ?? 1.0)
-        let audio = Settings.mpvAudio ? "true" : "false"
-
-        Quickshell.execDetached([scriptPath, "download", url, tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio])
+        Quickshell.execDetached([scriptPath, "download", url].concat(_buildCommonArgs(monitor)))
     }
 
     function applyColor(hex) {

@@ -46,7 +46,9 @@ Scope {
 
         onPamMessage: {
             if (responseRequired && lockRoot.pendingPassword) {
-                pam.respond(lockRoot.pendingPassword);
+                let pw = lockRoot.pendingPassword;
+                lockRoot.pendingPassword = "";
+                pam.respond(pw);
             }
         }
 

@@ -55,7 +55,7 @@ Rectangle {
     }
 
     function fetchLiveWallpapers(q) {
-        Quickshell.execDetached(["python3", "/home/ashley/.config/quickshell/scripts/fetch_live_wallpapers.py", q || ""]);
+        Quickshell.execDetached(["python3", WallpaperService.scriptsDir + "/fetch_live_wallpapers.py", q || ""]);
         liveParseTimer.restart();
     }
 

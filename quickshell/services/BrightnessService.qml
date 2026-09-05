@@ -6,6 +6,7 @@ import Quickshell.Io
 Scope {
     id: root
 
+    property string device: "intel_backlight"
     property int current: 0
     property int max: 19393
     readonly property int percent: max > 0 ? Math.round((current / max) * 100) : 0
@@ -13,8 +14,21 @@ Scope {
     property bool _ready: false
     signal brightnessChanged(int newPercent)
 
+    // detects amdgpu, intel, etc automatically
+    Process {
+        id: detectProc
+        command: ["sh", "-c", "ls -1 /sys/class/backlight 2>/dev/null | head -n 1"]
+        running: true
+        stdout: SplitParser {
+            onRead: data => {
+                let d = data.trim();
+                if (d.length > 0) root.device = d;
+            }
+        }
+    }
+
     FileView {
-        path: "/sys/class/backlight/intel_backlight/max_brightness"
+        path: "/sys/class/backlight/" + root.device + "/max_brightness"
         onLoaded: {
             let val = parseInt(text().trim());
             if (!isNaN(val) && val > 0) root.max = val;
@@ -22,7 +36,7 @@ Scope {
     }
 
     FileView {
-        path: "/sys/class/backlight/intel_backlight/brightness"
+        path: "/sys/class/backlight/" + root.device + "/brightness"
         watchChanges: true
         onLoaded: {
             let val = parseInt(text().trim());

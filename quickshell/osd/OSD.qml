@@ -38,6 +38,7 @@ PanelWindow {
     property string osdIcon: Theme.iconVolHigh
     property int osdValue: 50
     property string osdLabel: "50%"
+    readonly property bool isMuted: (osdType === "mic" && osdValue === 0) || (osdType === "volume" && (sink?.audio?.muted ?? false))
 
     property var sink: Pipewire.defaultAudioSink
     property var source: Pipewire.defaultAudioSource
@@ -128,16 +129,14 @@ PanelWindow {
                 width: 32
                 height: 32
                 radius: 16
-                color: (osdRoot.osdType === "mic" && osdRoot.osdValue === 0) || (osdRoot.osdType === "volume" && osdRoot.sink?.audio?.muted)
-                     ? Theme.error_overlay : Theme.primary_overlay
+                color: osdRoot.isMuted ? Theme.error_overlay : Theme.primary_overlay
 
                 Text {
                     anchors.centerIn: parent
                     text: osdRoot.osdIcon
                     font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeMd
-                    color: (osdRoot.osdType === "mic" && osdRoot.osdValue === 0) || (osdRoot.osdType === "volume" && osdRoot.sink?.audio?.muted)
-                         ? Theme.error : Theme.primary
+                    color: osdRoot.isMuted ? Theme.error : Theme.primary
                 }
             }
 
@@ -177,8 +176,7 @@ PanelWindow {
                         height: parent.height
                         width: Math.round(parent.width * Math.min(1.0, Math.max(0.0, osdRoot.osdValue / 100.0)))
                         radius: 3
-                        color: (osdRoot.osdType === "mic" && osdRoot.osdValue === 0) || (osdRoot.osdType === "volume" && osdRoot.sink?.audio?.muted)
-                             ? Theme.error : Theme.primary
+                        color: osdRoot.isMuted ? Theme.error : Theme.primary
 
                         Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                     }

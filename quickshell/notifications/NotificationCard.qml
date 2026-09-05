@@ -101,18 +101,26 @@ Rectangle {
     }
 
     readonly property bool isHovered: cardMouse.containsMouse
+    onIsHoveredChanged: {
+        if (!isHovered) _lastTick = Date.now();
+    }
 
     // elapsed timer avoids setPaused() warnings on NumberAnimation
     property real elapsedMs: 0
+    property real _lastTick: 0
     readonly property real progressRatio: root.timeoutMs > 0 ? Math.max(0.0, 1.0 - (elapsedMs / root.timeoutMs)) : 1.0
 
     Timer {
         id: progressTimer
-        interval: 40
+        interval: 30
         repeat: true
         running: root.timeoutMs > 0 && !root.isHovered
         onTriggered: {
-            root.elapsedMs += 40;
+            let now = Date.now();
+            if (root._lastTick > 0) {
+                root.elapsedMs += (now - root._lastTick);
+            }
+            root._lastTick = now;
             if (root.elapsedMs >= root.timeoutMs) {
                 root.dismissToast();
             }

@@ -14,7 +14,7 @@ case "$action" in
         systemctl suspend
         ;;
     logout|exit)
-        hyprctl dispatch exit || true
+        uwsm stop 2>/dev/null || hyprshutdown 2>/dev/null || hyprctl dispatch exit || true
         ;;
     lock)
         qs ipc call lock lock 2>/dev/null || loginctl lock-session || hyprlock || true

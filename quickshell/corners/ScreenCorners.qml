@@ -3,7 +3,6 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import ".."
-import "../corners"
 
 PanelWindow {
     id: root
