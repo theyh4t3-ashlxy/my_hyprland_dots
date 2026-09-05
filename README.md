@@ -1,6 +1,10 @@
 > [!WARNING]
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
+> [!IMPORTANT]
+> i had to go to an older commit due to antigravity fucking up and deciding to read the quickshell source code instead of searching up the web.  
+> besides i dont want it to. when it can read docs?  
+
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
 (sometimes it just halucinates BAD, hence why ai studio exists)
