@@ -17,14 +17,18 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
-    property string activeTab: "local" // "local", "online", "theme"
+    property string activeTab: "local"
     property string localCategoryFilter: "all"
     property string localSubCategoryFilter: "all"
     property string localSearchQuery: ""
-    property string onlineQuery: "anime"
-    property string onlineSorting: "random"
+    property string onlineQuery: ""
+    property string onlineSorting: "date_added"
     property int onlinePage: 1
+    property string onlineResolution: (Quickshell.screens && Quickshell.screens.length > 0) ? (Quickshell.screens[0].width + "x" + Quickshell.screens[0].height) : "1920x1200"
+    property string onlineResolutionMode: "exact"
     property bool isOnlineLoading: false
+    property bool isBatchDownloading: false
+    property string batchStatusText: ""
 
     ListModel {
         id: localWpModel
@@ -115,19 +119,41 @@ Rectangle {
         reloadLocalWallpapers();
     }
 
-    function fetchWallhaven(query, sort, page) {
+    function fetchWallhaven(query, sort, page, resolution, resMode) {
         root.isOnlineLoading = true
         let req = new XMLHttpRequest()
-        let q = query && query.trim() !== "" ? query.trim() : "anime"
-        let s = sort || root.onlineSorting || "random"
+        let q = (query !== undefined && query !== null) ? query.trim() : root.onlineQuery
+        let s = sort || root.onlineSorting || "date_added"
         let p = page || 1
+        let r = (resolution !== undefined && resolution !== null) ? resolution.trim() : root.onlineResolution
+        let rm = resMode || root.onlineResolutionMode || "exact"
+
         root.onlineQuery = q
         root.onlineSorting = s
         root.onlinePage = p
+        root.onlineResolution = r
+        root.onlineResolutionMode = rm
 
-        let url = "https://wallhaven.cc/api/v1/search?q=" + encodeURIComponent(q) + "&sorting=" + encodeURIComponent(s) + "&page=" + p
+        let params = []
+        if (q && q !== "") {
+            params.push("q=" + encodeURIComponent(q))
+        }
+        params.push("sorting=" + encodeURIComponent(s))
+        params.push("page=" + p)
+        params.push("categories=111")
+        params.push("purity=100")
+
+        if (r && r !== "" && r.toLowerCase() !== "any") {
+            if (rm === "atleast") {
+                params.push("atleast=" + encodeURIComponent(r))
+            } else {
+                params.push("resolutions=" + encodeURIComponent(r))
+            }
+        }
+
+        let url = "https://wallhaven.cc/api/v1/search?" + params.join("&")
         req.open("GET", url)
-        req.timeout = 8000
+        req.timeout = 10000
         req.ontimeout = function() {
             root.isOnlineLoading = false
         }
@@ -145,7 +171,10 @@ Rectangle {
                             onlineWpModel.append({
                                 thumbUrl: data[i].thumbs.small,
                                 fullUrl: data[i].path,
-                                id: data[i].id
+                                id: data[i].id,
+                                resolution: data[i].resolution || "",
+                                fileType: (data[i].file_type || "").replace("image/", "").toUpperCase(),
+                                favorites: data[i].favorites || 0
                             })
                         }
                     } catch (e) {}
@@ -153,6 +182,54 @@ Rectangle {
             }
         }
         req.send()
+    }
+
+    function downloadCurrentSection() {
+        if (root.isBatchDownloading) return
+        let urls = []
+        if (root.activeTab === "online") {
+            for (let i = 0; i < onlineWpModel.count; i++) {
+                let u = onlineWpModel.get(i).fullUrl
+                if (u) urls.push(u)
+            }
+        } else if (root.activeTab === "live") {
+            for (let i = 0; i < liveWpModel.count; i++) {
+                let item = liveWpModel.get(i)
+                let u = item.url || item.path
+                if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
+                    urls.push(u)
+                }
+            }
+        }
+
+        if (urls.length === 0) return
+
+        root.isBatchDownloading = true
+        root.batchStatusText = "downloading " + urls.length + " wallpapers..."
+        batchDownloadProc.command = ["python3", wpScriptPath, "batch-download", JSON.stringify(urls)]
+        batchDownloadProc.running = true
+    }
+
+    Process {
+        id: batchDownloadProc
+        command: []
+        running: false
+        onExited: (code) => {
+            root.isBatchDownloading = false
+            if (code === 0) {
+                root.batchStatusText = "wallpapers saved to ~/.wallpapers/"
+            } else {
+                root.batchStatusText = "download completed with errors"
+            }
+            batchStatusResetTimer.restart()
+            reloadLocalWallpapers()
+        }
+    }
+
+    Timer {
+        id: batchStatusResetTimer
+        interval: 4000
+        onTriggered: root.batchStatusText = ""
     }
 
     Row {
@@ -187,8 +264,8 @@ Rectangle {
 
     PopupPanel {
         id: popup
-        cardWidth: 620
-        cardHeight: 520
+        cardWidth: 700
+        cardHeight: 560
         targetRelativeX: root.width / 2
 
         content: ColumnLayout {
@@ -269,7 +346,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             root.activeTab = "online"
-                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage)
+                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage, root.onlineResolution, root.onlineResolutionMode)
                         }
                     }
                 }
@@ -345,6 +422,47 @@ Rectangle {
                     }
                 }
 
+                // Batch download button (visible in online or live tab)
+                Rectangle {
+                    height: 34
+                    width: dlAllRow.implicitWidth + 16
+                    radius: Theme.widgetRadius
+                    color: dlAllMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                    border.color: Theme.widgetBorder
+                    border.width: 1
+                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && liveWpModel.count > 0)
+                    opacity: root.isBatchDownloading ? 0.6 : 1.0
+
+                    RowLayout {
+                        id: dlAllRow
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Text {
+                            text: root.isBatchDownloading ? Theme.iconRefresh : Theme.iconDownload
+                            font.family: Theme.fontIcon
+                            font.pixelSize: Theme.fontSizeSm
+                            color: Theme.primary
+                        }
+
+                        Text {
+                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : liveWpModel.count) + ")")
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            font.weight: Font.Bold
+                            color: Theme.on_surface
+                        }
+                    }
+
+                    MouseArea {
+                        id: dlAllMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: root.isBatchDownloading ? Qt.ArrowCursor : Qt.PointingHandCursor
+                        onClicked: downloadCurrentSection()
+                    }
+                }
+
                 // Random roll button
                 IconButton {
                     icon: Theme.iconShuffle
@@ -365,11 +483,41 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconRefresh
                     iconSize: Theme.fontSizeSm
-                    tooltip: "rescan"
+                    tooltip: "refresh / rescan"
                     onClicked: {
                         if (root.activeTab === "local") reloadLocalWallpapers()
-                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage)
+                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                        else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery)
                         else WallpaperService.reapplyTheme()
+                    }
+                }
+            }
+
+            // Status notification banner
+            Rectangle {
+                Layout.fillWidth: true
+                height: 28
+                radius: Theme.radiusSm
+                color: Theme.primary_overlay
+                border.color: Theme.primary
+                border.width: 1
+                visible: root.batchStatusText !== ""
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Text {
+                        text: Theme.iconCheck
+                        font.family: Theme.fontIcon
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.primary
+                    }
+                    Text {
+                        text: root.batchStatusText
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        font.weight: Font.Medium
+                        color: Theme.primary
                     }
                 }
             }
@@ -674,7 +822,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    cellWidth: width / 2
+                    cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
                     model: localLiveWpModel
 
@@ -1004,7 +1152,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    cellWidth: width / 2
+                    cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
 
                     model: parent.filteredLocalWps
@@ -1138,91 +1286,154 @@ Rectangle {
                 }
             }
 
-            // online tab view (wallhaven) so it doesnt explode
+            // online tab view (wallhaven)
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.activeTab === "online"
                 spacing: 8
 
-                // Online Search Bar
-                Rectangle {
+                // Row 1: Search Query + Resolution Input
+                RowLayout {
                     Layout.fillWidth: true
-                    height: 36
-                    color: Theme.surface_container_highest
-                    radius: Theme.widgetRadius
-                    border.color: onlineInput.activeFocus ? Theme.primary : Theme.widgetBorder
-                    border.width: 1
+                    spacing: 8
 
-                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                    // Search input
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 36
+                        color: Theme.surface_container_highest
+                        radius: Theme.widgetRadius
+                        border.color: onlineInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: Theme.widgetPaddingH
-                        spacing: 8
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
-                        Text {
-                            text: Theme.iconSearch
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface_variant
-                        }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.widgetPaddingH
+                            spacing: 6
 
-                        TextInput {
-                            id: onlineInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            verticalAlignment: TextInput.AlignVCenter
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
-                            color: Theme.on_surface
-                            text: root.onlineQuery
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    fetchWallhaven(text, root.onlineSorting, 1)
-                                    event.accepted = true
-                                }
+                            Text {
+                                text: Theme.iconSearch
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.on_surface_variant
                             }
-                        }
 
-                        IconButton {
-                            icon: Theme.iconSearch
-                            iconSize: Theme.fontSizeSm
-                            onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1)
-                        }
-                    }
-                }
-
-                // Preset Tag Chips
-                Flickable {
-                    Layout.fillWidth: true
-                    height: 26
-                    contentWidth: tagRow.width
-                    flickableDirection: Flickable.HorizontalFlick
-                    clip: true
-
-                    RowLayout {
-                        id: tagRow
-                        spacing: 6
-
-                        Repeater {
-                            model: ["anime", "cyberpunk", "landscape", "minimalist", "dark", "pixel art", "space", "nature"]
-
-                            delegate: Rectangle {
-                                required property string modelData
-                                height: 24
-                                width: tagText.implicitWidth + 14
-                                radius: Theme.radiusPill
-                                color: root.onlineQuery === modelData ? Theme.primary : Theme.surface_container_high
+                            TextInput {
+                                id: onlineInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.on_surface
+                                text: root.onlineQuery
+                                selectByMouse: true
 
                                 Text {
-                                    id: tagText
-                                    text: modelData
+                                    text: "search wallpapers (leave empty for all)..."
                                     font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.Medium
-                                    color: root.onlineQuery === modelData ? Theme.on_primary : Theme.on_surface
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface_disabled
+                                    visible: onlineInput.text.length === 0 && !onlineInput.activeFocus
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                        fetchWallhaven(text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                        event.accepted = true
+                                    }
+                                }
+                            }
+
+                            IconButton {
+                                icon: Theme.iconClose
+                                iconSize: 10
+                                tooltip: "clear query"
+                                visible: onlineInput.text.length > 0
+                                onClicked: {
+                                    onlineInput.text = ""
+                                    fetchWallhaven("", root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                }
+                            }
+
+                            IconButton {
+                                icon: Theme.iconSearch
+                                iconSize: Theme.fontSizeSm
+                                tooltip: "search"
+                                onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                            }
+                        }
+                    }
+
+                    // Resolution Input & Mode Toggle
+                    Rectangle {
+                        width: 175
+                        height: 36
+                        color: Theme.surface_container_highest
+                        radius: Theme.widgetRadius
+                        border.color: resInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 4
+                            spacing: 4
+
+                            Text {
+                                text: "󰍹"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeXs
+                                color: Theme.primary
+                            }
+
+                            TextInput {
+                                id: resInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                font.family: Theme.fontMono
+                                font.pixelSize: 11
+                                color: Theme.on_surface
+                                text: root.onlineResolution
+                                selectByMouse: true
+
+                                Text {
+                                    text: "res (any)"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 11
+                                    color: Theme.on_surface_disabled
+                                    visible: resInput.text.length === 0 && !resInput.activeFocus
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, text, root.onlineResolutionMode)
+                                        event.accepted = true
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                height: 24
+                                width: modeToggleText.implicitWidth + 10
+                                radius: Theme.radiusSm
+                                color: root.onlineResolutionMode === "atleast" ? Theme.primary : Theme.surface_container_high
+
+                                Text {
+                                    id: modeToggleText
+                                    text: root.onlineResolutionMode === "atleast" ? "≥ min" : "exact"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                    color: root.onlineResolutionMode === "atleast" ? Theme.on_primary : Theme.on_surface_variant
                                     anchors.centerIn: parent
                                 }
 
@@ -1230,8 +1441,8 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        onlineInput.text = modelData
-                                        fetchWallhaven(modelData, root.onlineSorting, 1)
+                                        root.onlineResolutionMode = (root.onlineResolutionMode === "exact") ? "atleast" : "exact"
+                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
                                     }
                                 }
                             }
@@ -1239,7 +1450,109 @@ Rectangle {
                     }
                 }
 
-                // Sorting + Pagination Bar
+                // Row 2: Quick Resolution Chips & Keyword Inspiration
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Text {
+                        text: "res:"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        color: Theme.on_surface_variant
+                    }
+
+                    Repeater {
+                        model: [
+                            { label: "1920x1200", val: "1920x1200" },
+                            { label: "1080p", val: "1920x1080" },
+                            { label: "1440p", val: "2560x1440" },
+                            { label: "4K", val: "3840x2160" },
+                            { label: "any", val: "any" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            height: 22
+                            width: rChipText.implicitWidth + 12
+                            radius: Theme.radiusPill
+                            color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? Theme.primary : Theme.surface_container_highest
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            Text {
+                                id: rChipText
+                                text: modelData.label
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                font.weight: Font.Medium
+                                color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? Theme.on_primary : Theme.on_surface
+                                anchors.centerIn: parent
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    let v = modelData.val
+                                    resInput.text = (v === "any" ? "" : v)
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, (v === "any" ? "" : v), root.onlineResolutionMode)
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: 14
+                        color: Theme.widgetBorder
+                    }
+
+                    Flickable {
+                        Layout.fillWidth: true
+                        height: 22
+                        contentWidth: kwRow.width
+                        flickableDirection: Flickable.HorizontalFlick
+                        clip: true
+
+                        RowLayout {
+                            id: kwRow
+                            spacing: 5
+
+                            Repeater {
+                                model: ["cyberpunk", "nature", "minimalist", "space", "anime", "city", "dark", "abstract"]
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    height: 20
+                                    width: kwText.implicitWidth + 10
+                                    radius: Theme.radiusPill
+                                    color: root.onlineQuery === modelData ? Theme.primary : Theme.surface_container_high
+
+                                    Text {
+                                        id: kwText
+                                        text: modelData
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                        color: root.onlineQuery === modelData ? Theme.on_primary : Theme.on_surface
+                                        anchors.centerIn: parent
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            onlineInput.text = modelData
+                                            fetchWallhaven(modelData, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Row 3: Sorting Chips + Download Page + Pagination
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
@@ -1247,10 +1560,11 @@ Rectangle {
                     // Sorting chips
                     Repeater {
                         model: [
-                            { label: "random", val: "random" },
+                            { label: "latest", val: "date_added" },
                             { label: "toplist", val: "toplist" },
+                            { label: "hot", val: "hot" },
                             { label: "views", val: "views" },
-                            { label: "latest", val: "date_added" }
+                            { label: "random", val: "random" }
                         ]
 
                         delegate: Rectangle {
@@ -1265,6 +1579,7 @@ Rectangle {
                                 text: modelData.label
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
+                                font.weight: root.onlineSorting === modelData.val ? Font.Bold : Font.Normal
                                 color: root.onlineSorting === modelData.val ? Theme.on_primary : Theme.on_surface
                                 anchors.centerIn: parent
                             }
@@ -1273,7 +1588,7 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    fetchWallhaven(onlineInput.text, modelData.val, 1)
+                                    fetchWallhaven(onlineInput.text, modelData.val, 1, resInput.text, root.onlineResolutionMode)
                                 }
                             }
                         }
@@ -1281,7 +1596,45 @@ Rectangle {
 
                     Item { Layout.fillWidth: true }
 
-                    // Left/Right pagination controls
+                    // Download page button
+                    Rectangle {
+                        height: 24
+                        width: dlPageText.implicitWidth + 18
+                        radius: Theme.radiusSm
+                        color: dlPageMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                        border.color: Theme.widgetBorder
+                        border.width: 1
+                        visible: onlineWpModel.count > 0
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+                            Text {
+                                text: root.isBatchDownloading ? Theme.iconRefresh : Theme.iconDownload
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 10
+                                color: Theme.primary
+                            }
+                            Text {
+                                id: dlPageText
+                                text: root.isBatchDownloading ? "downloading..." : ("download page (" + onlineWpModel.count + ")")
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                color: Theme.on_surface
+                            }
+                        }
+
+                        MouseArea {
+                            id: dlPageMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: root.isBatchDownloading ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            onClicked: downloadCurrentSection()
+                        }
+                    }
+
+                    // Pagination controls
                     Rectangle {
                         height: 24
                         width: 28
@@ -1303,7 +1656,7 @@ Rectangle {
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
                                 if (root.onlinePage > 1) {
-                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1)
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1, resInput.text, root.onlineResolutionMode)
                                 }
                             }
                         }
@@ -1345,19 +1698,19 @@ Rectangle {
                             enabled: !root.isOnlineLoading
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1)
+                                fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1, resInput.text, root.onlineResolutionMode)
                             }
                         }
                     }
                 }
 
-                // Online Grid
+                // Online Grid (3 Columns)
                 GridView {
                     id: onlineGrid
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    cellWidth: width / 2
+                    cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
                     model: onlineWpModel
                     visible: !root.isOnlineLoading && onlineWpModel.count > 0
@@ -1365,6 +1718,9 @@ Rectangle {
                     delegate: Item {
                         required property string thumbUrl
                         required property string fullUrl
+                        required property string id
+                        required property string resolution
+                        required property string fileType
 
                         width: onlineGrid.cellWidth
                         height: onlineGrid.cellHeight
@@ -1381,23 +1737,50 @@ Rectangle {
                             Image {
                                 anchors.fill: parent
                                 source: thumbUrl
-                                sourceSize: Qt.size(240, 156)
+                                sourceSize: Qt.size(260, 170)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                             }
 
+                            // Resolution badge top-left
                             Rectangle {
-                                anchors.bottom: parent.bottom
+                                anchors.top: parent.top
                                 anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 22
+                                anchors.margins: 6
+                                height: 16
+                                width: resBadgeText.implicitWidth + 8
+                                radius: 4
                                 color: Qt.rgba(0, 0, 0, 0.7)
-                                visible: onMouse.containsMouse
+                                visible: resolution !== ""
 
                                 Text {
-                                    text: "click to download & apply"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 9
+                                    id: resBadgeText
+                                    text: resolution
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 8
+                                    font.weight: Font.Bold
+                                    color: "#ffffff"
+                                    anchors.centerIn: parent
+                                }
+                            }
+
+                            // File type badge top-right
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 6
+                                height: 16
+                                width: ftBadgeText.implicitWidth + 8
+                                radius: 4
+                                color: fileType === "PNG" ? Qt.rgba(0.15, 0.6, 0.2, 0.85) : Qt.rgba(0, 0, 0, 0.7)
+                                visible: fileType !== ""
+
+                                Text {
+                                    id: ftBadgeText
+                                    text: fileType
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 8
+                                    font.weight: Font.Bold
                                     color: "#ffffff"
                                     anchors.centerIn: parent
                                 }
@@ -1408,8 +1791,57 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    WallpaperService.setWallpaper(fullUrl)
+                                onClicked: WallpaperService.setWallpaper(fullUrl)
+                            }
+
+                            // Hover bottom action bar
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: 24
+                                color: Qt.rgba(0, 0, 0, 0.8)
+                                visible: onMouse.containsMouse
+                                z: 2
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 6
+                                    anchors.rightMargin: 6
+                                    spacing: 4
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "click to apply"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                        color: "#ffffff"
+                                    }
+
+                                    Rectangle {
+                                        width: 20
+                                        height: 20
+                                        radius: 3
+                                        color: dlOnlyMouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.2)
+
+                                        Text {
+                                            text: Theme.iconDownload
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: 9
+                                            color: "#ffffff"
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            id: dlOnlyMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                WallpaperService.batchDownload([fullUrl])
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1423,7 +1855,7 @@ Rectangle {
                     visible: root.isOnlineLoading || onlineWpModel.count === 0
 
                     Text {
-                        text: root.isOnlineLoading ? (Theme.iconRefresh + "\nfetching wallpapers from wallhaven...") : "no wallpapers found"
+                        text: root.isOnlineLoading ? (Theme.iconRefresh + "\nfetching " + (root.onlineSorting === "date_added" ? "latest" : root.onlineSorting) + (root.onlineResolution && root.onlineResolution !== "any" ? (" " + root.onlineResolution) : "") + " wallpapers...") : "no wallpapers found\ntry adjusting search or resolution"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeMd
                         color: Theme.on_surface_variant

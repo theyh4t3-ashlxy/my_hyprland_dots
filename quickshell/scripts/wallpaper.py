@@ -7,6 +7,7 @@ import hashlib
 import subprocess
 import urllib.request
 import urllib.parse
+import concurrent.futures
 from pathlib import Path
 
 CUR_WP_FILE = Path("/tmp/qs_current_wallpaper.txt")
@@ -254,14 +255,84 @@ def download(args):
         filename = f"live_{h}.mp4" if is_live else f"wp_{h}.jpg"
 
     dest = save_dir / filename
+    if dest.exists() and dest.stat().st_size > 0:
+        set_wallpaper([str(dest)] + rest)
+        return
+
     req = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0 quickshell/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp, open(dest, "wb") as f:
+        temp_dest = save_dir / f".part_{filename}"
+        with urllib.request.urlopen(req, timeout=30) as resp, open(temp_dest, "wb") as f:
             f.write(resp.read())
+        temp_dest.replace(dest)
         scan()
         set_wallpaper([str(dest)] + rest)
     except Exception as e:
         sys.stderr.write(f"download failed: {e}\n")
+
+def batch_download(args):
+    if not args:
+        return
+    urls = []
+    if len(args) == 1 and (args[0].startswith("[") or args[0].startswith("{")):
+        try:
+            parsed = json.loads(args[0])
+            if isinstance(parsed, list):
+                urls = [str(u).strip() for u in parsed if u]
+        except Exception:
+            urls = [args[0].strip()]
+    else:
+        urls = [a.strip() for a in args if a.strip()]
+
+    if not urls:
+        return
+
+    save_dir_img = Path.home() / ".wallpapers" / "downloaded"
+    save_dir_live = Path.home() / ".wallpapers" / "live"
+    save_dir_img.mkdir(parents=True, exist_ok=True)
+    save_dir_live.mkdir(parents=True, exist_ok=True)
+
+    def download_one(raw_url):
+        try:
+            is_live = any(raw_url.lower().endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or "giphy.com" in raw_url or "tenor.com" in raw_url
+            target_dir = save_dir_live if is_live else save_dir_img
+            clean_url = raw_url.split("?")[0]
+            filename = clean_url.split("/")[-1]
+            if not filename or "." not in filename:
+                h = hashlib.md5(raw_url.encode()).hexdigest()[:12]
+                filename = f"live_{h}.mp4" if is_live else f"wp_{h}.jpg"
+
+            dest = target_dir / filename
+            if dest.exists() and dest.stat().st_size > 0:
+                return True, dest
+
+            temp_dest = target_dir / f".part_{filename}"
+            req = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0 quickshell/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp, open(temp_dest, "wb") as f:
+                f.write(resp.read())
+            temp_dest.replace(dest)
+            return True, dest
+        except Exception as e:
+            sys.stderr.write(f"batch download error for {raw_url}: {e}\n")
+            return False, None
+
+    success_count = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        for ok, _ in executor.map(download_one, urls):
+            if ok:
+                success_count += 1
+
+    scan()
+    try:
+        subprocess.run([
+            "notify-send",
+            "-a", "Wallpaper Browser",
+            "-i", "preferences-desktop-wallpaper",
+            "Batch Download Complete",
+            f"Saved {success_count}/{len(urls)} wallpapers to ~/.wallpapers/"
+        ], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
 
 def set_color(args):
     hex_color = args[0] if len(args) > 0 else "#787756"
@@ -343,6 +414,8 @@ def main():
         random_wallpaper(args)
     elif cmd == "download":
         download(args)
+    elif cmd == "batch-download":
+        batch_download(args)
     elif cmd == "color":
         set_color(args)
     elif cmd == "reapply":

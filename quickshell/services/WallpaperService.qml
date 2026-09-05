@@ -88,6 +88,11 @@ QtObject {
         Quickshell.execDetached(["python3", scriptPath, "download", url, ...getTransitionArgs(monitor)])
     }
 
+    function batchDownload(urls) {
+        if (!urls || urls.length === 0) return
+        Quickshell.execDetached(["python3", scriptPath, "batch-download", JSON.stringify(urls)])
+    }
+
     function applyColor(hex) {
         let mode = currentMode ?? "dark"
         let scheme = currentSchemeType ?? "scheme-tonal-spot"
