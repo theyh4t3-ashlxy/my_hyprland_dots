@@ -186,10 +186,10 @@ Rectangle {
 
                         Text {
                             text: NetworkService.isConnected 
-                                ? (NetworkService.isWiredConnected 
+                                ? Theme.getFlavor("network_on", (NetworkService.isWiredConnected 
                                     ? "wired gigabit • connected" 
-                                    : ("connected • " + NetworkService.signalStrength + "% signal" + (NetworkService.rawActiveSsid !== NetworkService.activeSsid ? " (" + NetworkService.rawActiveSsid + ")" : "")))
-                                : "disconnected • offline"
+                                    : ("connected • " + NetworkService.signalStrength + "% signal" + (NetworkService.rawActiveSsid !== NetworkService.activeSsid ? " (" + NetworkService.rawActiveSsid + ")" : ""))))
+                                : Theme.getFlavor("network_off", "disconnected • offline")
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             color: Theme.on_surface_variant

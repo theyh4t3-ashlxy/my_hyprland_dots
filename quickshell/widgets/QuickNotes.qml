@@ -18,6 +18,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
     property int activeIndex: 0
     property bool copiedFeedback: false
@@ -103,7 +104,7 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: notesModel.count + " notes"
+            text: notesModel.count === 0 ? Theme.getFlavor("notes_empty", "no notes") : (notesModel.count + " notes")
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSm
             font.weight: Font.Medium
@@ -356,6 +357,8 @@ Rectangle {
                     TextArea.flickable: TextArea {
                         id: noteArea
                         text: notesModel.count > root.activeIndex ? notesModel.get(root.activeIndex).content : ""
+                        placeholderText: Theme.getFlavor("notes_empty", "type notes or memos here...")
+                        placeholderTextColor: Theme.on_surface_variant
                         font.family: Theme.fontMono
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.on_surface

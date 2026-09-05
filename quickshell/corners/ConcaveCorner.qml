@@ -16,10 +16,11 @@ Shape {
     width: Math.max(1, radiusX)
     height: Math.max(1, radiusY)
 
-    // so it doesn't look like a jagged ps1 mesh
     asynchronous: false
-    preferredRendererType: Shape.CurveRenderer
+    preferredRendererType: Shape.GeometryRenderer
     antialiasing: true
+    layer.enabled: true
+    layer.smooth: true
 
     readonly property real w: width
     readonly property real h: height

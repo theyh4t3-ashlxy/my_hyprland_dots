@@ -20,8 +20,8 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        MotionSandbox {
-            open: Settings.showMotionSandbox
+        BarStudio {
+            open: Settings.showBarStudio || Settings.showMotionSandbox
         }
     }
 

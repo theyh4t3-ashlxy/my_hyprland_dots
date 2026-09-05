@@ -54,8 +54,10 @@ Rectangle {
         }
     }
 
+    readonly property string wpScriptPath: Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, "")
+
     function fetchLiveWallpapers(q) {
-        Quickshell.execDetached(["python3", "/home/ashley/.config/quickshell/scripts/fetch_live_wallpapers.py", q || ""]);
+        Quickshell.execDetached(["python3", wpScriptPath, "fetch-live", q || ""]);
         liveParseTimer.restart();
     }
 

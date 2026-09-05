@@ -3,16 +3,29 @@ import ".."
 import Quickshell.Hyprland
 
 Rectangle {
+    id: windowTitleRoot
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : Math.min(titleText.implicitWidth + 24, 300)
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: Theme.surface_container_high
+    color: wtMouse.containsMouse ? Theme.pillHover : Theme.pillBg
+    border.color: Theme.pillBorder
+    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+
+    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+    MouseArea {
+        id: wtMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.ArrowCursor
+    }
 
     Text {
         id: titleText
         anchors.centerIn: parent
-        // what are you even doing rn
-        text: Hyprland.activeToplevel?.title ?? Theme.getVibe(Theme.kaoEmpty, "󰄛", "desktop")
+        text: Hyprland.activeToplevel?.title ?? Theme.getFlavor("system", Theme.getVibe(Theme.kaoEmpty, "󰄛", "desktop"))
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSizeSm
         color: Theme.on_surface

@@ -50,14 +50,14 @@ Rectangle {
         syncCurrentClip();
     }
 
-    readonly property string scriptPath: "/home/ashley/.config/quickshell/scripts/clipboard.sh"
+    readonly property string scriptPath: Qt.resolvedUrl("../scripts/clipboard.py").toString().replace(/^file:\/\//, "")
 
     function syncCurrentClip() {
-        Quickshell.execDetached([scriptPath, "sync"]);
+        Quickshell.execDetached(["python3", scriptPath, "sync"]);
     }
 
     function copyToClipboard(content) {
-        Quickshell.execDetached([scriptPath, "copy", content]);
+        Quickshell.execDetached(["python3", scriptPath, "copy", content]);
         popup.open = false;
     }
 

@@ -370,9 +370,10 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "glass theme", s: "glass" },
+                                { label: "regular (solid)", s: "regular" },
+                                { label: "frosted glass", s: "glass" },
                                 { label: "pure black (oled)", s: "pure-black" },
-                                { label: "translucent (glass)", s: "translucent" },
+                                { label: "translucent (tint)", s: "translucent" },
                                 { label: "accent glow (cyber)", s: "accent-glow" },
                                 { label: "monochrome", s: "monochrome" }
                             ]
@@ -422,12 +423,13 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "all 4 corners", m: "all" },
+                                { label: "all (workspace)", m: "all" },
+                                { label: "monitor edges", m: "monitor" },
+                                { label: "bar opposite", m: "opposite" },
                                 { label: "top only", m: "top" },
                                 { label: "bottom only", m: "bottom" },
                                 { label: "left only", m: "left" },
                                 { label: "right only", m: "right" },
-                                { label: "bar opposite", m: "opposite" },
                                 { label: "disabled", m: "none" }
                             ]
 
@@ -580,6 +582,43 @@ Rectangle {
                     }
 
                     Text {
+                        text: "screen border width: " + (Settings.screenBorderWidth === 0 ? "none" : (Settings.screenBorderWidth + "px"))
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: [0, 1, 2, 3, 4]
+                            delegate: Rectangle {
+                                required property int modelData
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: Theme.radiusSm
+                                color: Settings.screenBorderWidth === modelData ? Theme.primary : Theme.surface_container_highest
+
+                                Text {
+                                    text: modelData === 0 ? "none" : (modelData + "px")
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Settings.screenBorderWidth === modelData ? Theme.on_primary : Theme.on_surface
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: Settings.screenBorderWidth = modelData
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
                         text: "concave scoop radius: " + Settings.scoopRadius + "px"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
@@ -632,6 +671,85 @@ Rectangle {
                     id: modCol
                     width: parent.width - 4
                     spacing: 8
+
+                    CategoryHeader {
+                        title: "bar layout studio"
+                        icon: Theme.iconSliders
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 64
+                        radius: Theme.radiusMd
+                        color: studioBtnMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
+                        border.color: Settings.showBarStudio ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 12
+
+                            Rectangle {
+                                width: 40
+                                height: 40
+                                radius: Theme.radiusSm
+                                color: Settings.showBarStudio ? Theme.primary_overlay : Theme.surface_container_high
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "󰑮"
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeMd
+                                    color: Theme.primary
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    text: "bar layout studio"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+                                Text {
+                                    text: Settings.showBarStudio ? "studio open on screen edge (click to close)" : "reorder, shift zones & customize bar modules interactively"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            Rectangle {
+                                height: 26
+                                implicitWidth: launchStudioText.implicitWidth + 14
+                                radius: Theme.radiusPill
+                                color: Settings.showBarStudio ? Theme.primary : Theme.primary_overlay
+
+                                Text {
+                                    id: launchStudioText
+                                    anchors.centerIn: parent
+                                    text: Settings.showBarStudio ? "active " : "open studio "
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: Settings.showBarStudio ? Theme.on_primary : Theme.primary
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: studioBtnMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Settings.showBarStudio = !Settings.showBarStudio
+                        }
+                    }
 
                     CategoryHeader {
                         title: "launcher & workspace navigation"
@@ -728,8 +846,7 @@ Rectangle {
                             { prop: "showNetwork", label: "network / wifi" },
                             { prop: "showBluetooth", label: "bluetooth" },
                             { prop: "showBattery", label: "battery status" },
-                            { prop: "showSystemTray", label: "system tray" },
-                            { prop: "showNotifications", label: "notifications center" }
+                            { prop: "showSystemTray", label: "system tray" }
                         ]
 
                         delegate: Rectangle {
@@ -758,6 +875,86 @@ Rectangle {
                                     checked: Settings[modelData.prop]
                                     onToggled: Settings[modelData.prop] = !Settings[modelData.prop]
                                 }
+                            }
+                        }
+                    }
+
+                    CategoryHeader {
+                        title: "notifications & alert center"
+                        icon: Theme.iconBell
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 38
+                        radius: Theme.widgetRadius
+                        color: Theme.cardBg
+                        border.color: Theme.cardBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme.widgetPaddingH
+                            spacing: 8
+
+                            Text {
+                                text: "notifications center module"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSizeSm
+                                color: Theme.on_surface
+                                Layout.fillWidth: true
+                            }
+
+                            ToggleSwitch {
+                                checked: Settings.showNotifications
+                                onToggled: Settings.showNotifications = !Settings.showNotifications
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 44
+                        radius: Theme.radiusSm
+                        color: Theme.surface_container_highest
+                        border.color: Settings.dnd ? Theme.primary : Theme.widgetBorder
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 10
+
+                            Text {
+                                text: Settings.dnd ? Theme.iconBellOff : Theme.iconBell
+                                font.family: Theme.fontIcon
+                                font.pixelSize: Theme.fontSizeMd
+                                color: Settings.dnd ? Theme.primary : Theme.on_surface_variant
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: "do not disturb"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeXs
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface
+                                }
+
+                                Text {
+                                    text: "silence incoming notification toasts"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+
+                            ToggleSwitch {
+                                checked: Settings.dnd
+                                onToggled: Settings.dnd = !Settings.dnd
                             }
                         }
                     }
@@ -1214,85 +1411,6 @@ Rectangle {
                             }
                         }
                     }
-
-                    CategoryHeader {
-                        title: "interactive physics lab"
-                        icon: Theme.iconSliders
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 64
-                        radius: Theme.radiusMd
-                        color: sandboxBtnMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
-                        border.color: Settings.showMotionSandbox ? Theme.primary : Theme.widgetBorder
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 12
-
-                            Rectangle {
-                                width: 40
-                                height: 40
-                                radius: Theme.radiusSm
-                                color: Settings.showMotionSandbox ? Theme.primary_overlay : Theme.surface_container_high
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "󰑮"
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeMd
-                                    color: Theme.primary
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Text {
-                                    text: "draggable physics sandbox"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSm
-                                    font.weight: Font.Bold
-                                    color: Theme.on_surface
-                                }
-                                Text {
-                                    text: Settings.showMotionSandbox ? "sandbox active on screen edge (click to close)" : "open interactive canvas with 4-way docking & physics"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    color: Theme.on_surface_variant
-                                }
-                            }
-
-                            Rectangle {
-                                height: 26
-                                implicitWidth: launchText.implicitWidth + 14
-                                radius: Theme.radiusPill
-                                color: Settings.showMotionSandbox ? Theme.primary : Theme.primary_overlay
-
-                                Text {
-                                    id: launchText
-                                    anchors.centerIn: parent
-                                    text: Settings.showMotionSandbox ? "active " : "test "
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    color: Settings.showMotionSandbox ? Theme.on_primary : Theme.primary
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: sandboxBtnMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Settings.showMotionSandbox = !Settings.showMotionSandbox
-                        }
-                    }
                 }
             }
 
@@ -1311,7 +1429,10 @@ Rectangle {
                     width: parent.width - 4
                     spacing: 10
 
-
+                    CategoryHeader {
+                        title: "personality & chaotic vibes"
+                        icon: Theme.iconFlame
+                    }
 
                     // Unhinged Personality Flavor Toggle
                     Rectangle {
@@ -1357,54 +1478,6 @@ Rectangle {
                             ToggleSwitch {
                                 checked: Settings.unhingedFlavor
                                 onToggled: Settings.unhingedFlavor = !Settings.unhingedFlavor
-                            }
-                        }
-                    }
-
-                    // Do Not Disturb Toggle
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 44
-                        radius: Theme.radiusSm
-                        color: Theme.surface_container_highest
-                        border.color: Settings.dnd ? Theme.primary : Theme.widgetBorder
-                        border.width: 1
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 10
-
-                            Text {
-                                text: Settings.dnd ? Theme.iconBellOff : Theme.iconBell
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeMd
-                                color: Settings.dnd ? Theme.primary : Theme.on_surface_variant
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 1
-
-                                Text {
-                                    text: "do not disturb"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    font.weight: Font.Bold
-                                    color: Theme.on_surface
-                                }
-
-                                Text {
-                                    text: "silence incoming notification toasts"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 9
-                                    color: Theme.on_surface_variant
-                                }
-                            }
-
-                            ToggleSwitch {
-                                checked: Settings.dnd
-                                onToggled: Settings.dnd = !Settings.dnd
                             }
                         }
                     }

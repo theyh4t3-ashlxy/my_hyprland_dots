@@ -12,14 +12,22 @@ QtObject {
     property int barMargin: 0
     property bool barFloating: false
     property int barHeight: 32
-    property string barStyle: "glass" // "glass", "pure-black", "translucent", "accent-glow", "monochrome"
+    property string barStyle: "regular" // "regular", "glass", "pure-black", "translucent", "accent-glow", "monochrome"
     property int scoopRadius: 16
     property real scoopTension: 0.55228475
     // screen corners & concave styles
     property int screenCornerRadius: 16
+    property int screenBorderWidth: 2
+    property bool screenFrameDocked: true
     property string screenCornerMode: "all"
     property string cornerStyle: "cubic"
     property string cornerColorMode: "theme"
+
+    // dynamic bar module ordering
+    property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
+    property var barModulesCenter: ["clock"]
+    property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
+    property bool showBarStudio: false
 
     // matugen & awww engine
     property string currentWallpaper: "/home/ashley/.wallpapers/hyprland/hypr.png"
@@ -133,6 +141,10 @@ QtObject {
     onShowWallpaperChanged: queueSave()
     onShowQuickNotesChanged: queueSave()
     onShowMotionSandboxChanged: queueSave()
+    onShowBarStudioChanged: queueSave()
+    onBarModulesLeftChanged: queueSave()
+    onBarModulesCenterChanged: queueSave()
+    onBarModulesRightChanged: queueSave()
     onClockFormatChanged: queueSave()
     onDateFormatChanged: queueSave()
     onShowBarDateChanged: queueSave()
@@ -157,6 +169,8 @@ QtObject {
         if (data.scoopRadius !== undefined && root.scoopRadius !== parseInt(data.scoopRadius)) root.scoopRadius = parseInt(data.scoopRadius);
         if (data.scoopTension !== undefined && root.scoopTension !== parseFloat(data.scoopTension)) root.scoopTension = parseFloat(data.scoopTension);
         if (data.screenCornerRadius !== undefined && root.screenCornerRadius !== parseInt(data.screenCornerRadius)) root.screenCornerRadius = parseInt(data.screenCornerRadius);
+        if (data.screenBorderWidth !== undefined && root.screenBorderWidth !== parseInt(data.screenBorderWidth)) root.screenBorderWidth = parseInt(data.screenBorderWidth);
+        if (data.screenFrameDocked !== undefined) root.screenFrameDocked = (data.screenFrameDocked === true || data.screenFrameDocked === "true");
         if (data.screenCornerMode !== undefined && root.screenCornerMode !== data.screenCornerMode) root.screenCornerMode = data.screenCornerMode;
         if (data.cornerStyle !== undefined && root.cornerStyle !== data.cornerStyle) root.cornerStyle = data.cornerStyle;
         if (data.cornerColorMode !== undefined && root.cornerColorMode !== data.cornerColorMode) root.cornerColorMode = data.cornerColorMode;
@@ -198,6 +212,25 @@ QtObject {
         if (data.showQuickNotes !== undefined) root.showQuickNotes = (data.showQuickNotes === true || data.showQuickNotes === "true");
         if (data.barStyle !== undefined && root.barStyle !== data.barStyle) root.barStyle = data.barStyle;
         if (data.showMotionSandbox !== undefined) root.showMotionSandbox = (data.showMotionSandbox === true || data.showMotionSandbox === "true");
+        if (data.showBarStudio !== undefined) root.showBarStudio = (data.showBarStudio === true || data.showBarStudio === "true");
+        if (data.barModulesLeft !== undefined) {
+            try {
+                let parsed = JSON.parse(data.barModulesLeft);
+                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesLeft = parsed;
+            } catch(e) {}
+        }
+        if (data.barModulesCenter !== undefined) {
+            try {
+                let parsed = JSON.parse(data.barModulesCenter);
+                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesCenter = parsed;
+            } catch(e) {}
+        }
+        if (data.barModulesRight !== undefined) {
+            try {
+                let parsed = JSON.parse(data.barModulesRight);
+                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesRight = parsed;
+            } catch(e) {}
+        }
         if (data.iconSet !== undefined && root.iconSet !== data.iconSet) root.iconSet = data.iconSet;
         if (data.clockFormat !== undefined && root.clockFormat !== data.clockFormat) root.clockFormat = data.clockFormat;
         if (data.dateFormat !== undefined && root.dateFormat !== data.dateFormat) root.dateFormat = data.dateFormat;
@@ -273,8 +306,10 @@ QtObject {
         }
     }
 
+    readonly property string confPath: Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, "")
+
     property FileView confFile: FileView {
-        path: "/home/ashley/.config/quickshell/settings.conf"
+        path: root.confPath
         watchChanges: true
         printErrors: false
         onLoaded: root.loadFromFile()
@@ -306,6 +341,8 @@ QtObject {
             "scoopRadius=" + scoopRadius,
             "scoopTension=" + scoopTension,
             "screenCornerRadius=" + screenCornerRadius,
+            "screenBorderWidth=" + screenBorderWidth,
+            "screenFrameDocked=" + screenFrameDocked,
             'screenCornerMode="' + screenCornerMode + '"',
             'cornerStyle="' + cornerStyle + '"',
             'cornerColorMode="' + cornerColorMode + '"',
@@ -342,6 +379,10 @@ QtObject {
             "showWallpaper=" + showWallpaper,
             "showQuickNotes=" + showQuickNotes,
             "showMotionSandbox=" + showMotionSandbox,
+            "showBarStudio=" + showBarStudio,
+            "barModulesLeft='" + JSON.stringify(barModulesLeft) + "'",
+            "barModulesCenter='" + JSON.stringify(barModulesCenter) + "'",
+            "barModulesRight='" + JSON.stringify(barModulesRight) + "'",
             'iconSet="' + iconSet + '"',
             'clockFormat="' + clockFormat + '"',
             'dateFormat="' + dateFormat + '"',
@@ -372,10 +413,12 @@ QtObject {
         root.barMargin = 0;
         root.barFloating = false;
         root.barHeight = 32;
-        root.barStyle = "glass";
+        root.barStyle = "regular";
         root.scoopRadius = 16;
         root.scoopTension = 0.55228475;
         root.screenCornerRadius = 16;
+        root.screenBorderWidth = 2;
+        root.screenFrameDocked = true;
         root.screenCornerMode = "all";
         root.cornerStyle = "cubic";
         root.cornerColorMode = "theme";
@@ -412,6 +455,10 @@ QtObject {
         root.showWallpaper = true;
         root.showQuickNotes = true;
         root.showMotionSandbox = false;
+        root.showBarStudio = false;
+        root.barModulesLeft = ["launcher", "wallpaper", "workspaces", "windowTitle"];
+        root.barModulesCenter = ["clock"];
+        root.barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
         root.clockFormat = "HH:mm";
         root.dateFormat = "ddd, MMM d";
         root.showBarDate = false;
@@ -426,5 +473,41 @@ QtObject {
         root.networkAliases = ({});
         root._loading = false;
         root.save();
+    }
+
+    function moveModule(zone, fromIdx, toIdx) {
+        let list = (zone === "left") ? barModulesLeft.slice() : (zone === "center") ? barModulesCenter.slice() : barModulesRight.slice();
+        if (fromIdx < 0 || fromIdx >= list.length || toIdx < 0 || toIdx >= list.length) return;
+        let item = list.splice(fromIdx, 1)[0];
+        list.splice(toIdx, 0, item);
+        if (zone === "left") barModulesLeft = list;
+        else if (zone === "center") barModulesCenter = list;
+        else barModulesRight = list;
+        queueSave();
+    }
+
+    function transferModule(fromZone, toZone, fromIdx) {
+        if (fromZone === toZone) return;
+        let fromList = (fromZone === "left") ? barModulesLeft.slice() : (fromZone === "center") ? barModulesCenter.slice() : barModulesRight.slice();
+        let toList = (toZone === "left") ? barModulesLeft.slice() : (toZone === "center") ? barModulesCenter.slice() : barModulesRight.slice();
+        if (fromIdx < 0 || fromIdx >= fromList.length) return;
+        let item = fromList.splice(fromIdx, 1)[0];
+        toList.push(item);
+
+        if (fromZone === "left") barModulesLeft = fromList;
+        else if (fromZone === "center") barModulesCenter = fromList;
+        else barModulesRight = fromList;
+
+        if (toZone === "left") barModulesLeft = toList;
+        else if (toZone === "center") barModulesCenter = toList;
+        else barModulesRight = toList;
+        queueSave();
+    }
+
+    function resetBarLayout() {
+        barModulesLeft = ["launcher", "wallpaper", "workspaces", "windowTitle"];
+        barModulesCenter = ["clock"];
+        barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
+        queueSave();
     }
 }

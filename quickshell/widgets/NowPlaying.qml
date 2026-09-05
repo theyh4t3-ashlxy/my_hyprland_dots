@@ -130,8 +130,8 @@ Rectangle {
                     return (artist + title).toLowerCase()
                 }
                 return npMouse.containsMouse 
-                    ? Theme.getVibe(Theme.kaoShrug + " nothing playing rn", "nothing playing rn", "nothing playing")
-                    : Theme.getVibe(Theme.kaoEmpty + " quiet", "quiet", "quiet")
+                    ? Theme.getFlavor("media_quiet", Theme.getVibe(Theme.kaoShrug + " nothing playing rn", "nothing playing rn", "nothing playing"))
+                    : Theme.getFlavor("media_quiet", Theme.getVibe(Theme.kaoEmpty + " quiet", "quiet", "quiet"))
             }
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSm
@@ -458,7 +458,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: Theme.getVibe("quiet right now", "no players active", "nothing playing")
+                        text: Theme.getFlavor("media_quiet", Theme.getVibe("quiet right now", "no players active", "nothing playing"))
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.on_surface_variant

@@ -33,7 +33,7 @@ PanelWindow {
     readonly property real effectiveHeight: Math.min(panelHeight, maxAllowedHeight)
 
     // animated expansion factor for smooth liquid welding
-    readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.01, root.morphProgress * 1.35))
+    readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.20, root.morphProgress))
     readonly property real curScoopW: root.scoopW * root.scoopAnimFactor
     readonly property real curScoopH: root.scoopH * root.scoopAnimFactor
 
@@ -53,6 +53,9 @@ PanelWindow {
         : desiredBodyY
 
     default property alias content: contentItem.data
+
+    implicitWidth: root.screen?.width ?? 1920
+    implicitHeight: root.screen?.height ?? 1080
 
     visible: open || morphAnim.running
     color: "transparent"
@@ -123,7 +126,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: false
-            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
@@ -133,7 +136,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: false
-            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
         }
 
         // bottom bar welding scoops
@@ -145,7 +148,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: true
-            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
             x: popupBody.x + popupBody.width
@@ -155,7 +158,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: true
-            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
         }
 
         // left bar welding scoops
@@ -167,7 +170,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: true
-            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
             x: Theme.barHeight
@@ -177,7 +180,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: false
             flipY: false
-            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
         }
 
         // right bar welding scoops
@@ -189,7 +192,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: true
-            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
             x: root.width - Theme.barHeight - root.curScoopW
@@ -199,7 +202,7 @@ PanelWindow {
             fillColor: Theme.popupBg
             flipX: true
             flipY: false
-            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.05
+            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
         }
 
         // physical expanding popup body

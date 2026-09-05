@@ -69,15 +69,16 @@ Rectangle {
             }
         }
 
+        readonly property string sessionScriptPath: Qt.resolvedUrl("../scripts/session.py").toString().replace(/^file:\/\//, "")
+
         function triggerAction(actionKey, needsConfirm) {
             if (needsConfirm) {
                 if (popup.pendingAction === actionKey) {
-                    // confirmed! execute now
                     confirmTimer.stop();
                     popup.pendingAction = "";
                     popup.confirmCountdown = 0;
                     popup.open = false;
-                    Quickshell.execDetached(["/home/ashley/.config/quickshell/scripts/session.sh", actionKey]);
+                    Quickshell.execDetached(["python3", sessionScriptPath, actionKey]);
                 } else {
                     popup.pendingAction = actionKey;
                     popup.confirmCountdown = 3;
@@ -85,7 +86,7 @@ Rectangle {
                 }
             } else {
                 popup.open = false;
-                Quickshell.execDetached(["/home/ashley/.config/quickshell/scripts/session.sh", actionKey]);
+                Quickshell.execDetached(["python3", sessionScriptPath, actionKey]);
             }
         }
 

@@ -5,7 +5,7 @@ import "../controls"
 
 Rectangle {
     id: clockRoot
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : timeText.implicitWidth + 24
+    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : clockRow.implicitWidth + 24
     implicitHeight: Theme.isVertical ? 38 : Theme.barHeight - 8
     radius: Theme.radiusPill
     color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
@@ -14,6 +14,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
     property date now: new Date()
     property int selectedYear: now.getFullYear()
@@ -34,31 +35,57 @@ Rectangle {
         return Math.floor(diff / 86400000);
     }
 
-    Text {
-        id: timeText
-        anchors.centerIn: parent
-        horizontalAlignment: Text.AlignHCenter
-        lineHeight: 0.9
-        text: {
-            if (Theme.isVertical) {
-                return Qt.formatDateTime(clockRoot.now, "HH\nmm");
-            }
-            let hrs = clockRoot.now.getHours();
-            let mood = (hrs < 6) ? Theme.getVibe(Theme.kaoSleepy, "󰤄", "")
-                     : (hrs < 12) ? Theme.getVibe(Theme.kaoCoffee, "󰖨", "")
-                     : (hrs < 18) ? Theme.getVibe(Theme.kaoCool, "󰖙", "")
-                     : Theme.getVibe(Theme.kaoMusic, "󰖔", "");
-            let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
-            let dateFmt = (Settings.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
-            let showDate = (Settings.showBarDate ?? false) && dateFmt !== "";
-            let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
-            let combo = (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
-            return mood !== "" ? (mood + " " + combo) : combo;
+    function getClockMoodIcon(hrs) {
+        if (hrs < 6) {
+            return Theme.getIcon("󰤄", "\uE708", "", "moon", Theme.kaoSleepy, "night");
+        } else if (hrs < 12) {
+            return Theme.getIcon("󰖨", "\uE706", "", "coffee", Theme.kaoCoffee, "morn");
+        } else if (hrs < 18) {
+            return Theme.getIcon("󰖙", "\uE706", "", "sun", Theme.kaoCool, "day");
+        } else {
+            return Theme.getIcon("󰖔", "\uE708", "", "music", Theme.kaoMusic, "eve");
         }
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.isVertical ? 10 : Theme.fontSizeMd
-        font.weight: Font.Medium
-        color: calPopup.open ? Theme.primary : Theme.on_surface
+    }
+
+    Row {
+        id: clockRow
+        anchors.centerIn: parent
+        spacing: 6
+
+        Text {
+            id: clockMoodText
+            anchors.verticalCenter: parent.verticalCenter
+            text: {
+                if (Theme.isVertical) return "";
+                let hrs = clockRoot.now.getHours();
+                return clockRoot.getClockMoodIcon(hrs);
+            }
+            visible: text !== "" && !Theme.isVertical
+            font.family: Theme.fontIcon
+            font.pixelSize: Theme.fontSizeSm
+            color: calPopup.open ? Theme.primary : Theme.on_surface_variant
+        }
+
+        Text {
+            id: timeText
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            lineHeight: 0.9
+            text: {
+                if (Theme.isVertical) {
+                    return Qt.formatDateTime(clockRoot.now, "HH\nmm");
+                }
+                let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
+                let dateFmt = (Settings.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
+                let showDate = (Settings.showBarDate ?? false) && dateFmt !== "";
+                let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
+                return (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
+            }
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.isVertical ? 10 : Theme.fontSizeMd
+            font.weight: Font.Medium
+            color: calPopup.open ? Theme.primary : Theme.on_surface
+        }
     }
 
     MouseArea {

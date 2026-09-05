@@ -15,6 +15,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
     readonly property int notifCount: NotificationService.trackedNotifications.values?.length ?? 0
 
@@ -250,7 +251,9 @@ Rectangle {
                 visible: root.notifCount === 0
                 
                 Text {
-                    text: (Settings.dnd ? (Theme.iconBellOff + "\ndo not disturb active\n") : (Theme.getVibe(Theme.kaoSleepy + "\n", Theme.iconBellOutline + "\n", ""))) + "all caught up"
+                    text: Settings.dnd 
+                        ? (Theme.iconBellOff + "\n" + Theme.getFlavor("dnd_on", "do not disturb active")) 
+                        : (Theme.getVibe(Theme.kaoSleepy + "\n", Theme.iconBellOutline + "\n", "") + Theme.getFlavor("notifs_empty", "all caught up"))
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.on_surface_variant

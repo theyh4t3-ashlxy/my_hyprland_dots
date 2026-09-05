@@ -110,6 +110,8 @@ QtObject {
     readonly property real   scoopTension:          Settings?.scoopTension ?? 0.5522847498307936
     readonly property string scoopStyle:            Settings?.cornerStyle ?? "cubic"
     readonly property int    screenCornerRadius:    Settings?.screenCornerRadius ?? 16
+    readonly property int    screenBorderWidth:     Settings?.screenBorderWidth ?? 2
+    readonly property bool   screenFrameDocked:     Settings?.screenFrameDocked ?? true
     readonly property string screenCornerMode:      Settings?.screenCornerMode ?? "all"
     readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "theme"
     readonly property string barStyle:              Settings?.barStyle ?? "glass"
@@ -757,6 +759,17 @@ QtObject {
                 "head empty, no thoughts",
                 "void of ideas",
                 "not a single braincell"
+            ],
+            "notifs_empty": [
+                "all quiet in the matrix",
+                "zero drama detected",
+                "nobody is bothering you",
+                "peace and quiet at last"
+            ],
+            "dnd_on": [
+                "do not disturb (touch grass)",
+                "anti-social mode active",
+                "leave me alone forever"
             ],
             "system": [
                 "barely holding together",

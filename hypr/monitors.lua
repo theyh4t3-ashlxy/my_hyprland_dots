@@ -11,7 +11,7 @@ hl.monitor({
 hl.monitor({
     output = "phone",
     disabled = false,
-    mode = "1560x720@120",
+    mode = "3120x1440@120",
     position = "auto-right",
     scale = 1,
     transform = 0,

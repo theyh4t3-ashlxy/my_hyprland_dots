@@ -6,7 +6,7 @@ import Quickshell.Services.Pipewire
 
 Rectangle {
     id: volRoot
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : row.implicitWidth + 24
+    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : (volIcon.implicitWidth + 24 + ((vMouse.containsMouse || popup.open) ? (volText.implicitWidth + 6) : 0))
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
     color: popup.open ? Theme.primary_overlay : (volRoot.muted ? Theme.widgetBg : (vMouse.containsMouse ? Theme.pillHover : Theme.pillBg))
@@ -15,6 +15,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
     property var sink: Pipewire.defaultAudioSink
     property var source: Pipewire.defaultAudioSource
@@ -39,8 +40,11 @@ Rectangle {
         }
 
         Text {
+            id: volText
             anchors.verticalCenter: parent.verticalCenter
-            visible: vMouse.containsMouse || popup.open
+            visible: !Theme.isVertical && opacity > 0.01
+            opacity: (vMouse.containsMouse || popup.open) ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
             text: {
                 if (volRoot.muted) return Theme.getVibe(Theme.kaoAnger + " shh", "󰝟 muted", "muted");
                 let pct = Math.round(volRoot.vol * 100);

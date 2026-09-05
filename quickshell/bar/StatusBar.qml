@@ -44,6 +44,8 @@ PanelWindow {
         item: barRootItem
     }
 
+    property alias launcherPopup: launcherPopup
+
     IdleInhibitor {
         enabled: !IdleService.enabled
     }
@@ -51,6 +53,105 @@ PanelWindow {
     AppLauncher {
         id: launcherPopup
         screen: root.screen
+    }
+
+    // component registry for dynamic reorderable modules
+    Component { id: compLauncher; Rectangle {
+        id: launcherPill
+        visible: Settings?.showLauncher ?? true
+        implicitWidth: root.isVertical ? (Theme.barHeight - 8) : Math.max(36, launcherText.implicitWidth + 16)
+        implicitHeight: root.isVertical ? Math.max(36, launcherText.implicitHeight + 12) : (Theme.barHeight - 8)
+        width: implicitWidth
+        height: implicitHeight
+        radius: Theme.radiusPill
+        color: lMouse.pressed ? Theme.widgetActive : lMouse.containsMouse ? Theme.pillHover : (root.launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
+        border.color: Theme.pillBorder
+        border.width: Theme.pillBorder === "transparent" ? 0 : 1
+        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+        Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+        Text {
+            id: launcherText
+            anchors.centerIn: parent
+            text: Theme.iconArch
+            font.family: Theme.fontIcon
+            font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? (root.isVertical ? Theme.fontSizeXs : Theme.fontSizeSm) : Theme.fontSizeLg
+            color: root.launcherPopup.open ? Theme.primary : Theme.on_surface
+        }
+        MouseArea {
+            id: lMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                let pt = launcherPill.mapToItem(null, 0, 0);
+                if (Theme.isVertical) {
+                    root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
+                } else {
+                    root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
+                }
+                root.launcherPopup.open = !root.launcherPopup.open;
+            }
+        }
+    }}
+
+    Component { id: compWallpaper; WallpaperBrowser {} }
+    Component { id: compWorkspaces; Workspaces {} }
+    Component { id: compWindowTitle; WindowTitle {} }
+    Component { id: compClock; Clock {} }
+    Component { id: compMedia; NowPlaying {} }
+    Component { id: compQuickNotes; QuickNotes {} }
+    Component { id: compClipboard; Clipboard {} }
+    Component { id: compIdleInhibitor; IdleInhibitor {} }
+    Component { id: compNotifications; Notifications {} }
+    Component { id: compSystemTray; SystemTray {} }
+    Component { id: compBluetooth; Bluetooth {} }
+    Component { id: compNetwork; NetworkStatus {} }
+    Component { id: compVolume; VolumeControl {} }
+    Component { id: compBattery; Battery {} }
+    Component { id: compQuickSettings; QuickSettings {} }
+    Component { id: compPowerMenu; PowerMenu {} }
+
+    function getModuleComponent(modId) {
+        if (modId === "launcher") return compLauncher;
+        if (modId === "wallpaper") return compWallpaper;
+        if (modId === "workspaces") return compWorkspaces;
+        if (modId === "windowTitle") return compWindowTitle;
+        if (modId === "clock") return compClock;
+        if (modId === "media") return compMedia;
+        if (modId === "quickNotes") return compQuickNotes;
+        if (modId === "clipboard") return compClipboard;
+        if (modId === "idleInhibitor") return compIdleInhibitor;
+        if (modId === "notifications") return compNotifications;
+        if (modId === "systemTray") return compSystemTray;
+        if (modId === "bluetooth") return compBluetooth;
+        if (modId === "network") return compNetwork;
+        if (modId === "volume") return compVolume;
+        if (modId === "battery") return compBattery;
+        if (modId === "quickSettings") return compQuickSettings;
+        if (modId === "powerMenu") return compPowerMenu;
+        return null;
+    }
+
+    function isModuleVisible(modId) {
+        if (modId === "launcher") return Settings?.showLauncher ?? true;
+        if (modId === "wallpaper") return Settings?.showWallpaper ?? true;
+        if (modId === "workspaces") return Settings?.showWorkspaces ?? true;
+        if (modId === "windowTitle") return Settings?.showWindowTitle ?? true;
+        if (modId === "clock") return Settings?.showClock ?? true;
+        if (modId === "media") return Settings?.showMedia ?? true;
+        if (modId === "quickNotes") return Settings?.showQuickNotes ?? true;
+        if (modId === "clipboard") return Settings?.showClipboard ?? true;
+        if (modId === "idleInhibitor") return Settings?.showIdleInhibitor ?? true;
+        if (modId === "notifications") return Settings?.showNotifications ?? true;
+        if (modId === "systemTray") return Settings?.showSystemTray ?? true;
+        if (modId === "bluetooth") return Settings?.showBluetooth ?? true;
+        if (modId === "network") return Settings?.showNetwork ?? true;
+        if (modId === "volume") return Settings?.showVolume ?? true;
+        if (modId === "battery") return Settings?.showBattery ?? true;
+        if (modId === "quickSettings") return Settings?.showQuickSettings ?? true;
+        if (modId === "powerMenu") return Settings?.showPowerMenu ?? true;
+        return true;
     }
 
     Item {
@@ -77,6 +178,16 @@ PanelWindow {
                 color: Theme.primary
                 opacity: 0.90
             }
+
+            // glass specular highlight sheen facing workspaces
+            Rectangle {
+                visible: Settings?.barStyle === "glass"
+                x: root.isLeft ? parent.width - 1 : 0
+                y: root.isTop ? parent.height - 1 : 0
+                width: root.isVertical ? 1 : parent.width
+                height: root.isVertical ? parent.height : 1
+                color: Qt.rgba(1, 1, 1, 0.22)
+            }
         }
 
         // horizontal bar layout (up / down)
@@ -89,197 +200,75 @@ PanelWindow {
 
             // left widgets
             Row {
+                id: leftRowH
                 anchors.left: parent.left
                 anchors.leftMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.widgetSpacing
 
-                Rectangle {
-                    id: launcherBtnH
-                    visible: Settings?.showLauncher ?? true
-                    width: Math.max(36, launcherTextH.implicitWidth + 16)
-                    height: Theme.barHeight - 8
-                    radius: Theme.radiusPill
-                    color: lMouseH.pressed ? Theme.widgetActive : lMouseH.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
-                    border.color: Theme.pillBorder
-                    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+                Repeater {
+                    model: Settings.barModulesLeft ?? []
+                    delegate: Loader {
+                        id: lModLoader
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && !root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.verticalCenter: parent.verticalCenter
+                        readonly property real targetW: item ? (modelData === "windowTitle" ? Math.max(40, Math.min(item.implicitWidth, 260)) : item.implicitWidth) : (Theme.barHeight - 8)
+                        width: targetW
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-
-                    Text {
-                        id: launcherTextH
-                        anchors.centerIn: parent
-                        text: Theme.iconArch
-                        font.family: Theme.fontIcon
-                        font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontSizeSm : Theme.fontSizeLg
-                        color: launcherPopup.open ? Theme.primary : Theme.on_surface
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                     }
-
-                    MouseArea {
-                        id: lMouseH
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            launcherPopup.targetRelativeX = launcherBtnH.mapToItem(null, 0, 0).x + (launcherBtnH.width / 2);
-                            launcherPopup.open = !launcherPopup.open;
-                        }
-                    }
-                }
-
-                Loader {
-                    active: (Settings?.showWallpaper ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { WallpaperBrowser {} }
-                }
-
-                Loader {
-                    active: (Settings?.showWorkspaces ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { Workspaces {} }
-                }
-
-                Loader {
-                    active: (Settings?.showWindowTitle ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : 0
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { WindowTitle {} }
                 }
             }
 
-            // center clock
-            Loader {
-                active: (Settings?.showClock ?? true) && !root.isVertical
-                visible: active
-                width: item ? item.implicitWidth : 100
-                height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                sourceComponent: Component { Clock {} }
+            // center widgets (clock or whatever is placed in center)
+            Row {
+                id: centerRowH
                 anchors.centerIn: parent
+                spacing: Theme.widgetSpacing
+                z: 10
+
+                Repeater {
+                    model: Settings.barModulesCenter ?? ["clock"]
+                    delegate: Loader {
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && !root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
+
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    }
+                }
             }
 
             // right widgets
             Row {
+                id: rightRowH
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.widgetSpacing
-                layoutDirection: Qt.RightToLeft
 
-                Loader {
-                    active: (Settings?.showPowerMenu ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { PowerMenu {} }
-                }
+                Repeater {
+                    model: Settings.barModulesRight ?? []
+                    delegate: Loader {
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && !root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.verticalCenter: parent.verticalCenter
+                        readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
+                        width: targetW
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
 
-                Loader {
-                    active: (Settings?.showQuickSettings ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { QuickSettings {} }
-                }
-
-                Loader {
-                    active: (Settings?.showBattery ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { Battery {} }
-                }
-
-                Loader {
-                    active: (Settings?.showVolume ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { VolumeControl {} }
-                }
-
-                Loader {
-                    active: (Settings?.showNetwork ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { NetworkStatus {} }
-                }
-
-                Loader {
-                    active: (Settings?.showBluetooth ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { Bluetooth {} }
-                }
-
-                Loader {
-                    active: (Settings?.showSystemTray ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { SystemTray {} }
-                }
-
-                Loader {
-                    active: (Settings?.showNotifications ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { Notifications {} }
-                }
-
-                Loader {
-                    active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { IdleInhibitor {} }
-                }
-
-                Loader {
-                    active: (Settings?.showClipboard ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { Clipboard {} }
-                }
-
-                Loader {
-                    active: (Settings?.showQuickNotes ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { QuickNotes {} }
-                }
-
-                Loader {
-                    active: (Settings?.showMedia ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { NowPlaying {} }
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    }
                 }
             }
         }
@@ -299,67 +288,40 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.widgetSpacing
 
-                Rectangle {
-                    id: launcherBtnV
-                    visible: Settings?.showLauncher ?? true
-                    width: Theme.barHeight - 8
-                    height: Math.max(36, launcherTextV.implicitHeight + 12)
-                    radius: Theme.radiusPill
-                    color: lMouseV.pressed ? Theme.widgetActive : lMouseV.containsMouse ? Theme.pillHover : (launcherPopup.open ? Theme.primary_overlay : Theme.pillBg)
-                    border.color: Theme.pillBorder
-                    border.width: Theme.pillBorder === "transparent" ? 0 : 1
-
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-
-                    Text {
-                        id: launcherTextV
-                        anchors.centerIn: parent
-                        text: Theme.iconArch
-                        font.family: Theme.fontIcon
-                        font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? Theme.fontSizeXs : Theme.fontSizeLg
-                        color: launcherPopup.open ? Theme.primary : Theme.on_surface
+                Repeater {
+                    model: Settings.barModulesLeft ?? []
+                    delegate: Loader {
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                     }
-
-                    MouseArea {
-                        id: lMouseV
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            launcherPopup.targetRelativeY = launcherBtnV.mapToItem(null, 0, 0).y + (launcherBtnV.height / 2);
-                            launcherPopup.open = !launcherPopup.open;
-                        }
-                    }
-                }
-
-                Loader {
-                    active: (Settings?.showWallpaper ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { WallpaperBrowser {} }
-                }
-
-                Loader {
-                    active: (Settings?.showWorkspaces ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { Workspaces {} }
                 }
             }
 
-            // center clock
-            Loader {
-                active: (Settings?.showClock ?? true) && root.isVertical
-                visible: active
-                width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                height: item ? item.implicitHeight : 38
-                sourceComponent: Component { Clock {} }
+            // center widgets
+            Column {
                 anchors.centerIn: parent
+                spacing: Theme.widgetSpacing
+                z: 10
+
+                Repeater {
+                    model: Settings.barModulesCenter ?? ["clock"]
+                    delegate: Loader {
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    }
+                }
             }
 
             // bottom widgets
@@ -369,112 +331,18 @@ PanelWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.widgetSpacing
 
-                Loader {
-                    active: (Settings?.showMedia ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { NowPlaying {} }
-                }
-
-                Loader {
-                    active: (Settings?.showClipboard ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { Clipboard {} }
-                }
-
-                Loader {
-                    active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { IdleInhibitor {} }
-                }
-
-                Loader {
-                    active: (Settings?.showNotifications ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { Notifications {} }
-                }
-
-                Loader {
-                    active: (Settings?.showSystemTray ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { SystemTray {} }
-                }
-
-                Loader {
-                    active: (Settings?.showBluetooth ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { Bluetooth {} }
-                }
-
-                Loader {
-                    active: (Settings?.showNetwork ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { NetworkStatus {} }
-                }
-
-                Loader {
-                    active: (Settings?.showVolume ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { VolumeControl {} }
-                }
-
-                Loader {
-                    active: (Settings?.showBattery ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { Battery {} }
-                }
-
-                Loader {
-                    active: (Settings?.showQuickSettings ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { QuickSettings {} }
-                }
-
-                Loader {
-                    active: (Settings?.showQuickNotes ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { QuickNotes {} }
-                }
-
-                Loader {
-                    active: (Settings?.showPowerMenu ?? true) && root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { PowerMenu {} }
+                Repeater {
+                    model: Settings.barModulesRight ?? []
+                    delegate: Loader {
+                        required property string modelData
+                        active: root.isModuleVisible(modelData) && root.isVertical
+                        visible: active && (item?.visible ?? true)
+                        sourceComponent: root.getModuleComponent(modelData)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                        height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    }
                 }
             }
         }
