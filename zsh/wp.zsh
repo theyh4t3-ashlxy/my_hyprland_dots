@@ -2,13 +2,13 @@
 
 reload-wp() {
     print -P "%F{magenta}󰄛 re-applying wallpaper & matugen theme...%f"
-    ~/.config/quickshell/scripts/wallpaper.sh reapply 2>/dev/null || ~/.config/quickshell/scripts/wallpaper.sh random all
+    python3 ~/.config/quickshell/scripts/wallpaper.py reapply 2>/dev/null || python3 ~/.config/quickshell/scripts/wallpaper.py random all
     print -P "%F{green}󰄲 wallpaper & colors refreshed%f"
 }
 
 wp() {
     local action="${1:-}"
-    local wp_script="$HOME/.config/quickshell/scripts/wallpaper.sh"
+    local wp_script="$HOME/.config/quickshell/scripts/wallpaper.py"
     
     if [[ -n "$action" ]]; then
         case "$action" in
@@ -19,7 +19,7 @@ wp() {
             random|roll)
                 shift
                 local cat="${1:-all}"
-                "$wp_script" random "$cat"
+                python3 "$wp_script" random "$cat"
                 print -P "%F{magenta}󰄛 rolled random wallpaper (%F{cyan}$cat%f)"
                 return 0
                 ;;
@@ -32,25 +32,39 @@ try:
         wps = json.load(f)
     live = [w for w in wps if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]]
     for w in live:
-        print(f"  󰄛 \033[38;5;141m{w["name"]}\033[0m (\033[38;5;120m{w["ext"]}\033[0m) -> {w["path"]}")
+        print(f"  󰄛 \033[38;5;141m{w[\"name\"]}\033[0m (\033[38;5;120m{w[\"ext\"]}\033[0m) -> {w[\"path\"]}")
 except Exception:
     print("no live wallpaper cache found. run wp scan first.")
 '
                 return 0
                 ;;
             scan)
-                python3 ~/.config/quickshell/scripts/scan_wallpapers.py
+                python3 "$wp_script" scan
                 print -P "%F{green}󰄲 wallpaper cache & thumbnails updated%f"
                 return 0
                 ;;
             set)
                 shift
                 if [[ -n "$1" && -f "$1" ]]; then
-                    "$wp_script" set "$1"
+                    python3 "$wp_script" set "$1"
                     print -P "%F{green}󰄲 applied wallpaper:%f $1"
                 else
                     print -P "%F{red}󰅚 file not found:%f $1"
                 fi
+                return 0
+                ;;
+            fetch|get)
+                shift
+                local query="${*:-}"
+                python3 "$wp_script" fetch-live "$query"
+                print -P "%F{green}󰄲 live wallpapers fetched for: ${query}%f"
+                return 0
+                ;;
+            color)
+                shift
+                local hex="${1:-#787756}"
+                python3 "$wp_script" color "$hex"
+                print -P "%F{green}󰄲 applied color theme:%f $hex"
                 return 0
                 ;;
             help|-h|--help)
@@ -59,6 +73,8 @@ except Exception:
                 print "  wp random [category]  roll random wallpaper (e.g. wp random anime)"
                 print "  wp reload             re-apply current wallpaper & theme"
                 print "  wp live               list all live video wallpapers"
+                print "  wp fetch <query>      search & download live gifs/videos"
+                print "  wp color <hex>        set custom theme color hex"
                 print "  wp scan               rescan library & rebuild thumbnails"
                 print "  wp set <file>         apply specific image/video file"
                 return 0
@@ -91,24 +107,24 @@ except Exception:
 
     case "$choice" in
         *"roll random wallpaper"*)
-            "$wp_script" random all
+            python3 "$wp_script" random all
             print -P "%F{magenta}󰄛 rolled fresh random wallpaper%f"
             ;;
         *"select wallpaper from library"*)
             local wp_json="/tmp/qs_wallpapers.json"
-            [[ ! -f "$wp_json" ]] && python3 ~/.config/quickshell/scripts/scan_wallpapers.py >/dev/null 2>&1
+            [[ ! -f "$wp_json" ]] && python3 "$wp_script" scan >/dev/null 2>&1
             local selected_file=$(python3 -c '
 import json
 try:
     with open("/tmp/qs_wallpapers.json") as f:
         wps = json.load(f)
     for w in wps:
-        print(f"{w["path"]}	{w["category"]}	{w["name"]}")
+        print(f"{w[\"path\"]}\t{w[\"category\"]}\t{w[\"name\"]}")
 except Exception:
     pass
-' | fzf --with-nth=2,3 --delimiter="	" --header="[󰋩 select wallpaper]" --preview="echo {} | awk '{print \$1}'" | awk -F"	" '{print $1}')
+' | fzf --with-nth=2,3 --delimiter="\t" --header="[󰋩 select wallpaper]" | awk -F"\t" '{print $1}')
             if [[ -n "$selected_file" && -f "$selected_file" ]]; then
-                "$wp_script" set "$selected_file"
+                python3 "$wp_script" set "$selected_file"
                 print -P "%F{green}󰄲 wallpaper applied:%f %F{cyan}${selected_file:t}%f"
             fi
             ;;
@@ -120,12 +136,12 @@ try:
         wps = json.load(f)
     for w in wps:
         if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]:
-            print(f"{w["path"]}	[live {w["ext"]}]	{w["name"]}")
+            print(f"{w[\"path\"]}\t[live {w[\"ext\"]}]\t{w[\"name\"]}")
 except Exception:
     pass
-' | fzf --with-nth=2,3 --delimiter="	" --header="[󰍹 select live wallpaper]" | awk -F"	" '{print $1}')
+' | fzf --with-nth=2,3 --delimiter="\t" --header="[󰍹 select live wallpaper]" | awk -F"\t" '{print $1}')
             if [[ -n "$selected_live" && -f "$selected_live" ]]; then
-                "$wp_script" set "$selected_live"
+                python3 "$wp_script" set "$selected_live"
                 print -P "%F{green}󰄲 live wallpaper applied:%f %F{cyan}${selected_live:t}%f"
             fi
             ;;
@@ -133,7 +149,7 @@ except Exception:
             reload-wp
             ;;
         *"rescan library"*)
-            python3 ~/.config/quickshell/scripts/scan_wallpapers.py
+            python3 "$wp_script" scan
             print -P "%F{green}󰄲 library scanned & thumbnails rebuilt%f"
             ;;
         *"download wallpaper"*)
@@ -141,7 +157,7 @@ except Exception:
             read -r dl_url
             if [[ -n "$dl_url" ]]; then
                 print -P "%F{magenta}󰄛 downloading and applying...%f"
-                python3 ~/.config/quickshell/scripts/download_wallpaper.py "$dl_url"
+                python3 "$wp_script" download "$dl_url"
             fi
             ;;
     esac
