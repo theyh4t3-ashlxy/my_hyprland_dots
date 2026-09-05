@@ -1,19 +1,21 @@
 > [!WARNING]
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
-> [!IMPORTANT]
-> ok so i upgraded it a bit, same old commit but at least things are fixed, and pure black is actually black. glass theme uses layer rules (would've def wanted to do it on qs itself tho but ok google)  
-> still had to go to older commit tho
-
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
-(sometimes it just halucinates BAD, hence why ai studio exists)
+(sometimes it just hallucinates BAD, hence why ai studio exists)
 
 ok actual shell starts here dont cry
 
 # what got fixed & unfucked
 
 - [x] bar got unfucked, 4-way docking works seamlessly in top, bottom, left, and right with dynamic transforms
+- [x] bar layout studio born: live interactive widget reordering (left/center/right) with liquid concave scoop docking, zero restart required
+- [x] app launcher resurrected: stopped rendering at 0x0 invisible ghost pixels
+- [x] python script unification: deleted fragmented `.sh` bash forks in favor of unified, lightning fast python scripts (`wallpaper.py`, `session.py`, `clipboard.py`)
+- [x] pure black actually delivered: pure black mode is genuinely `#000000` pitch black across the bar, cards, pills, and screen scoops instead of dark grey fraud
+- [x] glass vs regular split: distinct solid regular theme vs true frosted glass blur via layer-shell rules
+- [x] continuous screen frame borders: corner scoops now connect with continuous pixel-perfect borders wrapping the display
 - [x] widget loader visibility deadlock dead and buried (all 15 widgets load instantly)
 - [x] native layer-shell osd overlay for volume, mic mute, and brightness changes
 - [x] dynamic multi-tier battery glyphs (11 levels, charging, saver, and vertical bar orientation)
@@ -61,16 +63,24 @@ if your desktop looks naked, throw some wallpapers into `~/.wallpapers/` and typ
 
 this section is cursed do not linger
 
-# known issues rn
-*(will fix when claude models go back in antigravity, which is in like 2 hours. idk)*
+OR...  
+if you want to do the chaotic way..  
+you could do the `curl -fSSL` way.. though i wouldnt recommend that.  
+go ahead.
 
-- [ ] inconsistencies around the ui (specifically animations, but also some refinements)
-- [ ] animations not matching. [settings](quickshell/widgets/QuickSettings.qml) (technically its all animation presets not just hyprland anims file)
+```bash
+# russian roulette for your home directory
+curl -fsSL https://raw.githubusercontent.com/theyh4t3-ashlxy/my_hyprland_dots/main/install.zsh | zsh
+```
+
+# known issues rn
+nothing (yet)  
+probably lying, but nothing is currently on fire.
 
 # will refine
-
+- [ ] animations consistency across modules & quick settings
 - [ ] interactive physics lab in motion sandbox
-- [ ] give me ideas too  
+- [ ] give me ideas too (or open an issue to scream into the void)
 
 # how to complain (or "contribute")
 
@@ -81,4 +91,4 @@ when jules is done codin, i'll accept its changes.
 # if you wanna be a human coder and fix the hallucinations 
 *(which the ai will call u out and say its incorrect even though u are and fix the "error")*  
 
-make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf  
+make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf
