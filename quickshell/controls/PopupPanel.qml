@@ -208,10 +208,10 @@ PanelWindow {
         // physical expanding popup body
         Rectangle {
             id: popupBody
-            x: root.clampedBodyX
-            y: root.clampedBodyY
-            width: root.effectiveWidth
-            height: Math.max(1, root.morphProgress * root.effectiveHeight)
+            x: root.isRight ? (root.width - Theme.barHeight - popupBody.width) : root.clampedBodyX
+            y: root.isBottom ? (root.height - Theme.barHeight - popupBody.height) : root.clampedBodyY
+            width: root.isVertical ? Math.max(1, root.morphProgress * root.effectiveWidth) : root.effectiveWidth
+            height: root.isVertical ? root.effectiveHeight : Math.max(1, root.morphProgress * root.effectiveHeight)
             color: Theme.popupBg
             border.width: 0
             clip: true

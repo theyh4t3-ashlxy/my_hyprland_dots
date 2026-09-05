@@ -161,6 +161,8 @@ def set_wallpaper(args):
     ext_lower = Path(img_path).suffix.lower()
 
     if ext_lower in {".mp4", ".webm", ".mkv", ".mov"}:
+        subprocess.run(["awww", "kill"], stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-x", "awww-daemon"], stderr=subprocess.DEVNULL)
         subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
         try:
             subprocess.run(
@@ -177,13 +179,20 @@ def set_wallpaper(args):
         audio_flag = "volume=70" if mpv_audio.lower() == "true" else "no-audio"
         mpv_out = "*" if target_mon in {"all", "*", ""} else target_mon
         mpv_opts = f"loop-file=inf loop-playlist=inf panscan={panscan} {audio_flag} --hwdec=auto-safe --keep-open=yes"
-        subprocess.Popen(["mpvpaper", "-f", "-o", mpv_opts, mpv_out, img_path], stderr=subprocess.DEVNULL)
+        subprocess.Popen(["mpvpaper", "-f", "-o", mpv_opts, mpv_out, img_path], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
         try:
             res = subprocess.run(["awww", "query"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode != 0:
-                subprocess.Popen(["awww", "init"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for p in Path(f"/run/user/{os.getuid()}").glob("*awww-daemon*"):
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
+                subprocess.Popen(["awww-daemon", "--format", "argb"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                import time
+                time.sleep(0.4)
         except Exception:
             pass
 
@@ -339,6 +348,11 @@ def set_color(args):
     mode = args[1] if len(args) > 1 else "dark"
     scheme = args[2] if len(args) > 2 else "scheme-tonal-spot"
     subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
+    try:
+        clean_hex = hex_color.replace("#", "")
+        subprocess.run(["awww", "clear", clean_hex], stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
     subprocess.run(["matugen", "color", "hex", hex_color, "-m", mode, "-t", scheme], stderr=subprocess.DEVNULL)
     reload_quickshell()
 

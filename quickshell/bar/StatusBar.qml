@@ -32,8 +32,8 @@ PanelWindow {
         right: root.isRight || !root.isVertical
     }
 
-    implicitWidth: root.isVertical ? (Theme.barHeight + root.scoopW) : (root.screen?.width ?? 1920)
-    implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + root.scoopH)
+    implicitWidth: root.isVertical ? Theme.barHeight : (root.screen?.width ?? 1920)
+    implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : Theme.barHeight
     exclusiveZone: Theme.barHeight
     exclusionMode: ExclusionMode.Normal
 
@@ -41,7 +41,7 @@ PanelWindow {
 
     // ensure the full bar area accepts user input
     mask: Region {
-        item: barRootItem
+        item: barBg
     }
 
     property alias launcherPopup: launcherPopup
@@ -161,10 +161,7 @@ PanelWindow {
         // bar background body
         Rectangle {
             id: barBg
-            x: root.isRight ? root.scoopW : 0
-            y: root.isBottom ? root.scoopH : 0
-            width: root.isVertical ? Theme.barHeight : barRootItem.width
-            height: root.isVertical ? barRootItem.height : Theme.barHeight
+            anchors.fill: parent
             color: Theme.barBg
             border.width: 0
 
@@ -192,10 +189,7 @@ PanelWindow {
 
         // horizontal bar layout (up / down)
         Item {
-            x: barBg.x
-            y: barBg.y
-            width: barBg.width
-            height: barBg.height
+            anchors.fill: parent
             visible: !root.isVertical
 
             // left widgets
@@ -275,10 +269,7 @@ PanelWindow {
 
         // vertical bar layout (left / right)
         Item {
-            x: barBg.x
-            y: barBg.y
-            width: barBg.width
-            height: barBg.height
+            anchors.fill: parent
             visible: root.isVertical
 
             // top widgets
@@ -345,94 +336,6 @@ PanelWindow {
                     }
                 }
             }
-        }
-
-        // top bar edge scoops
-        ConcaveCorner {
-            y: barBg.height
-            anchors.left: parent.left
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: false
-            flipY: false
-            visible: root.isTop && root.scoopW > 0
-        }
-        ConcaveCorner {
-            y: barBg.height
-            anchors.right: parent.right
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: true
-            flipY: false
-            visible: root.isTop && root.scoopW > 0
-        }
-
-        // bottom bar edge scoops
-        ConcaveCorner {
-            y: 0
-            anchors.left: parent.left
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: false
-            flipY: true
-            visible: root.isBottom && root.scoopW > 0
-        }
-        ConcaveCorner {
-            y: 0
-            anchors.right: parent.right
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: true
-            flipY: true
-            visible: root.isBottom && root.scoopW > 0
-        }
-
-        // left bar edge scoops
-        ConcaveCorner {
-            x: barBg.width
-            anchors.top: parent.top
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: false
-            flipY: false
-            visible: root.isLeft && root.scoopW > 0
-        }
-        ConcaveCorner {
-            x: barBg.width
-            anchors.bottom: parent.bottom
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: false
-            flipY: true
-            visible: root.isLeft && root.scoopW > 0
-        }
-
-        // right bar edge scoops
-        ConcaveCorner {
-            x: 0
-            anchors.top: parent.top
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: true
-            flipY: false
-            visible: root.isRight && root.scoopW > 0
-        }
-        ConcaveCorner {
-            x: 0
-            anchors.bottom: parent.bottom
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: barBg.color
-            flipX: true
-            flipY: true
-            visible: root.isRight && root.scoopW > 0
         }
     }
 }
