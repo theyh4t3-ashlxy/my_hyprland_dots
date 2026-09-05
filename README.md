@@ -79,6 +79,6 @@ when jules is done codin, i'll accept its changes.
 (be rude to it, or dont. idc)  
 
 # if you wanna be a human coder and fix the hallucinations 
-*(which the ai will call u out and say its incorrect)*  
+*(which the ai will call u out and say its incorrect even though u are and fix the "error")*  
 
 make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf  
