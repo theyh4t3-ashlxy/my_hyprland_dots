@@ -1,6 +1,10 @@
 > [!WARNING]
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
+> [!IMPORTANT]
+> ok so i upgraded it a bit, same old commit but at least things are fixed, and pure black is actually black. glass theme uses layer rules (would've def wanted to do it on qs itself tho but ok google)  
+> still had to go to older commit tho
+
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
 (sometimes it just halucinates BAD, hence why ai studio exists)
@@ -75,6 +79,6 @@ when jules is done codin, i'll accept its changes.
 (be rude to it, or dont. idc)  
 
 # if you wanna be a human coder and fix the hallucinations 
-*(which the ai will call u out and say its incorrect)*  
+*(which the ai will call u out and say its incorrect even though u are and fix the "error")*  
 
 make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf  
