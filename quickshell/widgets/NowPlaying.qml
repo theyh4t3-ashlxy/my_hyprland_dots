@@ -33,19 +33,27 @@ Rectangle {
         return activeList.find(p => p.isPlaying) ?? activeList[0] ?? null
     }
 
+    property bool compactMode: false
     readonly property bool hasTrack: player !== null && Boolean(player.trackTitle || player.trackArtist)
     readonly property bool isPlaying: player?.isPlaying ?? false
 
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : row.implicitWidth + (Theme.widgetPaddingH * 2) + 8
+    implicitWidth: {
+        if (Theme.isVertical) return Theme.barHeight - 8;
+        if ((!root.hasTrack || root.compactMode) && !npMouse.containsMouse && !popup.open) {
+            return Theme.barHeight - 8;
+        }
+        return row.implicitWidth + (Theme.widgetPaddingH * 2) + 8;
+    }
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
     color: popup.open ? Theme.primary_overlay : (npMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
     border.width: Theme.pillBorder === "transparent" ? 0 : 1
+    clip: true
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
     property real trackPosition: root.player?.position ?? 0
 
@@ -122,7 +130,7 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            visible: !Theme.isVertical
+            visible: !Theme.isVertical && (!root.compactMode || npMouse.containsMouse || popup.open) && (root.hasTrack || npMouse.containsMouse || popup.open)
             text: {
                 if (root.hasTrack) {
                     let artist = root.player.trackArtist ? root.player.trackArtist + " - " : ""
@@ -137,7 +145,7 @@ Rectangle {
             font.pixelSize: Theme.fontSizeSm
             color: root.hasTrack ? Theme.on_surface : Theme.on_surface_variant
             elide: Text.ElideRight
-            width: Math.min(implicitWidth, 200)
+            width: Math.min(implicitWidth, root.compactMode ? 100 : 160)
         }
     }
 

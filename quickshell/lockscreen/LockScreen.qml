@@ -46,7 +46,9 @@ Scope {
 
         onPamMessage: {
             if (responseRequired && lockRoot.pendingPassword) {
-                pam.respond(lockRoot.pendingPassword);
+                let pw = lockRoot.pendingPassword;
+                lockRoot.pendingPassword = "";
+                pam.respond(pw);
             }
         }
 
@@ -98,7 +100,7 @@ Scope {
 
                 readonly property var activePlayer: Mpris.players.values[0] ?? null
                 readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
-                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.surface_container_low ?? Theme?.background ?? "#14140c"
+                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
 
                 Rectangle {
                     anchors.fill: parent
@@ -175,7 +177,7 @@ Scope {
                             spacing: 4
 
                             Text {
-                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clock24h ? "HH:mm" : "hh:mm A")
+                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clockFormat ?? (Settings?.clock24h ? "HH:mm" : "hh:mm A"))
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 84
                                 font.weight: Font.Bold

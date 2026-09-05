@@ -72,3 +72,7 @@ hash -d hypr="$HOME/my-hyprland-dots/hypr"
 hash -d qs="$HOME/my-hyprland-dots/quickshell"
 hash -d wp="$HOME/.wallpapers"
 hash -d conf="$HOME/.config"
+
+# nmtui with dark aesthetic palette
+alias nmtui="NEWT_COLORS=\"\$NEWT_COLORS\" command nmtui"
+

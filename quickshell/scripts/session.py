@@ -14,7 +14,13 @@ def main():
     elif action == "suspend":
         subprocess.run(["systemctl", "suspend"])
     elif action in {"logout", "exit"}:
-        subprocess.run(["hyprctl", "dispatch", "exit"])
+        for cmd in [["uwsm", "stop"], ["hyprshutdown"], ["hyprctl", "dispatch", "exit"]]:
+            try:
+                res = subprocess.run(cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                if res.returncode == 0:
+                    break
+            except Exception:
+                continue
     elif action == "lock":
         # try quickshell ipc first, then loginctl, then hyprlock
         res = subprocess.run(["qs", "ipc", "call", "lock", "lock"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)

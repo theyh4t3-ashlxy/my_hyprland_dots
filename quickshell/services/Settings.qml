@@ -109,6 +109,8 @@ QtObject {
     onScoopRadiusChanged: queueSave()
     onScoopTensionChanged: queueSave()
     onScreenCornerRadiusChanged: queueSave()
+    onScreenBorderWidthChanged: queueSave()
+    onScreenFrameDockedChanged: queueSave()
     onScreenCornerModeChanged: queueSave()
     onCornerStyleChanged: queueSave()
     onCornerColorModeChanged: queueSave()
@@ -152,6 +154,8 @@ QtObject {
     onIconSetChanged: queueSave()
     onFontFamilyChanged: queueSave()
     onFontMonoChanged: queueSave()
+    onFontWindowsChanged: queueSave()
+    onFontAwesomeChanged: queueSave()
     onFontScaleChanged: queueSave()
     onFontWeightChanged: queueSave()
     onMpvPanscanChanged: queueSave()
@@ -160,95 +164,100 @@ QtObject {
     onVibeStyleChanged: queueSave()
     onNetworkAliasesChanged: queueSave()
 
+    readonly property var _schema: [
+        { key: "barPosition", type: "string", def: "top" },
+        { key: "barMargin", type: "int", def: 0 },
+        { key: "barFloating", type: "bool", def: false },
+        { key: "barHeight", type: "int", def: 32 },
+        { key: "barStyle", type: "string", def: "regular" },
+        { key: "scoopRadius", type: "int", def: 16 },
+        { key: "scoopTension", type: "float", def: 0.55228475 },
+        { key: "screenCornerRadius", type: "int", def: 16 },
+        { key: "screenBorderWidth", type: "int", def: 2 },
+        { key: "screenFrameDocked", type: "bool", def: true },
+        { key: "screenCornerMode", type: "string", def: "all" },
+        { key: "cornerStyle", type: "string", def: "cubic" },
+        { key: "cornerColorMode", type: "string", def: "bar" },
+        { key: "currentWallpaper", type: "string", def: "/home/ashley/.wallpapers/hyprland/hypr.png" },
+        { key: "matugenMode", type: "string", def: "dark" },
+        { key: "matugenScheme", type: "string", def: "scheme-tonal-spot" },
+        { key: "awwwTransitionType", type: "string", def: "wipe" },
+        { key: "awwwTransitionAngle", type: "int", def: 30 },
+        { key: "awwwTransitionStep", type: "int", def: 90 },
+        { key: "awwwTransitionDuration", type: "int", def: 3 },
+        { key: "awwwTransitionFps", type: "int", def: 60 },
+        { key: "awwwFilter", type: "string", def: "Lanczos3" },
+        { key: "mpvPanscan", type: "float", def: 1.0 },
+        { key: "mpvAudio", type: "bool", def: false },
+        { key: "dnd", type: "bool", def: false },
+        { key: "vibeStyle", type: "string", def: "nerd" },
+        { key: "animSpeed", type: "string", def: "snappy" },
+        { key: "unhingedFlavor", type: "bool", def: true },
+        { key: "showWorkspaces", type: "bool", def: true },
+        { key: "showWindowTitle", type: "bool", def: true },
+        { key: "showClock", type: "bool", def: true },
+        { key: "showBattery", type: "bool", def: true },
+        { key: "showSystemTray", type: "bool", def: true },
+        { key: "showVolume", type: "bool", def: true },
+        { key: "showMedia", type: "bool", def: true },
+        { key: "showNotifications", type: "bool", def: true },
+        { key: "showLauncher", type: "bool", def: true },
+        { key: "showPowerMenu", type: "bool", def: true },
+        { key: "showNetwork", type: "bool", def: true },
+        { key: "showBluetooth", type: "bool", def: true },
+        { key: "showClipboard", type: "bool", def: true },
+        { key: "showIdleInhibitor", type: "bool", def: true },
+        { key: "showQuickSettings", type: "bool", def: true },
+        { key: "showWallpaper", type: "bool", def: true },
+        { key: "showQuickNotes", type: "bool", def: true },
+        { key: "showMotionSandbox", type: "bool", def: false },
+        { key: "showBarStudio", type: "bool", def: false },
+        { key: "barModulesLeft", type: "json", def: ["launcher", "wallpaper", "workspaces", "windowTitle"] },
+        { key: "barModulesCenter", type: "json", def: ["clock"] },
+        { key: "barModulesRight", type: "json", def: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"] },
+        { key: "iconSet", type: "string", def: "material" },
+        { key: "clockFormat", type: "string", def: "HH:mm" },
+        { key: "dateFormat", type: "string", def: "ddd, MMM d" },
+        { key: "showBarDate", type: "bool", def: false },
+        { key: "workspaceCount", type: "int", def: 10 },
+        { key: "fontFamily", type: "string", def: "Noto Sans" },
+        { key: "fontMono", type: "string", def: "JetBrainsMono Nerd Font" },
+        { key: "fontWindows", type: "string", def: "Segoe Fluent Icons" },
+        { key: "fontAwesome", type: "string", def: "Font Awesome 6 Free" },
+        { key: "fontScale", type: "float", def: 1.0 },
+        { key: "fontWeight", type: "string", def: "regular" },
+        { key: "networkAliases", type: "json", def: ({}) }
+    ]
+
     function loadObject(data) {
         if (!data) return;
-        if (data.barPosition !== undefined && root.barPosition !== data.barPosition) root.barPosition = data.barPosition;
-        if (data.barMargin !== undefined && root.barMargin !== parseInt(data.barMargin)) root.barMargin = parseInt(data.barMargin);
-        if (data.barFloating !== undefined) root.barFloating = (data.barFloating === true || data.barFloating === "true");
-        if (data.barHeight !== undefined && root.barHeight !== parseInt(data.barHeight)) root.barHeight = parseInt(data.barHeight);
-        if (data.scoopRadius !== undefined && root.scoopRadius !== parseInt(data.scoopRadius)) root.scoopRadius = parseInt(data.scoopRadius);
-        if (data.scoopTension !== undefined && root.scoopTension !== parseFloat(data.scoopTension)) root.scoopTension = parseFloat(data.scoopTension);
-        if (data.screenCornerRadius !== undefined && root.screenCornerRadius !== parseInt(data.screenCornerRadius)) root.screenCornerRadius = parseInt(data.screenCornerRadius);
-        if (data.screenBorderWidth !== undefined && root.screenBorderWidth !== parseInt(data.screenBorderWidth)) root.screenBorderWidth = parseInt(data.screenBorderWidth);
-        if (data.screenFrameDocked !== undefined) root.screenFrameDocked = (data.screenFrameDocked === true || data.screenFrameDocked === "true");
-        if (data.screenCornerMode !== undefined && root.screenCornerMode !== data.screenCornerMode) root.screenCornerMode = data.screenCornerMode;
-        if (data.cornerStyle !== undefined && root.cornerStyle !== data.cornerStyle) root.cornerStyle = data.cornerStyle;
-        if (data.cornerColorMode !== undefined && root.cornerColorMode !== data.cornerColorMode) root.cornerColorMode = data.cornerColorMode;
-        if (data.currentWallpaper !== undefined && root.currentWallpaper !== data.currentWallpaper) root.currentWallpaper = data.currentWallpaper;
-        if (data.matugenMode !== undefined && root.matugenMode !== data.matugenMode) root.matugenMode = data.matugenMode;
-        if (data.matugenScheme !== undefined && root.matugenScheme !== data.matugenScheme) root.matugenScheme = data.matugenScheme;
-        if (data.awwwTransitionType !== undefined) {
-            let valid = ["wipe", "wave", "grow", "fade", "center", "outer", "simple", "left", "right", "top", "bottom", "random", "none"];
-            let t = (valid.indexOf(data.awwwTransitionType) !== -1) ? data.awwwTransitionType : "wipe";
-            if (root.awwwTransitionType !== t) root.awwwTransitionType = t;
-        }
-        if (data.awwwTransitionAngle !== undefined && root.awwwTransitionAngle !== parseInt(data.awwwTransitionAngle)) root.awwwTransitionAngle = parseInt(data.awwwTransitionAngle);
-        if (data.awwwTransitionStep !== undefined && root.awwwTransitionStep !== parseInt(data.awwwTransitionStep)) root.awwwTransitionStep = parseInt(data.awwwTransitionStep);
-        if (data.awwwTransitionDuration !== undefined && root.awwwTransitionDuration !== parseInt(data.awwwTransitionDuration)) root.awwwTransitionDuration = parseInt(data.awwwTransitionDuration);
-        if (data.awwwTransitionFps !== undefined && root.awwwTransitionFps !== parseInt(data.awwwTransitionFps)) root.awwwTransitionFps = parseInt(data.awwwTransitionFps);
-        if (data.awwwFilter !== undefined && root.awwwFilter !== data.awwwFilter) root.awwwFilter = data.awwwFilter;
-        if (data.mpvPanscan !== undefined && root.mpvPanscan !== parseFloat(data.mpvPanscan)) root.mpvPanscan = parseFloat(data.mpvPanscan);
-        if (data.mpvAudio !== undefined) root.mpvAudio = (data.mpvAudio === true || data.mpvAudio === "true");
-        if (data.dnd !== undefined) root.dnd = (data.dnd === true || data.dnd === "true");
-        if (data.vibeStyle !== undefined && root.vibeStyle !== data.vibeStyle) root.vibeStyle = data.vibeStyle;
-        if (data.animSpeed !== undefined && root.animSpeed !== data.animSpeed) root.animSpeed = data.animSpeed;
-        if (data.unhingedFlavor !== undefined) root.unhingedFlavor = (data.unhingedFlavor === true || data.unhingedFlavor === "true");
-        if (data.showWorkspaces !== undefined) root.showWorkspaces = (data.showWorkspaces === true || data.showWorkspaces === "true");
-        if (data.showWindowTitle !== undefined) root.showWindowTitle = (data.showWindowTitle === true || data.showWindowTitle === "true");
-        if (data.showClock !== undefined) root.showClock = (data.showClock === true || data.showClock === "true");
-        if (data.showBattery !== undefined) root.showBattery = (data.showBattery === true || data.showBattery === "true");
-        if (data.showSystemTray !== undefined) root.showSystemTray = (data.showSystemTray === true || data.showSystemTray === "true");
-        if (data.showVolume !== undefined) root.showVolume = (data.showVolume === true || data.showVolume === "true");
-        if (data.showMedia !== undefined) root.showMedia = (data.showMedia === true || data.showMedia === "true");
-        if (data.showNotifications !== undefined) root.showNotifications = (data.showNotifications === true || data.showNotifications === "true");
-        if (data.showLauncher !== undefined) root.showLauncher = (data.showLauncher === true || data.showLauncher === "true");
-        if (data.showPowerMenu !== undefined) root.showPowerMenu = (data.showPowerMenu === true || data.showPowerMenu === "true");
-        if (data.showNetwork !== undefined) root.showNetwork = (data.showNetwork === true || data.showNetwork === "true");
-        if (data.showBluetooth !== undefined) root.showBluetooth = (data.showBluetooth === true || data.showBluetooth === "true");
-        if (data.showClipboard !== undefined) root.showClipboard = (data.showClipboard === true || data.showClipboard === "true");
-        if (data.showIdleInhibitor !== undefined) root.showIdleInhibitor = (data.showIdleInhibitor === true || data.showIdleInhibitor === "true");
-        if (data.showQuickSettings !== undefined) root.showQuickSettings = (data.showQuickSettings === true || data.showQuickSettings === "true");
-        if (data.showWallpaper !== undefined) root.showWallpaper = (data.showWallpaper === true || data.showWallpaper === "true");
-        if (data.showQuickNotes !== undefined) root.showQuickNotes = (data.showQuickNotes === true || data.showQuickNotes === "true");
-        if (data.barStyle !== undefined && root.barStyle !== data.barStyle) root.barStyle = data.barStyle;
-        if (data.showMotionSandbox !== undefined) root.showMotionSandbox = (data.showMotionSandbox === true || data.showMotionSandbox === "true");
-        if (data.showBarStudio !== undefined) root.showBarStudio = (data.showBarStudio === true || data.showBarStudio === "true");
-        if (data.barModulesLeft !== undefined) {
-            try {
-                let parsed = JSON.parse(data.barModulesLeft);
-                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesLeft = parsed;
-            } catch(e) {}
-        }
-        if (data.barModulesCenter !== undefined) {
-            try {
-                let parsed = JSON.parse(data.barModulesCenter);
-                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesCenter = parsed;
-            } catch(e) {}
-        }
-        if (data.barModulesRight !== undefined) {
-            try {
-                let parsed = JSON.parse(data.barModulesRight);
-                if (Array.isArray(parsed) && parsed.length > 0) root.barModulesRight = parsed;
-            } catch(e) {}
-        }
-        if (data.iconSet !== undefined && root.iconSet !== data.iconSet) root.iconSet = data.iconSet;
-        if (data.clockFormat !== undefined && root.clockFormat !== data.clockFormat) root.clockFormat = data.clockFormat;
-        if (data.dateFormat !== undefined && root.dateFormat !== data.dateFormat) root.dateFormat = data.dateFormat;
-        if (data.showBarDate !== undefined) root.showBarDate = (data.showBarDate === true || data.showBarDate === "true");
-        if (data.workspaceCount !== undefined && root.workspaceCount !== parseInt(data.workspaceCount)) root.workspaceCount = parseInt(data.workspaceCount);
-        if (data.fontFamily !== undefined && root.fontFamily !== data.fontFamily) root.fontFamily = data.fontFamily;
-        if (data.fontMono !== undefined && root.fontMono !== data.fontMono) root.fontMono = data.fontMono;
-        if (data.fontWindows !== undefined && root.fontWindows !== data.fontWindows) root.fontWindows = data.fontWindows;
-        if (data.fontAwesome !== undefined && root.fontAwesome !== data.fontAwesome) root.fontAwesome = data.fontAwesome;
-        if (data.fontScale !== undefined && root.fontScale !== parseFloat(data.fontScale)) root.fontScale = parseFloat(data.fontScale);
-        if (data.fontWeight !== undefined && root.fontWeight !== data.fontWeight) root.fontWeight = data.fontWeight;
-        if (data.networkAliases !== undefined) {
-            try {
-                let parsed = typeof data.networkAliases === "string" ? JSON.parse(data.networkAliases) : data.networkAliases;
-                if (parsed && typeof parsed === "object") {
-                    root.networkAliases = parsed;
-                }
-            } catch(e) {}
+        for (let i = 0; i < _schema.length; i++) {
+            let item = _schema[i];
+            let v = data[item.key];
+            if (v === undefined) continue;
+
+            if (item.key === "awwwTransitionType") {
+                let valid = ["wipe", "wave", "grow", "fade", "center", "outer", "simple", "left", "right", "top", "bottom", "random", "none"];
+                if (valid.indexOf(v) === -1) v = "wipe";
+            }
+
+            if (item.type === "string") {
+                if (root[item.key] !== v) root[item.key] = v;
+            } else if (item.type === "int") {
+                let n = parseInt(v);
+                if (!isNaN(n) && root[item.key] !== n) root[item.key] = n;
+            } else if (item.type === "float") {
+                let f = parseFloat(v);
+                if (!isNaN(f) && root[item.key] !== f) root[item.key] = f;
+            } else if (item.type === "bool") {
+                let b = (v === true || v === "true");
+                if (root[item.key] !== b) root[item.key] = b;
+            } else if (item.type === "json") {
+                try {
+                    let obj = typeof v === "string" ? JSON.parse(v) : v;
+                    if (obj && (typeof obj === "object" || Array.isArray(obj))) root[item.key] = obj;
+                } catch(e) {}
+            }
         }
     }
 
@@ -332,70 +341,18 @@ QtObject {
     }
 
     function toConf() {
-        let lines = [
-            'barPosition="' + barPosition + '"',
-            "barMargin=" + barMargin,
-            "barFloating=" + barFloating,
-            "barHeight=" + barHeight,
-            'barStyle="' + barStyle + '"',
-            "scoopRadius=" + scoopRadius,
-            "scoopTension=" + scoopTension,
-            "screenCornerRadius=" + screenCornerRadius,
-            "screenBorderWidth=" + screenBorderWidth,
-            "screenFrameDocked=" + screenFrameDocked,
-            'screenCornerMode="' + screenCornerMode + '"',
-            'cornerStyle="' + cornerStyle + '"',
-            'cornerColorMode="' + cornerColorMode + '"',
-            'currentWallpaper="' + currentWallpaper + '"',
-            'matugenMode="' + matugenMode + '"',
-            'matugenScheme="' + matugenScheme + '"',
-            'awwwTransitionType="' + awwwTransitionType + '"',
-            "awwwTransitionAngle=" + awwwTransitionAngle,
-            "awwwTransitionStep=" + awwwTransitionStep,
-            "awwwTransitionDuration=" + awwwTransitionDuration,
-            "awwwTransitionFps=" + awwwTransitionFps,
-            'awwwFilter="' + awwwFilter + '"',
-            "mpvPanscan=" + mpvPanscan,
-            "mpvAudio=" + mpvAudio,
-            "dnd=" + dnd,
-            'vibeStyle="' + vibeStyle + '"',
-            'animSpeed="' + animSpeed + '"',
-            "unhingedFlavor=" + unhingedFlavor,
-            "showWorkspaces=" + showWorkspaces,
-            "showWindowTitle=" + showWindowTitle,
-            "showClock=" + showClock,
-            "showBattery=" + showBattery,
-            "showSystemTray=" + showSystemTray,
-            "showVolume=" + showVolume,
-            "showMedia=" + showMedia,
-            "showNotifications=" + showNotifications,
-            "showLauncher=" + showLauncher,
-            "showPowerMenu=" + showPowerMenu,
-            "showNetwork=" + showNetwork,
-            "showBluetooth=" + showBluetooth,
-            "showClipboard=" + showClipboard,
-            "showIdleInhibitor=" + showIdleInhibitor,
-            "showQuickSettings=" + showQuickSettings,
-            "showWallpaper=" + showWallpaper,
-            "showQuickNotes=" + showQuickNotes,
-            "showMotionSandbox=" + showMotionSandbox,
-            "showBarStudio=" + showBarStudio,
-            "barModulesLeft='" + JSON.stringify(barModulesLeft) + "'",
-            "barModulesCenter='" + JSON.stringify(barModulesCenter) + "'",
-            "barModulesRight='" + JSON.stringify(barModulesRight) + "'",
-            'iconSet="' + iconSet + '"',
-            'clockFormat="' + clockFormat + '"',
-            'dateFormat="' + dateFormat + '"',
-            "showBarDate=" + showBarDate,
-            "workspaceCount=" + workspaceCount,
-            'fontFamily="' + fontFamily + '"',
-            'fontMono="' + fontMono + '"',
-            'fontWindows="' + fontWindows + '"',
-            'fontAwesome="' + fontAwesome + '"',
-            "fontScale=" + fontScale,
-            'fontWeight="' + fontWeight + '"',
-            'networkAliases=\'' + JSON.stringify(root.networkAliases || {}) + '\''
-        ];
+        let lines = [];
+        for (let i = 0; i < _schema.length; i++) {
+            let item = _schema[i];
+            let val = root[item.key];
+            if (item.type === "string") {
+                lines.push(item.key + '="' + val + '"');
+            } else if (item.type === "json") {
+                lines.push(item.key + "='" + JSON.stringify(val ?? item.def) + "'");
+            } else {
+                lines.push(item.key + "=" + val);
+            }
+        }
         return lines.join("\n");
     }
 
@@ -409,68 +366,11 @@ QtObject {
     // nuke everything and go back to factory stock
     function resetToDefaults() {
         root._loading = true;
-        root.barPosition = "top";
-        root.barMargin = 0;
-        root.barFloating = false;
-        root.barHeight = 32;
-        root.barStyle = "regular";
-        root.scoopRadius = 16;
-        root.scoopTension = 0.55228475;
-        root.screenCornerRadius = 16;
-        root.screenBorderWidth = 2;
-        root.screenFrameDocked = true;
-        root.screenCornerMode = "all";
-        root.cornerStyle = "cubic";
-        root.cornerColorMode = "theme";
-        root.currentWallpaper = "/home/ashley/.wallpapers/hyprland/hypr.png";
-        root.matugenMode = "dark";
-        root.matugenScheme = "scheme-tonal-spot";
-        root.awwwTransitionType = "wipe";
-        root.awwwTransitionAngle = 30;
-        root.awwwTransitionStep = 90;
-        root.awwwTransitionDuration = 3;
-        root.awwwTransitionFps = 60;
-        root.awwwFilter = "Lanczos3";
-        root.mpvPanscan = 1.0;
-        root.mpvAudio = false;
-        root.dnd = false;
-        root.animSpeed = "snappy";
-        root.unhingedFlavor = true;
-        root.vibeStyle = "nerd";
-        root.showWorkspaces = true;
-        root.showWindowTitle = true;
-        root.showClock = true;
-        root.showBattery = true;
-        root.showSystemTray = true;
-        root.showVolume = true;
-        root.showMedia = true;
-        root.showNotifications = true;
-        root.showLauncher = true;
-        root.showPowerMenu = true;
-        root.showNetwork = true;
-        root.showBluetooth = true;
-        root.showClipboard = true;
-        root.showIdleInhibitor = true;
-        root.showQuickSettings = true;
-        root.showWallpaper = true;
-        root.showQuickNotes = true;
-        root.showMotionSandbox = false;
-        root.showBarStudio = false;
-        root.barModulesLeft = ["launcher", "wallpaper", "workspaces", "windowTitle"];
-        root.barModulesCenter = ["clock"];
-        root.barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
-        root.clockFormat = "HH:mm";
-        root.dateFormat = "ddd, MMM d";
-        root.showBarDate = false;
-        root.workspaceCount = 10;
-        root.iconSet = "material";
-        root.fontFamily = "Noto Sans";
-        root.fontMono = "JetBrainsMono Nerd Font";
-        root.fontWindows = "Segoe Fluent Icons";
-        root.fontAwesome = "Font Awesome 6 Free";
-        root.fontScale = 1.0;
-        root.fontWeight = "regular";
-        root.networkAliases = ({});
+        Quickshell.execDetached(["rm", "-f", "/home/ashley/.config/quickshell/settings.conf", "/home/ashley/my-hyprland-dots/quickshell/settings.conf"]);
+        for (let i = 0; i < _schema.length; i++) {
+            let item = _schema[i];
+            root[item.key] = (item.type === "json") ? (Array.isArray(item.def) ? item.def.slice() : Object.assign({}, item.def)) : item.def;
+        }
         root._loading = false;
         root.save();
     }

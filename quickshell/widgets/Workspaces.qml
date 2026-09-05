@@ -15,6 +15,29 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
+    property var workspaceList: []
+
+    function updateWorkspaceList() {
+        let vals = Hyprland.workspaces?.values || [];
+        workspaceList = vals.slice().sort((a, b) => a.id - b.id);
+    }
+
+    Component.onCompleted: updateWorkspaceList()
+
+    Connections {
+        target: Hyprland.workspaces
+        function onValuesChanged() {
+            wsDebounce.restart();
+        }
+    }
+
+    Timer {
+        id: wsDebounce
+        interval: 10
+        repeat: false
+        onTriggered: wsContainer.updateWorkspaceList()
+    }
+
     Column {
         id: wsCol
         visible: Theme.isVertical
@@ -22,7 +45,7 @@ Rectangle {
         spacing: 4
 
         Repeater {
-            model: Hyprland.workspaces
+            model: wsContainer.workspaceList
 
             Rectangle {
                 required property var modelData
@@ -49,7 +72,7 @@ Rectangle {
         spacing: 4
 
         Repeater {
-            model: Hyprland.workspaces
+            model: wsContainer.workspaceList
 
             Rectangle {
                 required property var modelData
@@ -153,7 +176,7 @@ Rectangle {
                 rowSpacing: 6
 
                 Repeater {
-                    model: 10
+                    model: Settings?.workspaceCount ?? 10
 
                     delegate: Rectangle {
                         required property int index

@@ -51,12 +51,11 @@ PanelWindow {
             if (Settings?.dnd) return;
             if (!notif) return;
 
-            let updated = [...root.toastList];
-            // limit to max 5 simultaneous toasts to avoid clutter
-            if (updated.length >= 5) {
+            let updated = root.toastList.filter(n => n && n !== notif && (notif.id === undefined || n.id !== notif.id));
+            while (updated.length >= 5) {
                 let dropped = updated.shift();
                 if (dropped && typeof dropped.dismiss === "function") {
-                    dropped.dismiss();
+                    try { dropped.dismiss(); } catch (e) {}
                 }
             }
             updated.push(notif);
@@ -65,8 +64,8 @@ PanelWindow {
     }
 
     function removeToast(notif) {
-        let updated = root.toastList.filter(n => n !== notif);
-        root.toastList = updated;
+        if (!notif) return;
+        root.toastList = root.toastList.filter(n => n && n !== notif && (notif.id === undefined || n.id !== notif.id));
     }
 
     // positioning container relative to bar

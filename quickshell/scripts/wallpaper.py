@@ -201,6 +201,15 @@ def set_wallpaper(args):
         ])
         subprocess.run(awww_cmd, stderr=subprocess.DEVNULL)
         subprocess.run(["matugen", "image", img_path, "-m", mode, "-t", scheme, "--source-color-index", "0"], stderr=subprocess.DEVNULL)
+        reload_quickshell()
+
+def reload_quickshell():
+    shell_qml = Path.home() / ".config" / "quickshell" / "shell.qml"
+    if shell_qml.exists():
+        try:
+            shell_qml.touch()
+        except Exception:
+            pass
 
 def random_wallpaper(args):
     filter_cat = args[0].lower() if len(args) > 0 else "all"
@@ -260,11 +269,26 @@ def set_color(args):
     scheme = args[2] if len(args) > 2 else "scheme-tonal-spot"
     subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
     subprocess.run(["matugen", "color", "hex", hex_color, "-m", mode, "-t", scheme], stderr=subprocess.DEVNULL)
+    reload_quickshell()
 
 def reapply(args):
     mode = args[0] if len(args) > 0 else "dark"
     scheme = args[1] if len(args) > 1 else "scheme-tonal-spot"
     cur_wp = CUR_WP_FILE.read_text().strip() if CUR_WP_FILE.exists() else ""
+    if not cur_wp or not os.path.isfile(cur_wp):
+        settings_conf = Path.home() / ".config" / "quickshell" / "settings.conf"
+        if settings_conf.exists():
+            for line in settings_conf.read_text().splitlines():
+                if line.startswith("currentWallpaper="):
+                    candidate = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    if os.path.isfile(candidate):
+                        cur_wp = candidate
+                        break
+    if not cur_wp or not os.path.isfile(cur_wp):
+        default_wp = Path.home() / ".wallpapers" / "hyprland" / "hypr.png"
+        if default_wp.is_file():
+            cur_wp = str(default_wp)
+
     if cur_wp and os.path.isfile(cur_wp):
         set_wallpaper([cur_wp, "wipe", "30", "90", "3", "60", "Lanczos3", mode, scheme, "all", "1.0", "false"])
     else:

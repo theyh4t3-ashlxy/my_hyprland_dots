@@ -22,6 +22,11 @@ ok actual shell starts here dont cry
 - [x] settings organized into clean categorized groups with 100% synchronous `FileView` persistence
 - [x] calendar day header token bug squashed (no more "day DDD of 2026")
 - [x] hyprland 0.55 lua dispatch syntax restored for workspaces
+- [x] bar layouts unified: murdered ~350 lines of duplicate horizontal/vertical loader spaghetti with `BarWidgetLoader`
+- [x] repeater incubator crash patched: snapshotted workspaces list model so quickshell stops segfaulting on desktop switch
+- [x] backlight auto-detection: scans `/sys/class/backlight/` dynamically instead of dying on non-intel gpus
+- [x] settings engine schema-driven: wiped 200 lines of manual serialization boilerplate
+- [x] notification timer drift eradicated with timestamp delta tracking and duplicate toast suppression
 - [x] zsh overhauled: compinit cached, bytecode auto-compilation, zero dead imports, 50+ existential roasts
 
 dont run this as root unless you want your drive atomized

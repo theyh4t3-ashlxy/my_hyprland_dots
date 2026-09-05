@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 QtObject {
     id: root
@@ -36,16 +37,24 @@ QtObject {
         }
     }
 
-    // 330s: turn off monitors
+    // 330s: turn off monitors via native Hyprland IPC
     property IdleMonitor dpmsMonitor: IdleMonitor {
         timeout: 330
         respectInhibitors: true
         onIsIdleChanged: {
             if (!root.enabled) return;
             if (isIdle) {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off"]);
+                if (Hyprland.usingLua) {
+                    Hyprland.dispatch("hl.dsp.dpms({ action = 'disable' })");
+                } else {
+                    Hyprland.dispatch("dpms off");
+                }
             } else {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "on"]);
+                if (Hyprland.usingLua) {
+                    Hyprland.dispatch("hl.dsp.dpms({ action = 'enable' })");
+                } else {
+                    Hyprland.dispatch("dpms on");
+                }
             }
         }
     }
