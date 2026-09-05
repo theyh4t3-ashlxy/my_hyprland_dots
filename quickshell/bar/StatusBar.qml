@@ -90,13 +90,22 @@ PanelWindow {
 
             // dynamic spatial clearance metrics with hysteresis
             readonly property real rawClearance: Math.max(0, rightRow.x - (leftRow.x + leftRow.width))
-            readonly property bool isCrowded: rawClearance < (wasCrowded ? 280 : 160)
-            property bool wasCrowded: false
-            onIsCrowdedChanged: wasCrowded = isCrowded
+            property bool isCrowded: false
+            property bool isVeryCrowded: false
 
-            readonly property bool isVeryCrowded: rawClearance < (wasVeryCrowded ? 180 : 80)
-            property bool wasVeryCrowded: false
-            onIsVeryCrowdedChanged: wasVeryCrowded = isVeryCrowded
+            onRawClearanceChanged: {
+                if (!isCrowded && rawClearance < 160) {
+                    isCrowded = true;
+                } else if (isCrowded && rawClearance > 280) {
+                    isCrowded = false;
+                }
+
+                if (!isVeryCrowded && rawClearance < 80) {
+                    isVeryCrowded = true;
+                } else if (isVeryCrowded && rawClearance > 180) {
+                    isVeryCrowded = false;
+                }
+            }
 
             // left widgets
             Row {
@@ -143,7 +152,7 @@ PanelWindow {
                 Loader {
                     id: wpLoaderH
                     active: (Settings?.showWallpaper ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isCrowded || (item?.popup?.open ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -169,7 +178,7 @@ PanelWindow {
                 Loader {
                     id: winTitleLoaderH
                     active: (Settings?.showWindowTitle ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && !horizontalBarContent.isVeryCrowded
+                    readonly property bool shouldShow: Boolean(active && !horizontalBarContent.isVeryCrowded)
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : 0) : 0
@@ -280,7 +289,7 @@ PanelWindow {
                 Loader {
                     id: btLoaderH
                     active: (Settings?.showBluetooth ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isVeryCrowded || (item && (item.hasConnectedDevice || (item.popup && item.popup.open))))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isVeryCrowded || (item?.hasConnectedDevice ?? false) || (item?.popup?.open ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -311,7 +320,7 @@ PanelWindow {
                 Loader {
                     id: notifLoaderH
                     active: (Settings?.showNotifications ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isVeryCrowded || (item && (item.notifCount > 0 || (item.popup && item.popup.open))))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isVeryCrowded || ((item?.notifCount ?? 0) > 0) || (item?.popup?.open ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -328,7 +337,7 @@ PanelWindow {
                 Loader {
                     id: idleInhibitorLoaderH
                     active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.active))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isCrowded || (item?.active ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -345,7 +354,7 @@ PanelWindow {
                 Loader {
                     id: clipLoaderH
                     active: (Settings?.showClipboard ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isCrowded || (item?.popup?.open ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -362,7 +371,7 @@ PanelWindow {
                 Loader {
                     id: notesLoaderH
                     active: (Settings?.showQuickNotes ?? true) && !root.isVertical
-                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!horizontalBarContent.isCrowded || (item?.popup?.open ?? false)))
                     visible: shouldShow || width > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
@@ -407,13 +416,22 @@ PanelWindow {
 
             // vertical clearance metrics with hysteresis
             readonly property real rawClearanceV: Math.max(0, botCol.y - (topCol.y + topCol.height))
-            readonly property bool isCrowdedV: rawClearanceV < (wasCrowdedV ? 240 : 140)
-            property bool wasCrowdedV: false
-            onIsCrowdedVChanged: wasCrowdedV = isCrowdedV
+            property bool isCrowdedV: false
+            property bool isVeryCrowdedV: false
 
-            readonly property bool isVeryCrowdedV: rawClearanceV < (wasVeryCrowdedV ? 160 : 70)
-            property bool wasVeryCrowdedV: false
-            onIsVeryCrowdedVChanged: wasVeryCrowdedV = isVeryCrowdedV
+            onRawClearanceVChanged: {
+                if (!isCrowdedV && rawClearanceV < 140) {
+                    isCrowdedV = true;
+                } else if (isCrowdedV && rawClearanceV > 240) {
+                    isCrowdedV = false;
+                }
+
+                if (!isVeryCrowdedV && rawClearanceV < 70) {
+                    isVeryCrowdedV = true;
+                } else if (isVeryCrowdedV && rawClearanceV > 160) {
+                    isVeryCrowdedV = false;
+                }
+            }
 
             // top widgets
             Column {
@@ -460,7 +478,7 @@ PanelWindow {
                 Loader {
                     id: wpLoaderV
                     active: (Settings?.showWallpaper ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isCrowdedV || (item?.popup?.open ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -544,7 +562,7 @@ PanelWindow {
                 Loader {
                     id: clipLoaderV
                     active: (Settings?.showClipboard ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isCrowdedV || (item?.popup?.open ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -561,7 +579,7 @@ PanelWindow {
                 Loader {
                     id: idleInhibitorLoaderV
                     active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.active))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isCrowdedV || (item?.active ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -578,7 +596,7 @@ PanelWindow {
                 Loader {
                     id: notifLoaderV
                     active: (Settings?.showNotifications ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isVeryCrowdedV || (item && (item.notifCount > 0 || (item.popup && item.popup.open))))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isVeryCrowdedV || ((item?.notifCount ?? 0) > 0) || (item?.popup?.open ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -609,7 +627,7 @@ PanelWindow {
                 Loader {
                     id: btLoaderV
                     active: (Settings?.showBluetooth ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isVeryCrowdedV || (item && (item.hasConnectedDevice || (item.popup && item.popup.open))))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isVeryCrowdedV || (item?.hasConnectedDevice ?? false) || (item?.popup?.open ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -662,7 +680,7 @@ PanelWindow {
                 Loader {
                     id: notesLoaderV
                     active: (Settings?.showQuickNotes ?? true) && root.isVertical
-                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    readonly property bool shouldShow: Boolean(active && (!verticalBarContent.isCrowdedV || (item?.popup?.open ?? false)))
                     visible: shouldShow || height > 0.5
                     opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -693,7 +711,7 @@ PanelWindow {
             anchors.left: parent.left
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: false
             flipY: false
             visible: root.isTop && root.scoopW > 0
@@ -703,7 +721,7 @@ PanelWindow {
             anchors.right: parent.right
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: true
             flipY: false
             visible: root.isTop && root.scoopW > 0
@@ -715,7 +733,7 @@ PanelWindow {
             anchors.left: parent.left
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: false
             flipY: true
             visible: root.isBottom && root.scoopW > 0
@@ -725,7 +743,7 @@ PanelWindow {
             anchors.right: parent.right
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: true
             flipY: true
             visible: root.isBottom && root.scoopW > 0
@@ -737,7 +755,7 @@ PanelWindow {
             anchors.top: parent.top
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: false
             flipY: false
             visible: root.isLeft && root.scoopW > 0
@@ -747,7 +765,7 @@ PanelWindow {
             anchors.bottom: parent.bottom
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: false
             flipY: true
             visible: root.isLeft && root.scoopW > 0
@@ -759,7 +777,7 @@ PanelWindow {
             anchors.top: parent.top
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: true
             flipY: false
             visible: root.isRight && root.scoopW > 0
@@ -769,7 +787,7 @@ PanelWindow {
             anchors.bottom: parent.bottom
             radiusX: root.scoopW
             radiusY: root.scoopH
-            fillColor: barBg.color
+            fillColor: Theme.cornerFill
             flipX: true
             flipY: true
             visible: root.isRight && root.scoopW > 0

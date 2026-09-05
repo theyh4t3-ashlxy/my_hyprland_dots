@@ -19,7 +19,7 @@ QtObject {
     property int screenCornerRadius: 16
     property string screenCornerMode: "all"
     property string cornerStyle: "cubic"
-    property string cornerColorMode: "theme"
+    property string cornerColorMode: "bar"
 
     // matugen & awww engine
     property string currentWallpaper: "/home/ashley/.wallpapers/hyprland/hypr.png"
@@ -378,7 +378,7 @@ QtObject {
         root.screenCornerRadius = 16;
         root.screenCornerMode = "all";
         root.cornerStyle = "cubic";
-        root.cornerColorMode = "theme";
+        root.cornerColorMode = "bar";
         root.currentWallpaper = "/home/ashley/.wallpapers/hyprland/hypr.png";
         root.matugenMode = "dark";
         root.matugenScheme = "scheme-tonal-spot";

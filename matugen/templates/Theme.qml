@@ -111,7 +111,7 @@ QtObject {
     readonly property string scoopStyle:            Settings?.cornerStyle ?? "cubic"
     readonly property int    screenCornerRadius:    Settings?.screenCornerRadius ?? 16
     readonly property string screenCornerMode:      Settings?.screenCornerMode ?? "all"
-    readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "theme"
+    readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "bar"
     readonly property string barStyle:              Settings?.barStyle ?? "glass"
     readonly property color  barBg: {
         let bs = Settings?.barStyle ?? "glass";
@@ -130,12 +130,12 @@ QtObject {
     }
 
     readonly property color  cornerFill: {
-        let cm = Settings?.cornerColorMode ?? "theme";
+        let cm = Settings?.cornerColorMode ?? "bar";
         if (cm === "bar") return barBg;
         if (cm === "accent") return primary;
         if (cm === "pure-black") return "#000000";
-        if (cm === "theme") return surface_container_low;
-        return surface_container_low;
+        if (cm === "theme") return surface_container_high;
+        return barBg;
     }
 
     readonly property color  widgetBg: {

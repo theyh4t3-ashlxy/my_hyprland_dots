@@ -98,7 +98,7 @@ Scope {
 
                 readonly property var activePlayer: Mpris.players.values[0] ?? null
                 readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
-                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.surface_container_low ?? Theme?.background ?? "#14140c"
+                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
 
                 Rectangle {
                     anchors.fill: parent

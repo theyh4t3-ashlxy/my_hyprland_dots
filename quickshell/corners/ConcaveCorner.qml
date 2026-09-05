@@ -9,7 +9,7 @@ Shape {
     property real radiusY: Theme.scoopRadiusY ?? 16
     property real tension: Theme.scoopTension ?? 0.55228475
     property string style: Theme.scoopStyle ?? "cubic"
-    property color fillColor: Theme.surface_container_low ?? Theme.surface ?? "#14140c"
+    property color fillColor: Theme.cornerFill ?? Theme.barBg ?? Theme.surface_container_low ?? "#14140c"
     property bool flipX: false
     property bool flipY: false
 

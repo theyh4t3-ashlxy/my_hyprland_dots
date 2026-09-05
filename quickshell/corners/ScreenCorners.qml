@@ -36,7 +36,7 @@ PanelWindow {
     readonly property string rawBarPos: Settings?.barPosition ?? "up"
     readonly property string barPos: (rawBarPos === "up" || rawBarPos === "top") ? "top" : ((rawBarPos === "down" || rawBarPos === "bottom") ? "bottom" : rawBarPos)
     readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
-    readonly property color cornerColor: Theme?.cornerFill ?? Theme?.surface_container_low ?? Theme?.background ?? "#14140c"
+    readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
 
     // supporting vertical rice setups so it doesn't break
     readonly property bool showTopLeft: mode === "all" || mode === "top" || mode === "up" || mode === "left" || (mode === "opposite" && barPos !== "top" && barPos !== "left")
