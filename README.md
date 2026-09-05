@@ -18,6 +18,8 @@ ok actual shell starts here dont cry
 - [x] top bar layout overlap & clipping: eradicated nested animations and width clipping so hover expansions never overlap adjacent widgets
 - [x] settings engine schema-driven: wiped manual serialization boilerplate in favor of a clean unified schema
 - [x] curl pipe installer fixed: install.zsh reads from /dev/tty so curl piping doesn't immediately quit on eof
+- [x] zsh settings & prompt customizer: interactive terminal customizer with prompt styles (two-line, single-line, minimal, bracket, unhinged), custom symbols, colors, and live prompt updates
+- [x] help cheatsheet command: added instant colorized help command for dotfile shortcuts, quickshell, and hyprland keybindings
 
 dont run this as root unless you want your drive atomized
 

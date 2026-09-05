@@ -1,0 +1,63 @@
+# help: cheatsheet for dots, shell shortcuts, and desktop controls
+
+help() {
+    local c_pri="%F{141}"
+    local c_sec="%F{117}"
+    local c_ter="%F{221}"
+    local c_cmd="%F{120}"
+    local c_dim="%F{244}"
+    local c_rst="%f"
+
+    print -P "${c_pri}󰄛 hyprland + quickshell + zsh cheat sheet${c_rst}"
+    print -P "${c_dim}dont panic. here is everything wired into this rice.${c_rst}\n"
+
+    print -P "${c_sec}󰞷 zsh & terminal${c_rst}"
+    print -P "  ${c_cmd}settings${c_rst} / ${c_cmd}rice-settings${c_rst}   ${c_dim}customize prompt style, symbol, accent color & roasts${c_rst}"
+    print -P "  ${c_cmd}help${c_rst} / ${c_cmd}dots-help${c_rst}             ${c_dim}display this cheat sheet${c_rst}"
+    print -P "  ${c_cmd}c <dir>${c_rst}                     ${c_dim}smart cd with automatic eza listing${c_rst}"
+    print -P "  ${c_cmd}ll${c_rst} / ${c_cmd}la${c_rst} / ${c_cmd}tree${c_rst}            ${c_dim}eza file listings with git status & icons${c_rst}"
+    print -P "  ${c_cmd}cat <file>${c_rst}                 ${c_dim}bat with syntax highlighting and line numbers${c_rst}"
+    print -P "  ${c_cmd}find <query>${c_rst}               ${c_dim}fd fast search${c_rst}"
+    print -P "  ${c_cmd}grep <pattern>${c_rst}             ${c_dim}ripgrep file search${c_rst}"
+    print -P "  ${c_cmd}yz${c_rst} / ${c_cmd}yazi${c_rst}                  ${c_dim}terminal file manager with cwd sync on exit${c_rst}"
+    print -P "  ${c_cmd}mc <file>${c_rst}                  ${c_dim}micro editor${c_rst}"
+    print -P "  ${c_cmd}zrecompile${c_rst} / ${c_cmd}zclean${c_rst}       ${c_dim}compile / clean .zwc bytecode caches${c_rst}"
+    print ""
+
+    print -P "${c_sec}󰏘 wallpaper & matugen${c_rst}"
+    print -P "  ${c_cmd}wp random [category]${c_rst}       ${c_dim}roll random wallpaper + matugen color refresh${c_rst}"
+    print -P "  ${c_cmd}wp select${c_rst}                  ${c_dim}interactive wallpaper chooser via fzf${c_rst}"
+    print -P "  ${c_cmd}wp fetch <query>${c_rst}           ${c_dim}download live wallpaper loop from giphy${c_rst}"
+    print -P "  ${c_cmd}wp color <hex>${c_rst}             ${c_dim}set custom hex color scheme${c_rst}"
+    print -P "  ${c_cmd}wp scan${c_rst}                    ${c_dim}rescan ~/.wallpapers directory${c_rst}"
+    print -P "  ${c_cmd}color${c_rst}                      ${c_dim}hyprpicker screen hex color dropper${c_rst}"
+    print -P "  ${c_cmd}dnd toggle${c_rst}                 ${c_dim}toggle do not disturb (silence toasts)${c_rst}"
+    print ""
+
+    print -P "${c_sec}󰄲 quickshell & session${c_rst}"
+    print -P "  ${c_cmd}qs -d${c_rst}                      ${c_dim}launch quickshell background daemon${c_rst}"
+    print -P "  ${c_cmd}quickshell kill${c_rst}            ${c_dim}kill running quickshell instance${c_rst}"
+    print -P "  ${c_cmd}quickshell log -t 30${c_rst}       ${c_dim}tail live quickshell logs${c_rst}"
+    print -P "  ${c_cmd}nuke${c_rst}                       ${c_dim}emergency reset (restarts quickshell, hyprland, pipewire)${c_rst}"
+    print ""
+
+    print -P "${c_sec} git shortcuts${c_rst}"
+    print -P "  ${c_cmd}gs${c_rst}    ${c_dim}status -sb${c_rst}           ${c_cmd}ga${c_rst}    ${c_dim}add${c_rst}           ${c_cmd}gaa${c_rst}   ${c_dim}add all${c_rst}"
+    print -P "  ${c_cmd}gc${c_rst}    ${c_dim}commit -m${c_rst}            ${c_cmd}gp${c_rst}    ${c_dim}push${c_rst}          ${c_cmd}gl${c_rst}    ${c_dim}log oneline graph${c_rst}"
+    print -P "  ${c_cmd}gd${c_rst}    ${c_dim}diff${c_rst}                 ${c_cmd}gco${c_rst}   ${c_dim}checkout${c_rst}      ${c_cmd}gcb${c_rst}   ${c_dim}checkout -b${c_rst}"
+    print ""
+
+    print -P "${c_sec}󰌌 hyprland hotkeys${c_rst}"
+    print -P "  ${c_ter}Super + Q${c_rst}              ${c_dim}open kitty terminal${c_rst}"
+    print -P "  ${c_ter}Super + Space / D${c_rst}      ${c_dim}toggle app launcher${c_rst}"
+    print -P "  ${c_ter}Super + C${c_rst}              ${c_dim}close active window${c_rst}"
+    print -P "  ${c_ter}Super + E${c_rst}              ${c_dim}open file manager${c_rst}"
+    print -P "  ${c_ter}Super + V${c_rst}              ${c_dim}open clipboard history${c_rst}"
+    print -P "  ${c_ter}Super + M${c_rst}              ${c_dim}session / power menu${c_rst}"
+    print -P "  ${c_ter}Super + L${c_rst}              ${c_dim}lock screen${c_rst}"
+    print ""
+    print -P "${c_dim}type 'settings' to tweak your prompt and shell vibe.${c_rst}"
+}
+
+alias dots-help="help"
+alias cheatsheet="help"

@@ -8,7 +8,7 @@ local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
 # modular components in optimized dependency order
 local -a _mods=(
     core matugen plugins aliases tools functions
-    quicknav dev wp nuke dnd roast settings local prompt
+    quicknav dev wp nuke dnd roast settings help local prompt
 )
 
 local mod f

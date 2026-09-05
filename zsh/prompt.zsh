@@ -11,6 +11,19 @@ set_prompt_colors() {
     M_TER="%F{${MATUGEN_TERTIARY:-#d5c68e}}"
     M_ERR="%F{${MATUGEN_ERROR:-#ffb4ab}}"
     M_RST="%f"
+
+    local sym_color="${M_PRI}"
+    case "${PROMPT_ACCENT:-primary}" in
+        secondary) sym_color="${M_SEC}" ;;
+        tertiary)  sym_color="${M_TER}" ;;
+        cyan)      sym_color="%F{117}" ;;
+        green)     sym_color="%F{120}" ;;
+        magenta)   sym_color="%F{141}" ;;
+        yellow)    sym_color="%F{221}" ;;
+        white)     sym_color="%F{white}" ;;
+        *)         sym_color="${M_PRI}" ;;
+    esac
+    M_SYM_COLOR="$sym_color"
 }
 add-zsh-hook precmd set_prompt_colors
 
@@ -136,14 +149,38 @@ _cmd_timer_stop() {
 }
 add-zsh-hook precmd _cmd_timer_stop
 
-# Main prompt layout (clean single arrow in matugen primary color)
-PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_PRI}❯${M_RST} '
+build_prompt() {
+    local sym="${PROMPT_SYMBOL:-❯}"
+    local p_style="${PROMPT_STYLE:-two-line}"
+    local sc="${M_SYM_COLOR:-$M_PRI}"
 
-# Right prompt (shows failure exit code + execution duration + time)
-RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )\${MY_ELAPSED}${M_OUT}%T${M_RST}"
+    if [[ $UID -eq 0 ]]; then
+        PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_ERR}'"${sym}"$'${M_RST} '
+        RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don'\''t nuke root${M_RST} \${MY_ELAPSED}${M_OUT}%T${M_RST}"
+        return
+    fi
 
-# Root prompt mode (angry red accent)
-if [[ $UID -eq 0 ]]; then
-    PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_ERR}❯${M_RST} '
-    RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don'\''t nuke root${M_RST} \${MY_ELAPSED}${M_OUT}%T${M_RST}"
-fi
+    case "$p_style" in
+        single-line)
+            PROMPT=$'${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_OUT}in ${M_TER}%~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${MY_GIT}${MY_VENV}${MY_EXTRA_QOL} '"${sc}${sym}"$'${M_RST} '
+            ;;
+        minimal)
+            PROMPT=$'${M_TER}%~${M_RST}${MY_RO}${MY_GIT} '"${sc}${sym}"$'${M_RST} '
+            ;;
+        bracket)
+            PROMPT=$'${M_OUT}[${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_TER}%~${M_OUT}]${M_RST}${MY_RO}${MY_GIT}${MY_VENV} '"${sc}${sym}"$'${M_RST} '
+            ;;
+        unhinged)
+            local -a vibes=('(╯°□°)╯' '¯\_(ツ)_/¯' '(ノಠ益ಠ)ノ' '(ʘ‿ʘ)' '(•‿•)' '󰄛' '💀' 'ᓚᘏᗢ')
+            local v="${vibes[$(( RANDOM % ${#vibes[@]} + 1 ))]}"
+            PROMPT=$'\n${M_OUT}╭─[${M_RST} ${sc}'"${v}"$'${M_RST} ${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_OUT}in ${M_TER}%~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} '"${sc}${sym}"$'${M_RST} '
+            ;;
+        two-line|*)
+            PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} '"${sc}${sym}"$'${M_RST} '
+            ;;
+    esac
+
+    RPROMPT="%(?..${M_ERR}✘ %?${M_RST} )\${MY_ELAPSED}${M_OUT}%T${M_RST}"
+}
+add-zsh-hook precmd build_prompt
+build_prompt
