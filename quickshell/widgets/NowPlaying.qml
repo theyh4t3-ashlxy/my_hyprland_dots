@@ -137,7 +137,7 @@ Rectangle {
             font.pixelSize: Theme.fontSizeSm
             color: root.hasTrack ? Theme.on_surface : Theme.on_surface_variant
             elide: Text.ElideRight
-            width: Math.min(implicitWidth, 200)
+            width: Math.min(implicitWidth, 160)
         }
     }
 

@@ -89,6 +89,7 @@ PanelWindow {
 
             // left widgets
             Row {
+                id: leftRow
                 anchors.left: parent.left
                 anchors.leftMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
@@ -156,18 +157,35 @@ PanelWindow {
                 }
             }
 
-            // center clock
+            // center clock with dynamic collision avoidance
             Loader {
+                id: centerClockLoader
                 active: (Settings?.showClock ?? true) && !root.isVertical
                 visible: active
                 width: item ? item.implicitWidth : 100
                 height: item ? item.implicitHeight : (Theme.barHeight - 8)
                 sourceComponent: Component { Clock {} }
-                anchors.centerIn: parent
+
+                readonly property real idealX: (parent.width - width) / 2
+                readonly property real minX: (leftRow && leftRow.width > 0) ? (leftRow.x + leftRow.width + (Theme.widgetSpacing * 2)) : Theme.widgetPaddingH
+                readonly property real maxX: (rightRow && rightRow.width > 0) ? (rightRow.x - width - (Theme.widgetSpacing * 2)) : (parent.width - width - Theme.widgetPaddingH)
+
+                x: {
+                    if (maxX <= minX) {
+                        return (minX + maxX) / 2;
+                    }
+                    return Math.max(minX, Math.min(idealX, maxX));
+                }
+                y: (parent.height - height) / 2
+
+                Behavior on x {
+                    NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                }
             }
 
             // right widgets
             Row {
+                id: rightRow
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
@@ -294,6 +312,7 @@ PanelWindow {
 
             // top widgets
             Column {
+                id: topCol
                 anchors.top: parent.top
                 anchors.topMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -352,18 +371,35 @@ PanelWindow {
                 }
             }
 
-            // center clock
+            // center clock with dynamic vertical collision avoidance
             Loader {
+                id: centerClockVLoader
                 active: (Settings?.showClock ?? true) && root.isVertical
                 visible: active
                 width: item ? item.implicitWidth : (Theme.barHeight - 8)
                 height: item ? item.implicitHeight : 38
                 sourceComponent: Component { Clock {} }
-                anchors.centerIn: parent
+
+                readonly property real idealY: (parent.height - height) / 2
+                readonly property real minY: (topCol && topCol.height > 0) ? (topCol.y + topCol.height + (Theme.widgetSpacing * 2)) : Theme.widgetPaddingH
+                readonly property real maxY: (botCol && botCol.height > 0) ? (botCol.y - height - (Theme.widgetSpacing * 2)) : (parent.height - height - Theme.widgetPaddingH)
+
+                y: {
+                    if (maxY <= minY) {
+                        return (minY + maxY) / 2;
+                    }
+                    return Math.max(minY, Math.min(idealY, maxY));
+                }
+                x: (parent.width - width) / 2
+
+                Behavior on y {
+                    NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                }
             }
 
             // bottom widgets
             Column {
+                id: botCol
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter
