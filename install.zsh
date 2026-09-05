@@ -3,6 +3,15 @@
 set -euo pipefail
 
 DOTS_DIR="${0:A:h}"
+if [[ ! -d "$DOTS_DIR/quickshell" ]]; then
+    if [[ -d "$HOME/my-hyprland-dots/quickshell" ]]; then
+        DOTS_DIR="$HOME/my-hyprland-dots"
+    else
+        print -P "\e[38;5;141m󰄛\e[0m cloning repository to ~/my-hyprland-dots..."
+        git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git "$HOME/my-hyprland-dots"
+        DOTS_DIR="$HOME/my-hyprland-dots"
+    fi
+fi
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 WALLPAPER_DIR="$HOME/.wallpapers"
@@ -461,7 +470,14 @@ if [[ "$mode" == "interactive" ]]; then
     print "  6) 󰁕 reload running shell (hyprland + quickshell)"
     print "  7) 󰅚 quit"
     print -Pn "choice [1-7]: "
-    read -r choice
+    if [[ -t 0 ]]; then
+        read -r choice
+    elif [[ -r /dev/tty ]]; then
+        read -r choice </dev/tty
+    else
+        print "quitting (no tty attached)."
+        exit 0
+    fi
     case "$choice" in
         1) mode="all" ;;
         2) mode="update" ;;

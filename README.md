@@ -1,39 +1,23 @@
-> [!WARNING]
-> THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
+> [!warning]
+> there is ai slop all over this repo!! you have been warned!
 
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
-(sometimes it just hallucinates BAD, hence why ai studio exists)
+(sometimes it just hallucinates bad, hence why ai studio exists)
 
 ok actual shell starts here dont cry
 
 # what got fixed & unfucked
 
-- [x] bar got unfucked, 4-way docking works seamlessly in top, bottom, left, and right with dynamic transforms
-- [x] bar layout studio born: live interactive widget reordering (left/center/right) with liquid concave scoop docking, zero restart required
+- [x] bar layout studio: live interactive widget reordering (left/center/right) with liquid concave scoop docking, zero restart required
 - [x] app launcher resurrected: stopped rendering at 0x0 invisible ghost pixels
-- [x] python script unification: deleted fragmented `.sh` bash forks in favor of unified, lightning fast python scripts (`wallpaper.py`, `session.py`, `clipboard.py`)
-- [x] pure black actually delivered: pure black mode is genuinely `#000000` pitch black across the bar, cards, pills, and screen scoops instead of dark grey fraud
+- [x] python script unification: deleted fragmented shell forks in favor of unified python scripts (wallpaper.py, session.py, clipboard.py)
+- [x] pure black actually delivered: pure black mode is genuinely #000000 pitch black across the bar, cards, pills, and screen scoops instead of dark grey fraud
 - [x] glass vs regular split: distinct solid regular theme vs true frosted glass blur via layer-shell rules
 - [x] continuous screen frame borders: corner scoops now connect with continuous pixel-perfect borders wrapping the display
-- [x] widget loader visibility deadlock dead and buried (all 15 widgets load instantly)
-- [x] native layer-shell osd overlay for volume, mic mute, and brightness changes
-- [x] dynamic multi-tier battery glyphs (11 levels, charging, saver, and vertical bar orientation)
-- [x] multi-pack iconography: Microsoft Segoe Fluent Icons, Material Design, and Font Awesome with automatic nerd font fallback
-- [x] screen corner scoops match matugen theme instead of pitch black bars
-- [x] screen corners auto-hide in fullscreen so movies and games aren't cursed
-- [x] local wi-fi ssid renaming right inside the network status card
-- [x] lock screen running on native `PamContext` (hyprlock nuked)
-- [x] `nmcli` script hacks eradicated in favor of native `Quickshell.Networking`
-- [x] settings organized into clean categorized groups with 100% synchronous `FileView` persistence
-- [x] calendar day header token bug squashed (no more "day DDD of 2026")
-- [x] hyprland 0.55 lua dispatch syntax restored for workspaces
-- [x] bar layouts unified: murdered ~350 lines of duplicate horizontal/vertical loader spaghetti with `BarWidgetLoader`
-- [x] repeater incubator crash patched: snapshotted workspaces list model so quickshell stops segfaulting on desktop switch
-- [x] backlight auto-detection: scans `/sys/class/backlight/` dynamically instead of dying on non-intel gpus
-- [x] settings engine schema-driven: wiped 200 lines of manual serialization boilerplate
-- [x] notification timer drift eradicated with timestamp delta tracking and duplicate toast suppression
-- [x] zsh overhauled: compinit cached, bytecode auto-compilation, zero dead imports, 50+ existential roasts
+- [x] top bar layout overlap & clipping: eradicated nested animations and width clipping so hover expansions never overlap adjacent widgets
+- [x] settings engine schema-driven: wiped manual serialization boilerplate in favor of a clean unified schema
+- [x] curl pipe installer fixed: install.zsh reads from /dev/tty so curl piping doesn't immediately quit on eof
 
 dont run this as root unless you want your drive atomized
 
@@ -55,7 +39,7 @@ chmod +x install.zsh
 
 it gives you an interactive menu. if you want zero questions and maximum commitment:
 - `./install.zsh --all`: grabs all packages, backs up your existing trash into `~/.cache/dotfiles-backups`, symlinks everything, generates wallpaper colors, pre-compiles zsh bytecode, and boots quickshell.
-- `./install.zsh --doctor`: inspects missing binaries, checks font glyph packs (Segoe, JetBrainsMono, Noto), verifies quickshell compilation, and tells you what's broken.
+- `./install.zsh --doctor`: inspects missing binaries, checks font glyph packs (segoe fluent icons, jetbrainsmono nerd font, noto sans), verifies quickshell compilation, and tells you what's broken.
 - `./install.zsh --update`: pulls latest git commits, syncs links, and reloads without nuking your stuff.
 - `./install.zsh --reload`: reloads running hyprland and restarts `qs -d` in the background.
 
@@ -63,9 +47,9 @@ if your desktop looks naked, throw some wallpapers into `~/.wallpapers/` and typ
 
 this section is cursed do not linger
 
-OR...  
+or...  
 if you want to do the chaotic way..  
-you could do the `curl -fSSL` way.. though i wouldnt recommend that.  
+you could do the curl way.. though i wouldnt recommend that.  
 go ahead.
 
 ```bash
