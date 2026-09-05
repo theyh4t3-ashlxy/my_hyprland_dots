@@ -2,8 +2,8 @@
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
 > [!IMPORTANT]
-> ok so i upgraded it a bit, same old commit but at least things are fixed, and pure black is actually black. glass theme uses layer rules (would've def wanted to do it on qs itself tho but ok google)
-> still had to go to older commit 
+> ok so i upgraded it a bit, same old commit but at least things are fixed, and pure black is actually black. glass theme uses layer rules (would've def wanted to do it on qs itself tho but ok google)  
+> still had to go to older commit tho
 
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
