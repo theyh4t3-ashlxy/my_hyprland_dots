@@ -5,7 +5,8 @@ import "../controls"
 
 Rectangle {
     id: clockRoot
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : timeText.implicitWidth + 24
+    property bool compactMode: false
+    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : timeText.implicitWidth + (compactMode ? 16 : 24)
     implicitHeight: Theme.isVertical ? 38 : Theme.barHeight - 8
     radius: Theme.radiusPill
     color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
@@ -14,6 +15,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
     property date now: new Date()
     property int selectedYear: now.getFullYear()
@@ -43,12 +45,15 @@ Rectangle {
             if (Theme.isVertical) {
                 return Qt.formatDateTime(clockRoot.now, "HH\nmm");
             }
+            let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
+            if (clockRoot.compactMode) {
+                return timeStr;
+            }
             let hrs = clockRoot.now.getHours();
             let mood = (hrs < 6) ? Theme.getVibe(Theme.kaoSleepy, "󰤄", "")
                      : (hrs < 12) ? Theme.getVibe(Theme.kaoCoffee, "󰖨", "")
                      : (hrs < 18) ? Theme.getVibe(Theme.kaoCool, "󰖙", "")
                      : Theme.getVibe(Theme.kaoMusic, "󰖔", "");
-            let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
             let dateFmt = (Settings.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
             let showDate = (Settings.showBarDate ?? false) && dateFmt !== "";
             let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";

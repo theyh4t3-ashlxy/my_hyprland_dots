@@ -81,11 +81,22 @@ PanelWindow {
 
         // horizontal bar layout (up / down)
         Item {
+            id: horizontalBarContent
             x: barBg.x
             y: barBg.y
             width: barBg.width
             height: barBg.height
             visible: !root.isVertical
+
+            // dynamic spatial clearance metrics with hysteresis
+            readonly property real rawClearance: Math.max(0, rightRow.x - (leftRow.x + leftRow.width))
+            readonly property bool isCrowded: rawClearance < (wasCrowded ? 280 : 160)
+            property bool wasCrowded: false
+            onIsCrowdedChanged: wasCrowded = isCrowded
+
+            readonly property bool isVeryCrowded: rawClearance < (wasVeryCrowded ? 180 : 80)
+            property bool wasVeryCrowded: false
+            onIsVeryCrowdedChanged: wasVeryCrowded = isVeryCrowded
 
             // left widgets
             Row {
@@ -130,11 +141,19 @@ PanelWindow {
                 }
 
                 Loader {
+                    id: wpLoaderH
                     active: (Settings?.showWallpaper ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
@@ -148,23 +167,39 @@ PanelWindow {
                 }
 
                 Loader {
+                    id: winTitleLoaderH
                     active: (Settings?.showWindowTitle ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : 0
+                    readonly property bool shouldShow: active && !horizontalBarContent.isVeryCrowded
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : 0) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { WindowTitle {} }
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                    sourceComponent: Component {
+                        WindowTitle {
+                            maxWidth: horizontalBarContent.isCrowded ? 110 : 220
+                        }
+                    }
                 }
             }
 
-            // center clock with dynamic collision avoidance
+            // center clock with dynamic collision avoidance and compacting
             Loader {
                 id: centerClockLoader
                 active: (Settings?.showClock ?? true) && !root.isVertical
                 visible: active
                 width: item ? item.implicitWidth : 100
                 height: item ? item.implicitHeight : (Theme.barHeight - 8)
-                sourceComponent: Component { Clock {} }
+                sourceComponent: Component {
+                    Clock {
+                        compactMode: horizontalBarContent.isCrowded
+                    }
+                }
 
                 readonly property real idealX: (parent.width - width) / 2
                 readonly property real minX: (leftRow && leftRow.width > 0) ? (leftRow.x + leftRow.width + (Theme.widgetSpacing * 2)) : Theme.widgetPaddingH
@@ -178,8 +213,13 @@ PanelWindow {
                 }
                 y: (parent.height - height) / 2
 
+                opacity: (maxX < minX - 10) ? 0.3 : 1.0
+
                 Behavior on x {
                     NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.animNormal }
                 }
             }
 
@@ -238,77 +278,142 @@ PanelWindow {
                 }
 
                 Loader {
+                    id: btLoaderH
                     active: (Settings?.showBluetooth ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isVeryCrowded || (item && (item.hasConnectedDevice || (item.popup && item.popup.open))))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Bluetooth {} }
                 }
 
                 Loader {
+                    id: sysTrayLoaderH
                     active: (Settings?.showSystemTray ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    visible: active && (item ? (item.visible && item.implicitWidth > 0) : false)
+                    width: (item && visible) ? item.implicitWidth : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
+                    id: notifLoaderH
                     active: (Settings?.showNotifications ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isVeryCrowded || (item && (item.notifCount > 0 || (item.popup && item.popup.open))))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
+                    id: idleInhibitorLoaderH
                     active: (Settings?.showIdleInhibitor ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.active))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
+                    id: clipLoaderH
                     active: (Settings?.showClipboard ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
+                    id: notesLoaderH
                     active: (Settings?.showQuickNotes ?? true) && !root.isVertical
-                    visible: active
-                    width: item ? item.implicitWidth : (Theme.barHeight - 8)
+                    readonly property bool shouldShow: active && (!horizontalBarContent.isCrowded || (item && item.popup && item.popup.open))
+                    visible: shouldShow || width > 0.5
+                    opacity: shouldShow ? 1 : 0
+                    width: shouldShow ? (item ? item.implicitWidth : (Theme.barHeight - 8)) : 0
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { QuickNotes {} }
                 }
 
                 Loader {
+                    id: mediaLoaderH
                     active: (Settings?.showMedia ?? true) && !root.isVertical
                     visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: Component { NowPlaying {} }
+                    clip: true
+
+                    Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
+                    sourceComponent: Component {
+                        NowPlaying {
+                            compactMode: horizontalBarContent.isCrowded
+                        }
+                    }
                 }
             }
         }
 
         // vertical bar layout (left / right)
         Item {
+            id: verticalBarContent
             x: barBg.x
             y: barBg.y
             width: barBg.width
             height: barBg.height
             visible: root.isVertical
+
+            // vertical clearance metrics with hysteresis
+            readonly property real rawClearanceV: Math.max(0, botCol.y - (topCol.y + topCol.height))
+            readonly property bool isCrowdedV: rawClearanceV < (wasCrowdedV ? 240 : 140)
+            property bool wasCrowdedV: false
+            onIsCrowdedVChanged: wasCrowdedV = isCrowdedV
+
+            readonly property bool isVeryCrowdedV: rawClearanceV < (wasVeryCrowdedV ? 160 : 70)
+            property bool wasVeryCrowdedV: false
+            onIsVeryCrowdedVChanged: wasVeryCrowdedV = isVeryCrowdedV
 
             // top widgets
             Column {
@@ -353,11 +458,19 @@ PanelWindow {
                 }
 
                 Loader {
+                    id: wpLoaderV
                     active: (Settings?.showWallpaper ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { WallpaperBrowser {} }
                 }
 
@@ -371,14 +484,18 @@ PanelWindow {
                 }
             }
 
-            // center clock with dynamic vertical collision avoidance
+            // center clock with dynamic vertical collision avoidance and compacting
             Loader {
                 id: centerClockVLoader
                 active: (Settings?.showClock ?? true) && root.isVertical
                 visible: active
                 width: item ? item.implicitWidth : (Theme.barHeight - 8)
                 height: item ? item.implicitHeight : 38
-                sourceComponent: Component { Clock {} }
+                sourceComponent: Component {
+                    Clock {
+                        compactMode: verticalBarContent.isCrowdedV
+                    }
+                }
 
                 readonly property real idealY: (parent.height - height) / 2
                 readonly property real minY: (topCol && topCol.height > 0) ? (topCol.y + topCol.height + (Theme.widgetSpacing * 2)) : Theme.widgetPaddingH
@@ -392,8 +509,13 @@ PanelWindow {
                 }
                 x: (parent.width - width) / 2
 
+                opacity: (maxY < minY - 10) ? 0.3 : 1.0
+
                 Behavior on y {
                     NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
+                }
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.animNormal }
                 }
             }
 
@@ -406,56 +528,98 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
 
                 Loader {
+                    id: mediaLoaderV
                     active: (Settings?.showMedia ?? true) && root.isVertical
                     visible: active
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
                     height: item ? item.implicitHeight : (Theme.barHeight - 8)
                     anchors.horizontalCenter: parent.horizontalCenter
-                    sourceComponent: Component { NowPlaying {} }
+                    sourceComponent: Component {
+                        NowPlaying {
+                            compactMode: verticalBarContent.isCrowdedV
+                        }
+                    }
                 }
 
                 Loader {
+                    id: clipLoaderV
                     active: (Settings?.showClipboard ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Clipboard {} }
                 }
 
                 Loader {
+                    id: idleInhibitorLoaderV
                     active: (Settings?.showIdleInhibitor ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.active))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { IdleInhibitor {} }
                 }
 
                 Loader {
+                    id: notifLoaderV
                     active: (Settings?.showNotifications ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isVeryCrowdedV || (item && (item.notifCount > 0 || (item.popup && item.popup.open))))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Notifications {} }
                 }
 
                 Loader {
+                    id: sysTrayLoaderV
                     active: (Settings?.showSystemTray ?? true) && root.isVertical
-                    visible: active
+                    visible: active && (item ? (item.visible && item.implicitHeight > 0) : false)
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: (item && visible) ? item.implicitHeight : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { SystemTray {} }
                 }
 
                 Loader {
+                    id: btLoaderV
                     active: (Settings?.showBluetooth ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isVeryCrowdedV || (item && (item.hasConnectedDevice || (item.popup && item.popup.open))))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { Bluetooth {} }
                 }
 
@@ -496,11 +660,19 @@ PanelWindow {
                 }
 
                 Loader {
+                    id: notesLoaderV
                     active: (Settings?.showQuickNotes ?? true) && root.isVertical
-                    visible: active
+                    readonly property bool shouldShow: active && (!verticalBarContent.isCrowdedV || (item && item.popup && item.popup.open))
+                    visible: shouldShow || height > 0.5
+                    opacity: shouldShow ? 1 : 0
                     width: item ? item.implicitWidth : (Theme.barHeight - 8)
-                    height: item ? item.implicitHeight : (Theme.barHeight - 8)
+                    height: shouldShow ? (item ? item.implicitHeight : (Theme.barHeight - 8)) : 0
                     anchors.horizontalCenter: parent.horizontalCenter
+                    clip: true
+
+                    Behavior on height { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
                     sourceComponent: Component { QuickNotes {} }
                 }
 

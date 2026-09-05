@@ -3,24 +3,33 @@ import ".."
 import Quickshell.Hyprland
 
 Rectangle {
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : Math.min(titleText.implicitWidth + 24, 300)
+    id: root
+    property real maxWidth: 220
+    readonly property bool hasWindow: Boolean(Hyprland.activeToplevel && Hyprland.activeToplevel.title)
+
+    visible: hasWindow && maxWidth > 20
+    implicitWidth: {
+        if (!hasWindow || maxWidth <= 20) return 0;
+        if (Theme.isVertical) return Theme.barHeight - 8;
+        return Math.min(titleText.implicitWidth + 24, root.maxWidth);
+    }
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
     color: Theme.surface_container_high
+    clip: true
+
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
     Text {
         id: titleText
         anchors.centerIn: parent
-        // what are you even doing rn
-        text: Hyprland.activeToplevel?.title ?? Theme.getVibe(Theme.kaoEmpty, "󰄛", "desktop")
+        text: Hyprland.activeToplevel?.title ?? ""
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fontSizeSm
         color: Theme.on_surface
         elide: Text.ElideRight
         maximumLineCount: 1
-        width: Math.min(implicitWidth, 270)
-        opacity: Hyprland.activeToplevel ? 1.0 : 0.5
-
-        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+        width: Math.max(0, Math.min(implicitWidth - 16, root.maxWidth - 20))
     }
 }
