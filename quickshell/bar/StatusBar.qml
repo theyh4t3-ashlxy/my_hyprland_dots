@@ -137,7 +137,7 @@ PanelWindow {
         if (modId === "launcher") return Settings?.showLauncher ?? true;
         if (modId === "wallpaper") return Settings?.showWallpaper ?? true;
         if (modId === "workspaces") return Settings?.showWorkspaces ?? true;
-        if (modId === "windowTitle") return Settings?.showWindowTitle ?? true;
+        if (modId === "windowTitle") return (Settings?.showWindowTitle ?? true) && !root.isVertical;
         if (modId === "clock") return Settings?.showClock ?? true;
         if (modId === "media") return Settings?.showMedia ?? true;
         if (modId === "quickNotes") return Settings?.showQuickNotes ?? true;
@@ -212,7 +212,7 @@ PanelWindow {
                         id: lModLoader
                         required property string modelData
                         active: root.isModuleVisible(modelData) && !root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.verticalCenter: parent.verticalCenter
                         readonly property real targetW: item ? (modelData === "windowTitle" ? Math.max(40, Math.min(item.implicitWidth, 260)) : item.implicitWidth) : (Theme.barHeight - 8)
@@ -236,7 +236,7 @@ PanelWindow {
                     delegate: Loader {
                         required property string modelData
                         active: root.isModuleVisible(modelData) && !root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.verticalCenter: parent.verticalCenter
                         width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -260,7 +260,7 @@ PanelWindow {
                     delegate: Loader {
                         required property string modelData
                         active: root.isModuleVisible(modelData) && !root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.verticalCenter: parent.verticalCenter
                         readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -293,7 +293,7 @@ PanelWindow {
                     delegate: Loader {
                         required property string modelData
                         active: root.isModuleVisible(modelData) && root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -314,7 +314,7 @@ PanelWindow {
                     delegate: Loader {
                         required property string modelData
                         active: root.isModuleVisible(modelData) && root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: item ? item.implicitWidth : (Theme.barHeight - 8)
@@ -336,7 +336,7 @@ PanelWindow {
                     delegate: Loader {
                         required property string modelData
                         active: root.isModuleVisible(modelData) && root.isVertical
-                        visible: active && (item?.visible ?? true)
+                        visible: active
                         sourceComponent: root.getModuleComponent(modelData)
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: item ? item.implicitWidth : (Theme.barHeight - 8)

@@ -4,9 +4,11 @@ import Quickshell.Hyprland
 
 Rectangle {
     id: windowTitleRoot
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : Math.min(titleText.implicitWidth + 24, 300)
-    implicitHeight: Theme.barHeight - 8
+    visible: !Theme.isVertical && (Settings?.showWindowTitle ?? true)
+    implicitWidth: Theme.isVertical ? 0 : Math.min(titleText.implicitWidth + 24, 300)
+    implicitHeight: Theme.isVertical ? 0 : Theme.barHeight - 8
     radius: Theme.radiusPill
+    clip: true
     color: wtMouse.containsMouse ? Theme.pillHover : Theme.pillBg
     border.color: Theme.pillBorder
     border.width: Theme.pillBorder === "transparent" ? 0 : 1
