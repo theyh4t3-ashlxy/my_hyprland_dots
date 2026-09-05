@@ -246,7 +246,7 @@ def download(args):
             return
 
     is_live = any(raw_url.lower().endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or "giphy.com" in raw_url or "tenor.com" in raw_url
-    save_dir = Path.home() / ".wallpapers" / ("live" if is_live else "downloaded")
+    save_dir = Path.home() / ".wallpapers" / ("live" if is_live else "wallhaven")
     save_dir.mkdir(parents=True, exist_ok=True)
 
     filename = raw_url.split("?")[0].split("/")[-1]
@@ -287,15 +287,15 @@ def batch_download(args):
     if not urls:
         return
 
-    save_dir_img = Path.home() / ".wallpapers" / "downloaded"
+    save_dir_wh = Path.home() / ".wallpapers" / "wallhaven"
     save_dir_live = Path.home() / ".wallpapers" / "live"
-    save_dir_img.mkdir(parents=True, exist_ok=True)
+    save_dir_wh.mkdir(parents=True, exist_ok=True)
     save_dir_live.mkdir(parents=True, exist_ok=True)
 
     def download_one(raw_url):
         try:
             is_live = any(raw_url.lower().endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or "giphy.com" in raw_url or "tenor.com" in raw_url
-            target_dir = save_dir_live if is_live else save_dir_img
+            target_dir = save_dir_live if is_live else save_dir_wh
             clean_url = raw_url.split("?")[0]
             filename = clean_url.split("/")[-1]
             if not filename or "." not in filename:
