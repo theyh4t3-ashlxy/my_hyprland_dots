@@ -2,8 +2,8 @@
 > THERE IS AI SLOP ALL OVER THIS REPO!! you have been warned!
 
 > [!IMPORTANT]
-> i had to go to an older commit due to antigravity fucking up and deciding to read the quickshell source code instead of searching up the web.  
-> besides i dont want it to. when it can read docs?  
+> ok so i upgraded it a bit, same old commit but at least things are fixed, and pure black is actually black. glass theme uses layer rules (would've def wanted to do it on qs itself tho but ok google)
+> still had to go to older commit 
 
 hi! this is my hyprland dots.   
 gemini through antigravity and ai studio vibecoded this.  
