@@ -7,6 +7,8 @@ gtk-3.0/colors.css
 gtk-4.0/colors.css
 quickshell/Theme.qml
 quickshell/palette.css
+quickshell/settings.conf
+
 yazi/theme.toml
 nvim/lua/config/colors.lua
 
