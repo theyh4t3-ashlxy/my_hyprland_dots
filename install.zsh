@@ -1,40 +1,39 @@
 #!/usr/bin/env zsh
 # cooking your dotfiles so your desktop stops looking like an unconfigured microwave
-set -euo pipefail
+setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
+
+# prevent accidental root execution
+if (( EUID == 0 )); then
+    print -P "%F{203}󰅚 do not run this script as root or with sudo! run it as your normal user.%f"
+    exit 1
+fi
 
 DOTS_DIR="${0:A:h}"
 if [[ ! -d "$DOTS_DIR/quickshell" ]]; then
     if [[ -d "$HOME/my-hyprland-dots/quickshell" ]]; then
         DOTS_DIR="$HOME/my-hyprland-dots"
     else
-        print -P "\e[38;5;141m󰄛\e[0m cloning repository to ~/my-hyprland-dots..."
+        print -P "%F{141}󰄛%f cloning repository to ~/my-hyprland-dots..."
+        if ! (( $+commands[git] )); then
+            print -P "%F{203}󰅚 git is not installed. please install git first.%f"
+            exit 1
+        fi
         git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git "$HOME/my-hyprland-dots"
         DOTS_DIR="$HOME/my-hyprland-dots"
     fi
 fi
+
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 WALLPAPER_DIR="$HOME/.wallpapers"
 BACKUP_DIR="$CACHE_DIR/dotfiles-backups"
 
-# colors for clean terminal chaos
-typeset -A colors
-colors=(
-    reset "\e[0m"
-    primary "\e[38;5;141m"
-    success "\e[38;5;120m"
-    warn "\e[38;5;221m"
-    error "\e[38;5;203m"
-    dim "\e[38;5;244m"
-    bold "\e[1m"
-    cyan "\e[38;5;117m"
-)
-
-log_info() { print -P "${colors[primary]}󰄛${colors[reset]} $1" }
-log_ok()   { print -P "${colors[success]}󰄲${colors[reset]} $1" }
-log_warn() { print -P "${colors[warn]}󰀦${colors[reset]} $1" }
-log_err()  { print -P "${colors[error]}󰅚${colors[reset]} $1" }
-log_step() { print -P "${colors[cyan]}󰁕${colors[reset]} ${colors[bold]}$1${colors[reset]}" }
+# visual output helpers using native zsh formatting
+log_info() { print -P "%F{141}󰄛%f $1" }
+log_ok()   { print -P "%F{120}󰄲%f $1" }
+log_warn() { print -P "%F{221}󰀦%f $1" }
+log_err()  { print -P "%F{203}󰅚%f $1" }
+log_step() { print -P "%F{117}󰁕%f %B$1%b" }
 
 detect_aur_helper() {
     if (( $+commands[paru] )); then
@@ -43,12 +42,6 @@ detect_aur_helper() {
         print "yay"
     elif (( $+commands[pacman] )); then
         print "pacman"
-    elif (( $+commands[dnf] )); then
-        print "dnf"
-    elif (( $+commands[apt] )); then
-        print "apt"
-    elif (( $+commands[xbps-install] )); then
-        print "xbps"
     else
         print "unknown"
     fi
@@ -56,17 +49,13 @@ detect_aur_helper() {
 
 install_dependencies() {
     local helper=$(detect_aur_helper)
-    log_info "detected package manager: ${colors[bold]}$helper${colors[reset]}"
+    log_info "detected package manager: %B$helper%b"
 
-    # arch packages for our quickshell + hyprland rice stack
-    local arch_pkgs=(
+    # official repository packages
+    local official_pkgs=(
         hyprland
         xdg-desktop-portal-hyprland
         xdg-desktop-portal-gtk
-        quickshell-git
-        matugen-bin
-        awww
-        mpvpaper
         ffmpeg
         kitty
         zsh
@@ -98,17 +87,29 @@ install_dependencies() {
         noto-fonts-emoji
     )
 
+    # aur-only packages
+    local aur_pkgs=(
+        quickshell-git
+        matugen-bin
+        awww
+        mpvpaper
+    )
+
     case "$helper" in
         paru|yay)
-            log_info "installing / updating dependencies via $helper..."
-            $helper -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "some packages failed to install, check internet or aur build logs"
+            log_info "installing/updating dependencies via $helper..."
+            $helper -S --needed --noconfirm "${official_pkgs[@]}" "${aur_pkgs[@]}" || \
+                log_warn "some packages failed to install, check aur build logs or network"
             ;;
         pacman)
             log_warn "no aur helper found (paru/yay). installing official repo packages only..."
-            sudo pacman -S --needed --noconfirm "${arch_pkgs[@]}" || log_warn "manual aur build needed for matugen-bin, awww, mpvpaper, quickshell-git, and ttf-segoe-fluent-icons"
+            sudo pacman -S --needed --noconfirm "${official_pkgs[@]}" || \
+                log_warn "some official packages failed to install"
+            log_warn "AUR packages not installed: ${aur_pkgs[*]}"
+            log_warn "install an AUR helper (paru or yay) or build them manually"
             ;;
         *)
-            log_warn "distro not automatically mapped. install hyprland, quickshell, matugen, awww, mpvpaper, and ffmpeg manually."
+            log_warn "distro not automatically mapped. ensure hyprland, quickshell, matugen, and awww are installed."
             ;;
     esac
 }
@@ -124,12 +125,12 @@ backup_existing() {
 
     for folder in "${folders[@]}"; do
         if [[ -e "$CONFIG_DIR/$folder" && ! -L "$CONFIG_DIR/$folder" ]]; then
-            existing_targets+=( "$CONFIG_DIR/$folder" )
+            existing_targets+=( "$folder" )
         fi
     done
 
-    if (( ${#existing_targets[@]} > 0 )); then
-        tar -czf "$target_archive" "${existing_targets[@]}" 2>/dev/null || true
+    if (( ${#existing_targets} )); then
+        tar -czf "$target_archive" -C "$CONFIG_DIR" "${existing_targets[@]}" 2>/dev/null || true
         log_ok "backed up unlinked configs -> $target_archive"
     else
         log_info "no unlinked configs needed backup"
@@ -166,14 +167,21 @@ link_configurations() {
         if [[ "$folder" == "gtk-3.0" || "$folder" == "gtk-4.0" ]]; then
             [[ -L "$target" ]] && rm -f "$target"
             mkdir -p "$target"
-            for f in "$src"/*(N); do
-                [[ -f "$f" ]] && cp -f "$f" "$target/"
-            done
+            local gtk_files=( "$src"/*(N.) )
+            if (( ${#gtk_files} )); then
+                cp -f "${gtk_files[@]}" "$target/"
+            fi
             log_ok "synced $folder real files -> $target (flatpak safe)"
             continue
         fi
 
-        # remove old broken link or handle directory
+        # skip if target already points to the right source
+        if [[ -L "$target" && "$target:A" == "$src:A" ]]; then
+            log_ok "$folder already correctly linked"
+            continue
+        fi
+
+        # remove old link or back up real directory
         if [[ -L "$target" ]]; then
             rm -f "$target"
         elif [[ -d "$target" ]]; then
@@ -186,58 +194,78 @@ link_configurations() {
         log_ok "linked $folder -> $target"
     done
 
-    # link zsh entrypoint to ~/.zshrc
+    # wire zsh entrypoint to ~/.zshrc safely
     if [[ -f "$DOTS_DIR/zsh/sources.zsh" ]]; then
         local zshrc="$HOME/.zshrc"
-        if ! grep -s "sources.zsh" "$zshrc" >/dev/null 2>&1; then
-            print "\n# source the master wiring\nsource ~/.config/zsh/sources.zsh" >> "$zshrc"
-            log_ok "wired ~/.zshrc -> ~/.config/zsh/sources.zsh"
+        local source_line="[[ -f \"$CONFIG_DIR/zsh/sources.zsh\" ]] && source \"$CONFIG_DIR/zsh/sources.zsh\""
+        if ! grep -qs "sources\.zsh" "$zshrc" 2>/dev/null; then
+            print -P "\n# dotfiles master wiring\n$source_line" >> "$zshrc"
+            log_ok "wired ~/.zshrc -> $CONFIG_DIR/zsh/sources.zsh"
         fi
     fi
 
-    # pre-compile zsh configs and plugins to .zwc bytecode for zero-delay startup
-    if (( $+commands[zsh] )) && [[ -f "$CONFIG_DIR/zsh/core.zsh" ]]; then
-        log_info "pre-compiling zsh scripts into .zwc bytecode..."
-        zsh -c "source $CONFIG_DIR/zsh/core.zsh; zrecompile" >/dev/null 2>&1 || true
-        log_ok "zsh bytecode pre-compiled"
+    # pre-compile zsh configs into .zwc bytecode
+    autoload -Uz zrecompile 2>/dev/null || true
+    if (( $+functions[zrecompile] )) && [[ -d "$CONFIG_DIR/zsh" ]]; then
+        log_info "pre-compiling zsh configs to .zwc bytecode..."
+        local zsh_files=( "$CONFIG_DIR"/zsh/**/*.zsh(N.) )
+        if (( ${#zsh_files} )); then
+            for zf in "${zsh_files[@]}"; do
+                zrecompile -pq "$zf" 2>/dev/null || true
+            done
+            log_ok "pre-compiled ${#zsh_files} zsh script(s) to bytecode"
+        fi
     fi
 }
 
 setup_directories_and_permissions() {
     log_info "creating wallpaper, notes, and cache directories..."
-    mkdir -p "$WALLPAPER_DIR/live"
-    mkdir -p "$WALLPAPER_DIR/downloaded"
-    mkdir -p "$CACHE_DIR/quickshell/thumbnails"
-    mkdir -p "$CACHE_DIR/quickshell/wallpapers"
+    mkdir -p "$WALLPAPER_DIR"/{live,downloaded}
+    mkdir -p "$CACHE_DIR"/quickshell/{thumbnails,wallpapers}
     mkdir -p "$CACHE_DIR/zsh"
-    mkdir -p "$HOME/.local/share/quickshell/scratch"
-    mkdir -p "$HOME/.local/share/quicknav/marks"
-    mkdir -p "$HOME/.local/share/fonts"
+    mkdir -p "$HOME"/.local/share/{quickshell/scratch,quicknav/marks,fonts}
     mkdir -p "$BACKUP_DIR"
 
-    # make all helper scripts executable
+    # make helper scripts executable safely without empty-glob crashes
     log_info "chmodding helper scripts and tools..."
-    chmod +x "$DOTS_DIR"/quickshell/scripts/*.sh(N)
-    chmod +x "$DOTS_DIR"/quickshell/scripts/*.py(N)
-    chmod +x "$DOTS_DIR"/matugen/post-hook-scripts/*.zsh(N)
-    chmod +x "$DOTS_DIR"/matugen/post-hook-scripts/*.sh(N)
-    chmod +x "$DOTS_DIR"/install.zsh
-    log_ok "script permissions set"
+    local script_targets=(
+        "$DOTS_DIR"/quickshell/scripts/*.(sh|py)(N.)
+        "$DOTS_DIR"/matugen/post-hook-scripts/*.(zsh|sh)(N.)
+        "$DOTS_DIR"/install.zsh(N.)
+    )
+
+    if (( ${#script_targets} )); then
+        chmod +x "${script_targets[@]}"
+        log_ok "script permissions set (${#script_targets} files)"
+    else
+        log_warn "no helper scripts found to chmod"
+    fi
 }
 
 initial_theming() {
     log_info "checking wallpaper & running initial matugen palette..."
-    local sample_wp=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N) )
 
-    if (( ${#sample_wp[@]} > 0 )); then
+    # seed wallpapers from dots repo if user directory is empty
+    if [[ -d "$DOTS_DIR/wallpapers" ]]; then
+        local repo_wps=( "$DOTS_DIR"/wallpapers/*.(png|jpg|jpeg|webp)(N.) )
+        if (( ${#repo_wps} )); then
+            cp -n "${repo_wps[@]}" "$WALLPAPER_DIR/" 2>/dev/null || true
+        fi
+    fi
+
+    local sample_wp=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
+
+    if (( ${#sample_wp} )); then
         local first_wp="${sample_wp[1]}"
         log_info "applying theme from $first_wp..."
         if (( $+commands[matugen] )); then
             matugen image "$first_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0 2>/dev/null || true
             log_ok "matugen initial theme generated"
+        else
+            log_warn "matugen not found in PATH; skipping palette generation"
         fi
     else
-        log_warn "no wallpapers found in $WALLPAPER_DIR yet. drop some images there to generate colors."
+        log_warn "no wallpapers found in $WALLPAPER_DIR. drop some images there to generate colors."
     fi
 }
 
@@ -245,7 +273,7 @@ update_dots() {
     log_step "updating dotfiles repository..."
     if [[ -d "$DOTS_DIR/.git" ]]; then
         log_info "pulling latest commits from git remote..."
-        git -C "$DOTS_DIR" pull --rebase origin main || {
+        git -C "$DOTS_DIR" pull --rebase || {
             log_warn "git pull encountered conflicts or dirty state, check git status"
         }
         log_ok "repository up to date"
@@ -262,24 +290,26 @@ update_dots() {
 
 reload_shell() {
     log_step "reloading desktop shell & compositors..."
-    
-    # reload hyprland configs if hyprland is active
+
+    # reload hyprland if active
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && (( $+commands[hyprctl] )); then
-        hyprctl reload 2>/dev/null || true
+        hyprctl reload >/dev/null 2>&1 || true
         log_ok "hyprland config reloaded"
+    else
+        log_info "hyprland instance not running; skipping hyprctl reload"
     fi
 
-    # restart quickshell daemon cleanly
+    # restart quickshell cleanly
     log_info "reloading quickshell daemon..."
     if (( $+commands[qs] )); then
-        qs kill >/dev/null 2>&1 || true
-        sleep 0.5
-        qs -d >/dev/null 2>&1
+        qs kill >/dev/null 2>&1 || pkill -x qs 2>/dev/null || true
+        sleep 0.4
+        qs -d >/dev/null 2>&1 &!
         log_ok "quickshell daemon reloaded via qs -d"
     elif (( $+commands[quickshell] )); then
-        pkill -f "quickshell" || true
-        sleep 0.5
-        ( quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 & )
+        pkill -x quickshell 2>/dev/null || true
+        sleep 0.4
+        quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 &!
         log_ok "quickshell reloaded in background"
     else
         log_warn "neither qs nor quickshell found in PATH"
@@ -313,93 +343,88 @@ doctor_check() {
 
     for b in "${critical_bins[@]}"; do
         if (( $+commands[$b] )); then
-            print -P "  ${colors[success]}󰄲${colors[reset]} $b found: ${colors[dim]}$(which $b)${colors[reset]}"
+            print -P "  %F{120}󰄲%f $b found: %F{244}$commands[$b]%f"
         else
-            print -P "  ${colors[error]}󰅚${colors[reset]} $b: ${colors[bold]}MISSING${colors[reset]}"
+            print -P "  %F{203}󰅚%f $b: %BMISSING%b"
             missing_bins+=( "$b" )
         fi
     done
 
-    # check quickshell CLI
+    # quickshell binary detection
     if (( $+commands[qs] || $+commands[quickshell] )); then
-        local qs_bin="qs"
-        (( $+commands[qs] )) || qs_bin="quickshell"
-        print -P "  ${colors[success]}󰄲${colors[reset]} quickshell found: ${colors[dim]}$(which $qs_bin)${colors[reset]}"
+        local qs_bin="${commands[qs]:-$commands[quickshell]}"
+        print -P "  %F{120}󰄲%f quickshell found: %F{244}$qs_bin%f"
     else
-        print -P "  ${colors[error]}󰅚${colors[reset]} quickshell: ${colors[bold]}MISSING${colors[reset]}"
+        print -P "  %F{203}󰅚%f quickshell: %BMISSING%b"
         missing_bins+=( "quickshell" )
     fi
 
-    # check fonts safely without pipefail sigpipe
+    # font verification
     print ""
     log_info "checking typography & glyph packs..."
-    if fc-list : family | grep -i "JetBrainsMono" >/dev/null 2>&1; then
-        print -P "  ${colors[success]}󰄲${colors[reset]} JetBrainsMono Nerd Font found"
+    if (( $+commands[fc-list] )); then
+        local all_fonts
+        all_fonts="$(fc-list : family 2>/dev/null)"
+
+        if [[ "$all_fonts" == *JetBrainsMono* ]]; then
+            print -P "  %F{120}󰄲%f JetBrainsMono Nerd Font found"
+        else
+            print -P "  %F{221}󰀦%f JetBrainsMono Nerd Font missing"
+        fi
+
+        if [[ "$all_fonts" == *"Segoe Fluent Icons"* ]] || [[ -f "$HOME/.local/share/fonts/SegoeIcons.ttf" ]]; then
+            print -P "  %F{120}󰄲%f Segoe Fluent Icons font found"
+        else
+            print -P "  %F{221}󰀦%f Segoe Fluent Icons missing"
+        fi
+
+        if [[ "$all_fonts" == *"Noto Sans"* ]]; then
+            print -P "  %F{120}󰄲%f Noto Sans font found"
+        else
+            print -P "  %F{221}󰀦%f Noto Sans missing"
+        fi
     else
-        print -P "  ${colors[warn]}󰀦${colors[reset]} JetBrainsMono Nerd Font missing (nerd icons might look weird)"
+        print -P "  %F{221}󰀦%f fontconfig (fc-list) not installed; font checks skipped"
     fi
 
-    if fc-list : family | grep -i "Segoe Fluent Icons" >/dev/null 2>&1 || [[ -f "$HOME/.local/share/fonts/SegoeIcons.ttf" ]]; then
-        print -P "  ${colors[success]}󰄲${colors[reset]} Segoe Fluent Icons font found"
-    else
-        print -P "  ${colors[warn]}󰀦${colors[reset]} Segoe Fluent Icons missing (install ttf-segoe-fluent-icons or drop SegoeIcons.ttf into ~/.local/share/fonts)"
-    fi
-
-    if fc-list : family | grep -i "Noto Sans" >/dev/null 2>&1; then
-        print -P "  ${colors[success]}󰄲${colors[reset]} Noto Sans font found"
-    else
-        print -P "  ${colors[warn]}󰀦${colors[reset]} Noto Sans missing"
-    fi
-
-    # check symlinks
+    # symlink audit
     print ""
     log_info "verifying config symlinks..."
     local check_links=("hypr" "quickshell" "matugen" "kitty" "zsh" "yazi" "nvim" "fastfetch")
     for l in "${check_links[@]}"; do
         local target="$CONFIG_DIR/$l"
         if [[ -L "$target" ]]; then
-            print -P "  ${colors[success]}󰄲${colors[reset]} $target -> $(readlink $target)"
+            print -P "  %F{120}󰄲%f $target -> %F{244}$(readlink "$target")%f"
         elif [[ -d "$target" ]]; then
-            print -P "  ${colors[warn]}󰀦${colors[reset]} $target exists but is a real directory (not symlinked)"
+            print -P "  %F{221}󰀦%f $target exists but is a real directory (not symlinked)"
         else
-            print -P "  ${colors[error]}󰅚${colors[reset]} $target missing"
+            print -P "  %F{203}󰅚%f $target missing"
         fi
     done
 
-    # verify quickshell daemon and configuration
+    # quickshell daemon status
     print ""
-    log_info "testing quickshell syntax & compilation..."
-    if (( $+commands[qs] )); then
-        if timeout 4s qs >/tmp/qs_install_test.log 2>&1 || [[ $? -eq 124 ]]; then
-            if grep -s "Configuration Loaded" /tmp/qs_install_test.log >/dev/null 2>&1; then
-                print -P "  ${colors[success]}󰄲${colors[reset]} quickshell configuration: ${colors[bold]}OK (0 errors)${colors[reset]}"
-            else
-                print -P "  ${colors[warn]}󰀦${colors[reset]} quickshell check log: $(tail -n 3 /tmp/qs_install_test.log | tr "\n" " ")"
-            fi
-        fi
-        rm -f /tmp/qs_install_test.log
+    log_info "checking quickshell status..."
+    if pgrep -x quickshell >/dev/null 2>&1 || pgrep -x qs >/dev/null 2>&1; then
+        print -P "  %F{120}󰄲%f quickshell daemon is currently %Brunning%b"
+    else
+        print -P "  %F{221}󰀦%f quickshell daemon is not running (start with: %F{141}qs -d%f)"
     fi
 
-    # check running daemon
-    if pgrep -f "^qs|^quickshell" >/dev/null; then
-        print -P "  ${colors[success]}󰄲${colors[reset]} quickshell daemon is currently ${colors[bold]}running${colors[reset]}"
+    # zsh bytecode status
+    local sample_zwc="$CONFIG_DIR/zsh/sources.zsh.zwc"
+    if [[ -f "$sample_zwc" ]]; then
+        print -P "  %F{120}󰄲%f zsh bytecode: pre-compiled .zwc active"
     else
-        print -P "  ${colors[warn]}󰀦${colors[reset]} quickshell daemon is not running (start with: ${colors[primary]}qs -d${colors[reset]})"
-    fi
-
-    # check zsh bytecode
-    if [[ -f "$CONFIG_DIR/zsh/core.zsh.zwc" ]]; then
-        print -P "  ${colors[success]}󰄲${colors[reset]} zsh bytecode: pre-compiled .zwc active"
-    else
-        print -P "  ${colors[warn]}󰀦${colors[reset]} zsh bytecode not compiled (run: zrecompile)"
+        print -P "  %F{221}󰀦%f zsh bytecode: not compiled"
     fi
 
     print ""
-    if (( ${#missing_bins[@]} > 0 )); then
-        log_warn "missing ${#missing_bins[@]} dependencies: ${missing_bins[*]}"
-        print -P "  run ${colors[primary]}./install.zsh --deps${colors[reset]} to install them"
+    if (( ${#missing_bins} > 0 )); then
+        log_warn "missing ${#missing_bins} dependencies: ${missing_bins[*]}"
+        print -P "  run %F{141}./install.zsh --deps%f to install them"
     else
-        log_ok "all core tools, fonts, and services are healthy"
+        log_ok "all core tools, fonts, and configurations are healthy"
     fi
 }
 
@@ -421,34 +446,13 @@ mode="interactive"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -a|--all)
-            mode="all"
-            shift
-            ;;
-        -u|--update)
-            mode="update"
-            shift
-            ;;
-        -l|--links)
-            mode="links"
-            shift
-            ;;
-        -d|--deps)
-            mode="deps"
-            shift
-            ;;
-        -c|--doctor|--check)
-            mode="doctor"
-            shift
-            ;;
-        -r|--reload)
-            mode="reload"
-            shift
-            ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
+        -a|--all)             mode="all"; shift ;;
+        -u|--update)          mode="update"; shift ;;
+        -l|--links)           mode="links"; shift ;;
+        -d|--deps)            mode="deps"; shift ;;
+        -c|--doctor|--check)  mode="doctor"; shift ;;
+        -r|--reload)          mode="reload"; shift ;;
+        -h|--help)            show_help; exit 0 ;;
         *)
             log_err "unknown option: $1"
             show_help
@@ -457,7 +461,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-print -P "${colors[primary]}󰄛 rice manager: keeping your setup immaculate${colors[reset]}"
+print -P "%F{141}󰄛 rice manager: keeping your setup immaculate%f"
 
 if [[ "$mode" == "interactive" ]]; then
     print ""
@@ -470,14 +474,19 @@ if [[ "$mode" == "interactive" ]]; then
     print "  6) 󰁕 reload running shell (hyprland + quickshell)"
     print "  7) 󰅚 quit"
     print -Pn "choice [1-7]: "
+
+    choice=""
     if [[ -t 0 ]]; then
-        read -r choice
+        read -k 1 choice
+        print ""
     elif [[ -r /dev/tty ]]; then
-        read -r choice </dev/tty
+        read -k 1 choice </dev/tty
+        print ""
     else
-        print "quitting (no tty attached)."
+        print "\nquitting (no interactive tty attached)."
         exit 0
     fi
+
     case "$choice" in
         1) mode="all" ;;
         2) mode="update" ;;
@@ -485,7 +494,8 @@ if [[ "$mode" == "interactive" ]]; then
         4) mode="deps" ;;
         5) mode="doctor" ;;
         6) mode="reload" ;;
-        *) print "quitting."; exit 0 ;;
+        7|q|Q) print "quitting."; exit 0 ;;
+        *) log_warn "invalid choice: $choice"; exit 1 ;;
     esac
 fi
 
