@@ -33,7 +33,7 @@ hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "left" }))
 hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "down" }))
 hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
 
--- mouse controls (wow u really use guis instead of being a elitist -_-)
+-- mouse controls (wow u really use guis instead of being an elitist -_-)
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
