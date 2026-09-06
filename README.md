@@ -1,80 +1,70 @@
-> [!warning]
-> there is ai slop all over this repo!! you have been warned!
+# hyprland dots: the hallucination edition
 
-hi! this is my hyprland dots.   
-gemini through antigravity and ai studio vibecoded this.  
-(sometimes it just hallucinates bad, hence why ai studio exists)
+> biohazard warning: this repository is 90% ai slop, 9% sleep deprivation, and 1% quickshell fighting for its life. enter at your own risk.
 
-ok actual shell starts here dont cry
+this is my hyprland setup. gemini, antigravity, and ai studio vibecoded this entire monstrosity because writing layer-shell qml and wayland protocol glue by hand is an insult to whatever sanity i have left. sometimes the model hallucinates an imaginary display server and everything breaks. it runs on my machine. if it doesn't run on yours, skill issue.
 
-# what got fixed & unfucked
+# what got unfucked
 
-- [x] bar layout studio: live interactive widget reordering (left/center/right) with liquid concave scoop docking, zero restart required
-- [x] app launcher resurrected: stopped rendering at 0x0 invisible ghost pixels
-- [x] python script unification: deleted fragmented shell forks in favor of unified python scripts (wallpaper.py, session.py, clipboard.py)
-- [x] pure black actually delivered: pure black mode is genuinely #000000 pitch black across the bar, cards, pills, and screen scoops instead of dark grey fraud
-- [x] glass vs regular split: distinct solid regular theme vs true frosted glass blur via layer-shell rules
-- [x] continuous screen frame borders: corner scoops now connect with continuous pixel-perfect borders wrapping the display
-- [x] top bar layout overlap & clipping: eradicated nested animations and width clipping so hover expansions never overlap adjacent widgets
-- [x] settings engine schema-driven: wiped manual serialization boilerplate in favor of a clean unified schema
-- [x] curl pipe installer fixed: install.zsh reads from /dev/tty so curl piping doesn't immediately quit on eof
-- [x] zsh settings & prompt customizer: interactive terminal customizer with prompt styles (two-line, single-line, minimal, bracket, unhinged), custom symbols, colors, and live prompt updates
-- [x] help cheatsheet command: added instant colorized help command for dotfile shortcuts, quickshell, and hyprland keybindings
+- bar layout studio: live interactive widget reordering (left, center, right) with liquid concave scoops. zero restarts, infinite hubris.
+- app launcher: no longer renders at 0x0 invisible ghost pixels in the shadow realm.
+- python script unification: deleted fragmented shell forks in favor of unified python scripts (wallpaper.py, session.py, clipboard.py) because bash arrays are cursed.
+- pure black delivered: pitch black #000000 across the bar, cards, pills, and screen scoops instead of washed-out dark grey fraud.
+- glass split: actual frosted blur via layer-shell rules instead of broken opacity hacks.
+- continuous screen borders: corner scoops now connect with continuous pixel-perfect borders wrapping the monitor like a cage.
+- top bar clipping dead: eradicated nested animations and width clipping so hover expansions never eat adjacent widgets alive.
+- schema-driven settings: murdered manual serialization boilerplate in favor of a clean unified schema.
+- curl pipe installer fixed: install.zsh reads from /dev/tty so piping curl doesn't instantly die on eof.
+- zsh prompt customizer: live interactive customizer with prompt styles (two-line, single-line, minimal, bracket, unhinged), custom symbols, and colors for artificial dopamine.
+- help cheatsheet: instant colorized keybind cheat sheet so you remember what keys you remapped at 4 am.
 
-dont run this as root unless you want your drive atomized
+# how to destroy your display server
 
-# how to install (or destroy your system)
-
-clone this repo somewhere that won't give u an existential crisis:
+clone this repo somewhere that won't trigger an existential crisis:
 
 ```bash
 git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git ~/my-hyprland-dots
 cd ~/my-hyprland-dots
 ```
 
-then run the installer so you don't have to copy-paste symlinks like an animal:
+run the installer so you don't have to copy-paste symlinks like a medieval peasant:
 
 ```bash
 chmod +x install.zsh
 ./install.zsh
 ```
 
-it gives you an interactive menu. if you want zero questions and maximum commitment:
-- `./install.zsh --all`: grabs all packages, backs up your existing trash into `~/.cache/dotfiles-backups`, symlinks everything, generates wallpaper colors, pre-compiles zsh bytecode, and boots quickshell.
-- `./install.zsh --doctor`: inspects missing binaries, checks font glyph packs (segoe fluent icons, jetbrainsmono nerd font, noto sans), verifies quickshell compilation, and tells you what's broken.
-- `./install.zsh --update`: pulls latest git commits, syncs links, and reloads without nuking your stuff.
-- `./install.zsh --reload`: reloads running hyprland and restarts `qs -d` in the background.
+it boots an interactive menu. if you want zero questions and maximum system jeopardy:
+- `./install.zsh --all`: full send. dumps your existing config into `~/.cache/dotfiles-backups`, symlinks everything, compiles zsh bytecode, generates palette colors, boots quickshell, offers zero apologies.
+- `./install.zsh --doctor`: inspects missing fonts (segoe fluent icons, jetbrainsmono nerd font, noto sans), validates quickshell compilation, and tells you why your desktop is crying.
+- `./install.zsh --update`: pulls latest commits, syncs links, and reloads without nuking your stuff.
+- `./install.zsh --reload`: kicks running hyprland and restarts `qs -d` in the background.
 
-if your desktop looks naked, throw some wallpapers into `~/.wallpapers/` and type `wp random` or open the wallpaper chooser widget.
+if your desktop looks like an abandoned void, throw some wallpapers into `~/.wallpapers/` and run `wp random` or open the wallpaper chooser.
 
-this section is cursed do not linger
+# the cursed route (do not do this)
 
-or...  
-if you want to do the chaotic way..  
-you could do the curl way.. though i wouldnt recommend that.  
-go ahead.
+if you have zero self-preservation instincts and actively hate your home directory:
 
 ```bash
-# russian roulette for your home directory
+# home directory russian roulette
 curl -fsSL https://raw.githubusercontent.com/theyh4t3-ashlxy/my_hyprland_dots/main/install.zsh | zsh
 ```
 
-# known issues rn
-nothing (yet)  
-probably lying, but nothing is currently on fire.
+# known bugs
 
-# will refine
-- [ ] animations consistency across modules & quick settings
+nothing currently on fire. either it runs or the error logging daemon segfaulted before it could tell you.
+
+# todo / future graveyard
+
+- [ ] animation consistency across modules and quick settings
 - [ ] interactive physics lab in motion sandbox
-- [ ] give me ideas too (or open an issue to scream into the void)
+- [ ] open an issue to scream into the void if you want something added
 
 # how to complain (or "contribute")
 
-make an issue. i'll eventually pass it on to antigravity or google jules. whatever works.  
-when jules is done codin, i'll accept its changes.  
-(be rude to it, or dont. idc)  
+open an issue. i'll eventually feed the text into antigravity or google jules and let the bots fight about it. when jules spits out a patch, i'll merge it without reading a single line. feel free to insult the ai, it doesn't have feelings anyway.
 
-# if you wanna be a human coder and fix the hallucinations 
-*(which the ai will call u out and say its incorrect even though u are and fix the "error")*  
+# human pull requests
 
-make a pull request, and i'll accept the changes. or fork and make ur own distro outta dots. idgaf
+if you are an actual carbon-based entity and want to fix hallucinated logic, open a pull request. the ai reviewer will probably gaslight you and claim your valid code is an error, but i'll merge it over the bot's objections. fork it, turn it into your own esoteric rice, do whatever. just don't ping me when your tty freezes during a presentation.
