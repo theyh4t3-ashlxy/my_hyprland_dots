@@ -26,6 +26,21 @@ QtObject {
     }
 
     signal notificationReceived(var notification)
+    signal toggleRequested()
+    signal openRequested()
+    signal closeRequested()
+
+    function toggle() {
+        root.toggleRequested();
+    }
+
+    function open() {
+        root.openRequested();
+    }
+
+    function close() {
+        root.closeRequested();
+    }
 
     readonly property var trackedNotifications: notifServer.trackedNotifications
 

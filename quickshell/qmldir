@@ -12,6 +12,7 @@ singleton BrightnessService services/BrightnessService.qml
 StatusBar                bar/StatusBar.qml
 ScreenCorners            corners/ScreenCorners.qml
 ConcaveCorner            corners/ConcaveCorner.qml
+ConcaveCurves            components/ConcaveCurves.qml
 NotificationToasts       notifications/NotificationToasts.qml
 NotificationCard         notifications/NotificationCard.qml
 OSD                      osd/OSD.qml

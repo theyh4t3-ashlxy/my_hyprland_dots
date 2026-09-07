@@ -1,5 +1,6 @@
 //@ pragma UseQApplication
 import Quickshell
+import Quickshell.Io
 import "widgets"
 
 ShellRoot {
@@ -21,7 +22,14 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
         BarStudio {
-            open: Settings.showBarStudio || Settings.showMotionSandbox
+            open: Settings.showBarStudio
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        MotionSandbox {
+            open: Settings.showMotionSandbox
         }
     }
 
@@ -32,5 +40,53 @@ ShellRoot {
 
     LockScreen {
         id: globalLockScreen
+    }
+
+    IpcHandler {
+        target: "notifs"
+
+        function toggle(): void {
+            NotificationService.toggle();
+        }
+
+        function open(): void {
+            NotificationService.open();
+        }
+
+        function close(): void {
+            NotificationService.close();
+        }
+
+        function clear(): void {
+            NotificationService.clearAll();
+        }
+
+        function dnd(): void {
+            Settings.dnd = !Settings.dnd;
+        }
+    }
+
+    IpcHandler {
+        target: "notifications"
+
+        function toggle(): void {
+            NotificationService.toggle();
+        }
+
+        function open(): void {
+            NotificationService.open();
+        }
+
+        function close(): void {
+            NotificationService.close();
+        }
+
+        function clear(): void {
+            NotificationService.clearAll();
+        }
+
+        function dnd(): void {
+            Settings.dnd = !Settings.dnd;
+        }
     }
 }

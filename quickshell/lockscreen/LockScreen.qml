@@ -99,7 +99,7 @@ Scope {
                 id: surface
 
                 readonly property var activePlayer: Mpris.players.values[0] ?? null
-                readonly property int cornerRadius: Theme?.screenCornerRadius ?? 16
+                readonly property int cornerRadius: Settings?.screenCornerRadius ?? 16
                 readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
 
                 Rectangle {
@@ -150,7 +150,7 @@ Scope {
                             spacing: 6
                             visible: UPower.displayDevice?.isPresent ?? false
                             Text {
-                                text: (UPower.displayDevice?.state === UPowerDeviceState.Charging) ? Theme.iconBatCharging : Theme.iconBatFull
+                                text: Theme.getBatteryIcon(Math.round((UPower.displayDevice?.percentage ?? 1.0) * 100), UPower.displayDevice?.state === UPowerDeviceState.Charging, false, false)
                                 font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeMd
                                 color: Theme.primary

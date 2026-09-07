@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 
 Rectangle {
@@ -43,19 +44,61 @@ Rectangle {
         }
     }
 
+    function togglePopup() {
+        if (!popup.open) {
+            openPopup();
+        } else {
+            popup.open = false;
+        }
+    }
+
+    function openPopup() {
+        if (Theme.isVertical) {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : (popup.screen?.height ?? 1080) / 2;
+        } else {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : (popup.screen?.width ?? 1920) / 2;
+        }
+        popup.open = true;
+    }
+
+    function closePopup() {
+        popup.open = false;
+    }
+
+    Connections {
+        target: NotificationService
+
+        function onToggleRequested() {
+            let myScreen = root.QsWindow.window?.screen;
+            let focusedScreenName = Hyprland.focusedMonitor?.name;
+            if (popup.open) {
+                popup.open = false;
+            } else if (!focusedScreenName || !myScreen || myScreen.name === focusedScreenName) {
+                root.openPopup();
+            }
+        }
+
+        function onOpenRequested() {
+            let myScreen = root.QsWindow.window?.screen;
+            let focusedScreenName = Hyprland.focusedMonitor?.name;
+            if (!focusedScreenName || !myScreen || myScreen.name === focusedScreenName) {
+                root.openPopup();
+            }
+        }
+
+        function onCloseRequested() {
+            popup.open = false;
+        }
+    }
+
     MouseArea {
         id: notifMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
-            } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
-            }
-            popup.open = !popup.open
-        }
+        onClicked: root.togglePopup()
     }
 
     PopupPanel {

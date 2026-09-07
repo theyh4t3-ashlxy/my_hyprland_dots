@@ -186,7 +186,8 @@ Rectangle {
 
                         visible: root.searchFilter === "" || text.toLowerCase().includes(root.searchFilter)
                         width: parent.width
-                        implicitHeight: col.implicitHeight + Theme.widgetPaddingH * 2
+                        implicitHeight: visible ? (col.implicitHeight + Theme.widgetPaddingH * 2) : 0
+                        height: visible ? implicitHeight : 0
                         color: cMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
                         radius: Theme.widgetRadius
 

@@ -51,7 +51,6 @@ QtObject {
     readonly property color inverse_primary:        "{{colors.inverse_primary.default.hex}}"
     readonly property color source_color:           "{{colors.source_color.default.hex}}"
 
-    // transparent magic so things dont look like concrete
     function alpha(c: color, a: real): color { return Qt.rgba(c.r, c.g, c.b, a) }
 
     readonly property color primary_overlay:        alpha(primary, 0.18)
@@ -63,14 +62,12 @@ QtObject {
     readonly property color on_warn_container:      on_tertiary_container
     readonly property color warn_overlay:           tertiary_overlay
 
-    // so disabled buttons actually look dead
     readonly property color on_surface_disabled:    alpha(on_surface, 0.38)
     readonly property color outline_disabled:       alpha(outline, 0.12)
     readonly property color fontStrokeColor:        "#000000"
     readonly property color textStroke:             "#000000"
     readonly property color textShadow:             "#000000"
 
-    // fonts so text doesnt look like enchantment table hieroglyphs
     readonly property string fontSans:              Settings?.fontSans ?? Settings?.fontFamily ?? "Noto Sans"
     readonly property string fontMono:              Settings?.fontMono ?? "JetBrainsMono Nerd Font"
     readonly property string fontDisplay:           Settings?.fontDisplay ?? fontSans
@@ -91,7 +88,6 @@ QtObject {
     readonly property int    fontSizeXl:            Math.round(18 * fontScale)
     readonly property int    fontSizeTitle:         Math.round(22 * fontScale)
 
-    // sizing so we dont end up with microscopic shit
     readonly property int    radiusSm:              2
     readonly property int    radiusMd:              4
     readonly property int    radiusLg:              8
@@ -115,6 +111,7 @@ QtObject {
     readonly property string screenCornerMode:      Settings?.screenCornerMode ?? "all"
     readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "bar"
     readonly property string barStyle:              Settings?.barStyle ?? "glass"
+
     function getStyleColor(role: string, bs: string): color {
         switch (role) {
             case "barBg":
@@ -226,8 +223,7 @@ QtObject {
     readonly property int    popupSpacing:          10
     readonly property int    thumbSize:             180
 
-    // fast transitions so clicking doesnt feel like dial-up
-    readonly property real   animSpeedMult:         Settings?.animSpeed === "instant" ? 0.01 : (Settings?.animSpeed === "snappy" ? 0.7 : (Settings?.animSpeed === "hyper" ? 0.4 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)))
+    readonly property real   animSpeedMult:         Settings?.animSpeed === "instant" ? 0.01 : ((Settings?.animSpeed === "snappy" || Settings?.animSpeed === "superSnappy") ? 0.7 : (Settings?.animSpeed === "hyper" ? 0.4 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)))
     readonly property bool   isVertical:            Settings?.barPosition === "left" || Settings?.barPosition === "right"
     readonly property int    animFast:              Math.round(120 * animSpeedMult)
     readonly property int    animNormal:            Math.round(200 * animSpeedMult)
@@ -257,39 +253,39 @@ QtObject {
         "checkCircle": "(✓)",
         "settings": "(*_*)",
         "gear": "(*_*)",
-        "save": "(💾)",
+        "save": "(⤓)",
         "refresh": "(↺)",
-        "trash": "(🗑)",
-        "clipboard": "(📋)",
+        "trash": "(⌫)",
+        "clipboard": "(≡)",
         "tray": "[..]",
         "grid": "[#]",
         "note": "(✎)",
         "edit": "(✎)",
         "coffee": "(旦)",
-        "clock": "(🕒)",
+        "clock": "(◷)",
         "cpu": "[cpu]",
         "mem": "[ram]",
-        "thermo": "[°C]",
+        "thermo": "[°c]",
         "eye": "(•‿•)",
         "eyeOff": "(-_-)",
-        "heart": "(♥)",
+        "heart": "(♡)",
         "download": "(↓)",
         "folder": "[dir]",
-        "globe": "(🌐)",
+        "globe": "(⊕)",
         "volMute": "(-_-)",
         "volLow": "(・ω・)",
         "volMid": "(ᵔᴥᵔ)",
         "volHigh": "(≧◡≦)",
-        "mic": "(🎙)",
+        "mic": "(¶)",
         "micMute": "(x_x)",
-        "palette": "(🎨)",
-        "headphones": "(🎧)",
+        "palette": "(※)",
+        "headphones": "(d-_-b)",
         "equalizer": "|||",
         "batFull": "(◕‿◕)",
         "batHalf": "(・_・)",
         "batQuarter": "(>_<)",
         "batEmpty": "(×_×)",
-        "batCharge": "(⚡^⚡)",
+        "batCharge": "(↯^↯)",
         "sun": "(☼)",
         "moon": "(☾)",
         "brightness": "(☼)",
@@ -301,43 +297,43 @@ QtObject {
         "shuffle": "(~)",
         "repeat": "(↻)",
         "repeatOne": "(1)",
-        "wallhaven": "(🖼)",
-        "wallpaper": "(🖼)",
-        "bell": "(🔔)",
-        "bellOutline": "(🔔)",
-        "bellOff": "(🔕)",
+        "wallhaven": "[img]",
+        "wallpaper": "[img]",
+        "bell": "(⍾)",
+        "bellOutline": "(⍾)",
+        "bellOff": "(⍉)",
         "ethernet": "[eth]",
         "wifi": "(•̀ᴗ•́)و",
         "wifiHigh": "(•̀ᴗ•́)و",
         "wifiMed": "(・_・)",
         "wifiLow": "( ;¬_¬)",
         "wifiOff": "(×_×)",
-        "bluetooth": "(⚡)",
+        "bluetooth": "(~)",
         "bluetoothConnected": "(•̀ᴗ•́)و",
         "bluetoothOff": "(×_×)",
         "power": "(⏻)",
         "shutdown": "(⏻)",
-        "lock": "(🔒)",
+        "lock": "(⚿)",
         "logout": "(bye)",
         "reboot": "(↺)",
         "suspend": "(zzz)",
-        "hibernate": "(❄)",
+        "hibernate": "(zzz)",
         "chevronRight": ">",
         "chevronLeft": "<",
         "chevronDown": "v",
         "chevronUp": "^",
-        "flame": "(🔥)",
-        "sparkles": "(✨)",
-        "radio": "(📻)",
+        "flame": "(♨)",
+        "sparkles": "(✦)",
+        "radio": "[rad]",
         "sliders": "[=]",
         "terminal": "[>_]",
-        "calendar": "(📅)",
+        "calendar": "[cal]",
         "history": "(↺)",
         "copy": "[cp]",
         "externalLink": "(->)",
-        "signal": "(📶)",
+        "signal": "(ıllι)",
         "filter": "[/]",
-        "user": "(👤)",
+        "user": "(•)",
         "shield": "[#]",
         "expand": "[+]",
         "collapse": "[-]"
@@ -460,7 +456,7 @@ QtObject {
         let lvl = p < 0 ? -1 : Math.min(10, Math.floor(p / 10));
 
         if (iconSet === "kaomoji") {
-            if (isCharging) return "(⚡^⚡)";
+            if (isCharging) return "(↯^↯)";
             if (lvl >= 9) return "(◕‿◕)";
             if (lvl >= 5) return "(・_・)";
             if (lvl >= 2) return "(>_<)";
@@ -506,7 +502,6 @@ QtObject {
             return "";
         }
 
-        // default: material / nerd font
         if (lvl < 0) return "󰂎";
         if (isCharging) {
             const matCharging = ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"];
@@ -614,6 +609,7 @@ QtObject {
     readonly property string iconBatQuarter:        getIcon("󰁼", "\uE852", "", "batQuarter")
     readonly property string iconBatEmpty:          getIcon("󰁺", "\uE850", "", "batEmpty")
     readonly property string iconBatCharge:         getIcon("󰂄", "\uE83E", "", "batCharge")
+    readonly property string iconBatCharging:       iconBatCharge
 
     readonly property string iconSun:               getIcon("󰃠", "\uE706", "", "sun")
     readonly property string iconMoon:              getIcon("󰃞", "\uE708", "", "moon")
@@ -672,7 +668,6 @@ QtObject {
     readonly property string iconExpand:            getIcon("󰁌", "\uE740", "", "expand")
     readonly property string iconCollapse:          getIcon("󰁋", "\uE73F", "", "collapse")
 
-    // kaomojis without emoji junk
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
     readonly property string kaoSad:                "(╥_╥)"
     readonly property string kaoCoffee:             "( ᐛ )و"
@@ -683,7 +678,7 @@ QtObject {
     readonly property string kaoError:              "(;´д`)"
     readonly property string kaoLoading:            "(⊙_⊙;)"
     readonly property string kaoPeace:              "ヽ(・∀・)ノ"
-    readonly property string kaoSleepy:             "(-.-)Zzz"
+    readonly property string kaoSleepy:             "(-.-)zzz"
     readonly property string kaoCool:               "(⌐■_■)"
     readonly property string kaoLove:               "(^ω^*)"
     readonly property string kaoAnger:              "(╬ Ò﹏Ó)"
@@ -694,14 +689,14 @@ QtObject {
     readonly property string kaoDead:               "(x_x)"
     readonly property string kaoCat:                "(=^･ω･^=)"
     readonly property string kaoPanic:              "(°Д°；)"
-    readonly property string kaoVibe:               "( ˘ ³˘)♥"
+    readonly property string kaoVibe:               "( ˘ ³˘)♡"
     readonly property string kaoJam:                "(~‾▿‾)~"
     readonly property string kaoDJ:                 "(ノ^_^)ノ"
     readonly property string kaoSilent:             "( ˙-˙ )"
     readonly property string kaoCozy:               "(っ˘ω˘ς)"
     readonly property string kaoCheer:              "(ﾉ>ω<)ﾉ :｡･:*:･ﾟ"
     readonly property string kaoSmug:               "( ˘⌣˘ )"
-    readonly property string kaoFire:               "(ง🔥Д🔥)ง"
+    readonly property string kaoFire:               "(ง♨Д♨)ง"
     readonly property string kaoSparkle:            "(★ω★)"
     readonly property string kaoTableFlip:          "(╯°□°)╯︵ ┻━┻"
     readonly property string kaoPutBack:            "┬─┬ノ( º _ ºノ)"
@@ -713,7 +708,6 @@ QtObject {
         return text ?? "";
     }
 
-    // unhinged flavor generator for contextual system quotes
     function getFlavor(category: string, fallback: string): string {
         if (!Settings?.unhingedFlavor) return fallback ?? "";
         let quotes = {
@@ -721,54 +715,170 @@ QtObject {
                 "beaming photons into brain",
                 "locked into the grid",
                 "surveillance feed online",
-                "5G brain waves active"
+                "5g brain waves active",
+                "feeding packets to the machine",
+                "interceptor telemetry online",
+                "direct fiber link to the void",
+                "ping is crisp like autumn leaves",
+                "downloading more ram",
+                "wired directly into the matrix",
+                "packet sniffing in progress"
             ],
             "network_off": [
                 "off the grid, touching grass",
                 "wifi machine broke",
                 "radio silence",
-                "airgapped paranoia"
+                "airgapped paranoia mode",
+                "carrier pigeon deployed",
+                "no packets no masters",
+                "wifi card went to buy milk",
+                "router took a dirt nap",
+                "offline goblin mode",
+                "pure analog silence",
+                "unplugged and untouchable"
             ],
             "battery_charging": [
                 "injecting pure voltage",
                 "drinking from the wall",
-                "fast charging go brrr"
+                "fast charging go brrr",
+                "sipping raw current like boba",
+                "detachable power grid tether",
+                "gluttonous electron feast",
+                "wired life support running",
+                "sucking the wall dry",
+                "energy levels ascending",
+                "dangerously energized"
             ],
             "battery_low": [
-                "running on fumes",
+                "running on pure spite",
                 "im literally dying",
-                "plug me in coward"
+                "plug me in coward",
+                "hanging by a single electron",
+                "one gust of wind and im gone",
+                "seconds away from flatline",
+                "emergency life support failing",
+                "battery hospice care",
+                "fade to black speedrun",
+                "feed me voltage or witness my demise"
             ],
             "battery_full": [
                 "overflowing with juice",
                 "100% pure power",
-                "ready for chaos"
+                "ready for chaos",
+                "unplug me before i detonate",
+                "bursting with electrical rage",
+                "certified portable menace",
+                "battery capacity maxed out",
+                "ready to conquer the universe"
+            ],
+            "media_playing": [
+                "ears are being blessed",
+                "vibing at reckless volumes",
+                "soundtrack to my downfall",
+                "sonic waves invading skull",
+                "banger detected in the wild",
+                "aux cord privileges validated",
+                "ear drum torture (positive)",
+                "music therapy in progress",
+                "head nodding uncontrollably",
+                "frequencies are immaculate"
             ],
             "media_quiet": [
                 "dead silence",
                 "eerie calm",
-                "no bangers playing"
+                "no bangers playing",
+                "silence is deafening",
+                "tumbleweed drifting across aux",
+                "waiting for the drop",
+                "zero decibels detected",
+                "give the ears a break",
+                "not a single acoustic vibration"
             ],
             "notes_empty": [
                 "head empty, no thoughts",
                 "void of ideas",
-                "not a single braincell"
+                "not a single braincell",
+                "whiteboard wiped clean",
+                "brain smooth like marble",
+                "zero plots or schemes concocted",
+                "tabula rasa in the membrane",
+                "thoughts postponed indefinitely"
             ],
             "notifs_empty": [
                 "all quiet in the matrix",
                 "zero drama detected",
                 "nobody is bothering you",
-                "peace and quiet at last"
+                "peace and quiet at last",
+                "blissful void achieved",
+                "unbothered, moisturized, in my lane",
+                "zero pings in the ether",
+                "ghost town inbox paradise"
             ],
             "dnd_on": [
                 "do not disturb (touch grass)",
                 "anti-social mode active",
-                "leave me alone forever"
+                "leave me alone forever",
+                "do not perceive me",
+                "bunker door sealed tight",
+                "introvert defense shield engaged",
+                "talking to me is forbidden",
+                "silence is the highest law"
+            ],
+            "volume_muted": [
+                "deafening silence",
+                "muted so i dont get jumpscared",
+                "absolute zero decibels",
+                "ears on paid vacation",
+                "audio drivers asleep at the wheel",
+                "stealth mode engaged"
+            ],
+            "volume_high": [
+                "eardrum obliteration incoming",
+                "speaker drivers begging for mercy",
+                "permanent hearing loss speedrun",
+                "sound wave assault initiated",
+                "neighbors will remember this",
+                "max gain chaos"
+            ],
+            "brightness_high": [
+                "flashbang directly into corneas",
+                "retinal incineration underway",
+                "solar flare simulator active",
+                "i can see through time and space",
+                "corneal crisping mode on"
+            ],
+            "brightness_low": [
+                "vampire cave lighting",
+                "goblin mode stealth shadow",
+                "saving eyes from burning agony",
+                "light photon rations engaged",
+                "living in the dark realm"
+            ],
+            "idle_inhibited": [
+                "pumped full of espresso",
+                "no sleeping on my watch",
+                "eyes taped open permanently",
+                "caffeine drip wide open",
+                "display nap privileges revoked"
+            ],
+            "idle_normal": [
+                "naptime permitted",
+                "resting my weary circuits",
+                "screensaver countdown ticking",
+                "idle and utterly unbothered",
+                "ready to pass out anytime"
             ],
             "system": [
                 "barely holding together",
                 "no crashes yet (suspicious)",
-                "kernel is vibing"
+                "kernel is vibing",
+                "held together with duct tape and hope",
+                "cpu is gently poaching an egg",
+                "linux kernel doing heavy lifting",
+                "memory leaks under control (mostly)",
+                "not on fire yet",
+                "operating within chaotic tolerances",
+                "running on optimism and swap space"
             ]
         };
         let list = quotes[category];

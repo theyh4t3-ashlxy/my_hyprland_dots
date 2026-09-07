@@ -1,79 +1,101 @@
 import QtQuick
-import QtQuick.Shapes
 import ".."
 
-Shape {
+Item {
     id: root
 
     property real radiusX: Theme.scoopRadiusX ?? 16
     property real radiusY: Theme.scoopRadiusY ?? 16
-    property real tension: Theme.scoopTension ?? 0.55228475
-    property string style: Theme.scoopStyle ?? "cubic"
     property color fillColor: Theme.cornerFill ?? Theme.barBg ?? Theme.surface_container_low ?? "#14140c"
     property bool flipX: false
     property bool flipY: false
+    property string cornerStyle: Settings?.cornerStyle ?? "cubic"
+
+    property alias radius: root.radiusX
+    property alias color: root.fillColor
+    property alias mirrored: root.flipX
+    readonly property bool isTop: !flipY
 
     width: Math.max(1, radiusX)
     height: Math.max(1, radiusY)
-
-    asynchronous: false
-    preferredRendererType: Shape.GeometryRenderer
-    antialiasing: true
-    layer.enabled: true
-    layer.smooth: true
+    implicitWidth: width
+    implicitHeight: height
 
     readonly property real w: width
     readonly property real h: height
+    readonly property real tension: {
+        if (cornerStyle === "squircle") return 0.58;
+        if (cornerStyle === "flared") return 0.38;
+        return Settings?.scoopTension ?? 0.55228475;
+    }
 
-    // actual geometric presets instead of made-up numbers
-    readonly property real effTension: style === "chamfer"  ? 0.0
-                                     : style === "squircle" ? 0.75
-                                     : style === "flared"   ? 0.85
-                                     : style === "stepped"  ? 1.0
-                                     : tension
-    readonly property real k: 1.0 - effTension
+    Behavior on fillColor { ColorAnimation { duration: Theme.animFast } }
 
-    // outer anchor corner
-    readonly property real startPtX: flipX ? w : 0
-    readonly property real startPtY: flipY ? h : 0
+    Canvas {
+        id: canvas
+        anchors.fill: parent
+        antialiasing: true
+        smooth: true
+        renderTarget: Canvas.Image
+        renderStrategy: Canvas.Immediate
 
-    // first straight point
-    readonly property real linePtX: flipX ? 0 : w
-    readonly property real linePtY: flipY ? h : 0
+        onPaint: {
+            var ctx = getContext("2d");
+            ctx.reset();
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = root.fillColor;
+            ctx.beginPath();
 
-    // second straight point
-    readonly property real endPtX: flipX ? w : 0
-    readonly property real endPtY: flipY ? 0 : h
+            var fx = root.flipX;
+            var fy = root.flipY;
+            var w = root.w;
+            var h = root.h;
+            var t = root.tension;
 
-    // fixing the control points so it doesn't look like a squished egg
-    readonly property real ctrl1X: flipX ? (w * effTension) : (w * k)
-    readonly property real ctrl1Y: linePtY
+            var sx = fx ? 0 : w;
+            var sy = fy ? h : 0;
+            ctx.moveTo(sx, sy);
 
-    readonly property real ctrl2X: endPtX
-    readonly property real ctrl2Y: flipY ? (h * effTension) : (h * k)
+            var p1x = fx ? w : 0;
+            var p1y = fy ? h : 0;
+            ctx.lineTo(p1x, p1y);
 
-    ShapePath {
-        fillColor: root.fillColor
-        strokeColor: "transparent"
-        strokeWidth: 0
-        joinStyle: ShapePath.MiterJoin
-        capStyle: ShapePath.FlatCap
+            var p2x = fx ? w : 0;
+            var p2y = fy ? 0 : h;
+            ctx.lineTo(p2x, p2y);
 
-        startX: root.startPtX
-        startY: root.startPtY
+            if (root.cornerStyle === "chamfer") {
+                ctx.lineTo(sx, sy);
+            } else if (root.cornerStyle === "stepped") {
+                var midX = w * 0.5;
+                var midY = h * 0.5;
+                ctx.lineTo(midX, p2y);
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(sx, midY);
+                ctx.lineTo(sx, sy);
+            } else {
+                var c1x = fx ? w : 0;
+                var c1y = fy ? (h * t) : (h * (1.0 - t));
+                var c2x = fx ? (w * t) : (w * (1.0 - t));
+                var c2y = fy ? h : 0;
+                ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
+            }
 
-        PathLine { x: root.linePtX; y: root.linePtY }
-
-        PathCubic {
-            x: root.endPtX
-            y: root.endPtY
-            control1X: root.ctrl1X
-            control1Y: root.ctrl1Y
-            control2X: root.ctrl2X
-            control2Y: root.ctrl2Y
+            ctx.closePath();
+            ctx.fill();
         }
 
-        // closing the loop before memory leaks into the void
-        PathLine { x: root.startPtX; y: root.startPtY }
+        Connections {
+            target: root
+            function onFillColorChanged() { canvas.requestPaint(); }
+            function onRadiusXChanged() { canvas.requestPaint(); }
+            function onRadiusYChanged() { canvas.requestPaint(); }
+            function onWidthChanged() { canvas.requestPaint(); }
+            function onHeightChanged() { canvas.requestPaint(); }
+            function onFlipXChanged() { canvas.requestPaint(); }
+            function onFlipYChanged() { canvas.requestPaint(); }
+            function onCornerStyleChanged() { canvas.requestPaint(); }
+            function onTensionChanged() { canvas.requestPaint(); }
+        }
     }
 }

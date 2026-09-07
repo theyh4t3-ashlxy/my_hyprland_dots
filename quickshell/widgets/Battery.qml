@@ -23,7 +23,7 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
     Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
-    visible: (device?.ready ?? false) && (device?.isLaptopBattery ?? false)
+    visible: (device?.ready ?? false) && (device?.isPresent ?? false)
 
     Row {
         id: contentRow

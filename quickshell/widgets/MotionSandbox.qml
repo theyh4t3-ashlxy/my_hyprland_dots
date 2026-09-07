@@ -630,7 +630,7 @@ PanelWindow {
                         Repeater {
                             model: [
                                 { id: "hyprland", label: "hypr" },
-                                { id: "superSnappy", label: "snappy" },
+                                { id: "snappy", label: "snappy" },
                                 { id: "chill", label: "chill" },
                                 { id: "instant", label: "zero" }
                             ]
@@ -662,7 +662,7 @@ PanelWindow {
                     Item { Layout.fillWidth: true }
 
                     Text {
-                        text: "scoop: " + Settings.scoopRadius + "px • κ: " + Settings.scoopTension.toFixed(3)
+                        text: "scoop: " + Settings.scoopRadius + "px • native arc"
                         font.family: Theme.fontMono
                         font.pixelSize: 10
                         color: Theme.on_surface_variant

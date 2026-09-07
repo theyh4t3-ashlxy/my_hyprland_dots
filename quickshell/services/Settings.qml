@@ -17,7 +17,7 @@ QtObject {
     property real scoopTension: 0.55228475
     // screen corners & concave styles
     property int screenCornerRadius: 16
-    property int screenBorderWidth: 2
+    property int screenBorderWidth: 0
     property bool screenFrameDocked: true
     property string screenCornerMode: "all"
     property string cornerStyle: "cubic"
@@ -173,7 +173,7 @@ QtObject {
         { key: "scoopRadius", type: "int", def: 16 },
         { key: "scoopTension", type: "float", def: 0.55228475 },
         { key: "screenCornerRadius", type: "int", def: 16 },
-        { key: "screenBorderWidth", type: "int", def: 2 },
+        { key: "screenBorderWidth", type: "int", def: 0 },
         { key: "screenFrameDocked", type: "bool", def: true },
         { key: "screenCornerMode", type: "string", def: "all" },
         { key: "cornerStyle", type: "string", def: "cubic" },
@@ -325,6 +325,7 @@ QtObject {
         onFileChanged: {
             if (!root._isSaving) {
                 confFile.reload();
+                root.loadFromFile();
             }
         }
     }

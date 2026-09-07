@@ -20,7 +20,6 @@ PopupPanel {
     onOpenChanged: {
         if (!open) {
             if (Settings.showBarStudio) Settings.showBarStudio = false;
-            if (Settings.showMotionSandbox) Settings.showMotionSandbox = false;
         }
     }
 
@@ -191,7 +190,6 @@ PopupPanel {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         Settings.showBarStudio = false;
-                        Settings.showMotionSandbox = false;
                         root.open = false;
                     }
                 }
