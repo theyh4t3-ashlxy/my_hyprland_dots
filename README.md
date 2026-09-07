@@ -47,7 +47,7 @@ if your desktop looks like an abandoned void, throw some wallpapers into `~/.wal
 
 # the cursed route (do not do this)
 
-if you have zero self-preservation instincts and actively hate your home directory:
+if you have zero self-preservation instincts and actively hate your life as we speak:
 
 ```bash
 # home directory russian roulette
