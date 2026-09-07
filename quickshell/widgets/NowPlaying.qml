@@ -226,8 +226,8 @@ Rectangle {
                         }
 
                         Text {
-                            text: root.activeList.length > 1 ? `(${root.playerIndex + 1}/${root.activeList.length}) 󰒭` : ""
-                            font.family: Theme.fontMono
+                            text: root.activeList.length > 1 ? `(${root.playerIndex + 1}/${root.activeList.length}) \uE5CC` : ""
+                            font.family: Theme.fontIcon
                             font.pixelSize: 10
                             color: Theme.on_surface_variant
                             visible: root.activeList.length > 1

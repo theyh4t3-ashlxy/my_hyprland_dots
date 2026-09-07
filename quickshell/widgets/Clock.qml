@@ -134,7 +134,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 64
                 radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                color: Theme.surface_container_highest
+                color: Theme?.cardBg ?? Theme.surface_container_highest
                 border.color: Theme.widgetBorder
                 border.width: 1
 
@@ -182,7 +182,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: Theme?.iconClock ?? "󰅐"
+                            text: Theme?.iconClock ?? "\uE8B5"
                             font.family: Theme?.fontIcon ?? "sans-serif"
                             font.pixelSize: 11
                             color: Theme.primary

@@ -121,77 +121,90 @@ QtObject {
         switch (role) {
             case "barBg":
                 if (bs === "pure-black") return "#000000";
-                if (bs === "translucent") return alpha(surface_container_low, 0.72);
+                if (bs === "glass") return alpha(surface_container_lowest, 0.40);
+                if (bs === "translucent") return alpha(surface_container_low, 0.70);
                 if (bs === "accent-glow") return alpha(surface_container_lowest, 0.90);
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_low;
             case "barBorderColor":
-                if (bs === "pure-black") return "#282828";
+                if (bs === "pure-black") return "#1f1f1f";
+                if (bs === "glass") return Qt.rgba(1, 1, 1, 0.16);
                 if (bs === "accent-glow") return primary;
                 if (bs === "translucent") return alpha(outline_variant, 0.35);
                 return widgetBorder;
             case "widgetBg":
-                if (bs === "pure-black") return "#111111";
+                if (bs === "pure-black") return "#0a0a0a";
+                if (bs === "glass") return alpha(surface_container_high, 0.28);
                 if (bs === "translucent") return alpha(surface_container_high, 0.40);
                 if (bs === "accent-glow") return alpha(primary_container, 0.65);
                 if (bs === "monochrome") return surface_container_high;
                 return surface_container_low;
             case "widgetHover":
-                if (bs === "pure-black") return "#1c1c1c";
+                if (bs === "pure-black") return "#181818";
+                if (bs === "glass") return alpha(surface_container_highest, 0.48);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.65);
                 if (bs === "accent-glow") return alpha(primary, 0.35);
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_highest;
             case "widgetActive":
-                if (bs === "pure-black") return "#262626";
+                if (bs === "pure-black") return "#242424";
+                if (bs === "glass") return alpha(surface_container_highest, 0.65);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.85);
                 if (bs === "accent-glow") return alpha(primary, 0.55);
                 if (bs === "monochrome") return alpha(on_surface, 0.20);
                 return surface_container_highest;
             case "widgetBorder":
-                if (bs === "pure-black") return "#282828";
+                if (bs === "pure-black") return "#1f1f1f";
+                if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
                 if (bs === "translucent") return alpha(outline_variant, 0.35);
                 if (bs === "accent-glow") return alpha(primary, 0.70);
-                if (bs === "monochrome") return alpha(outline, 0.4);
+                if (bs === "monochrome") return alpha(outline, 0.40);
                 return alpha(outline_variant, 0.5);
             case "popupBg":
-                if (bs === "pure-black") return "#0a0a0a";
-                if (bs === "translucent") return alpha(surface_container_low, 0.82);
+                if (bs === "pure-black") return "#000000";
+                if (bs === "glass") return alpha(surface_container_lowest, 0.60);
+                if (bs === "translucent") return alpha(surface_container_low, 0.80);
                 if (bs === "accent-glow") return alpha(surface_container_lowest, 0.95);
                 if (bs === "monochrome") return surface_container_low;
                 return surface_container_low;
             case "popupBorderColor":
-                if (bs === "pure-black") return "#282828";
+                if (bs === "pure-black") return "#1f1f1f";
+                if (bs === "glass") return Qt.rgba(1, 1, 1, 0.18);
                 if (bs === "translucent") return alpha(outline_variant, 0.40);
                 if (bs === "accent-glow") return alpha(primary, 0.85);
                 if (bs === "monochrome") return alpha(outline, 0.45);
                 return widgetBorder;
             case "cardBg":
-                if (bs === "pure-black") return "#111111";
+                if (bs === "pure-black") return "#080808";
+                if (bs === "glass") return alpha(surface_container_high, 0.30);
                 if (bs === "translucent") return alpha(surface_container_high, 0.50);
-                if (bs === "accent-glow") return alpha(primary_container, 0.55);
+                if (bs === "accent-glow") return alpha(primary_container, 0.45);
                 if (bs === "monochrome") return surface_container_high;
                 return surface_container_high;
             case "cardBorder":
-                if (bs === "pure-black") return "#222222";
+                if (bs === "pure-black") return "#1c1c1c";
+                if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
                 if (bs === "translucent") return alpha(outline_variant, 0.30);
                 if (bs === "accent-glow") return alpha(primary, 0.60);
                 if (bs === "monochrome") return alpha(outline, 0.35);
                 return widgetBorder;
             case "pillBg":
-                if (bs === "pure-black") return "#121212";
+                if (bs === "pure-black") return "#0a0a0a";
+                if (bs === "glass") return alpha(surface_container_high, 0.25);
                 if (bs === "translucent") return alpha(surface_container_high, 0.45);
                 if (bs === "accent-glow") return alpha(primary, 0.22);
                 if (bs === "monochrome") return surface_container;
                 return surface_container_high;
             case "pillHover":
-                if (bs === "pure-black") return "#222222";
+                if (bs === "pure-black") return "#181818";
+                if (bs === "glass") return alpha(surface_container_highest, 0.45);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.70);
                 if (bs === "accent-glow") return alpha(primary, 0.40);
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_highest;
             case "pillBorder":
-                if (bs === "pure-black") return "#2a2a2a";
+                if (bs === "pure-black") return "#222222";
+                if (bs === "glass") return Qt.rgba(1, 1, 1, 0.14);
                 if (bs === "translucent") return alpha(outline_variant, 0.25);
                 if (bs === "accent-glow") return alpha(primary, 0.85);
                 if (bs === "monochrome") return alpha(outline, 0.35);

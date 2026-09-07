@@ -38,7 +38,7 @@ PopupPanel {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 42
-            color: Theme.surface_container_highest
+            color: Theme.cardBg
             radius: Theme.radiusMd
             border.color: searchInput.activeFocus ? Theme.primary : Theme.widgetBorder
             border.width: 1
@@ -239,7 +239,7 @@ PopupPanel {
                                 if (cat === "dev") return cats.some(c => c.includes("development") || c.includes("ide") || c.includes("programming")) || name.includes("code") || name.includes("nvim") || name.includes("git") || name.includes("terminal") || name.includes("kitty");
                                 if (cat === "media") return cats.some(c => c.includes("audio") || c.includes("video") || c.includes("player") || c.includes("media") || c.includes("graphics")) || name.includes("spotify") || name.includes("vlc") || name.includes("mpv") || name.includes("gimp");
                                 if (cat === "games") return cats.some(c => c.includes("game")) || name.includes("steam") || name.includes("lutris") || name.includes("heroic") || name.includes("retroarch") || name.includes("prism");
-                                if (cat === "system") return cats.some(c => c.includes("system") || c.includes("settings") || c.includes("utility")) || name.includes("settings") || name.includes("pavucontrol") || name.includes("btop");
+                                if (cat === "system") return cats.some(c => c.includes("system") || c.includes("settings") || c.includes("utility")) || name.includes("settings") || name.includes("pipewire") || name.includes("pwcc") || name.includes("btop");
                                 return true;
                             });
                         }

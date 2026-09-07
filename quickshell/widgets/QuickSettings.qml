@@ -1057,7 +1057,7 @@ Rectangle {
                         Rectangle {
                             Layout.fillWidth: true
                             height: 160
-                            color: Theme.surface_container_low
+                            color: Theme.cardBg
                             radius: Theme.widgetRadius
                             border.color: Theme.widgetBorder
                             border.width: 1
@@ -1459,7 +1459,7 @@ Rectangle {
                             Layout.fillWidth: true
                             height: 44
                             radius: Theme.widgetRadius
-                            color: Theme.surface_container_low
+                            color: Theme.cardBg
                             border.color: Theme.widgetBorder
                             border.width: 1
                             visible: vibeCol.aliasKeys.length === 0

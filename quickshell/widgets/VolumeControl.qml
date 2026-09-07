@@ -78,7 +78,7 @@ Rectangle {
                 volRoot.syncAnchor();
                 popup.open = !popup.open;
             } else if (mouse.button === Qt.RightButton) {
-                Quickshell.execDetached(["pavucontrol"]);
+                Quickshell.execDetached(["pipewire-control-center"]);
             } else if (mouse.button === Qt.MiddleButton) {
                 if (source && source.audio) {
                     source.audio.muted = !source.audio.muted;
@@ -121,8 +121,8 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconSliders
                     iconSize: Theme.fontSizeMd
-                    tooltip: "open pavucontrol mixer"
-                    onClicked: Quickshell.execDetached(["pavucontrol"])
+                    tooltip: "open pipewire control center"
+                    onClicked: Quickshell.execDetached(["pipewire-control-center"])
                 }
             }
 
