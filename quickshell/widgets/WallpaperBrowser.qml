@@ -1,54 +1,45 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../controls"
 import Quickshell
 import Quickshell.Io
 
 Rectangle {
     id: root
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : wpRow.implicitWidth + 24
-    implicitHeight: Theme.barHeight - 8
-    radius: Theme.radiusPill
+    implicitWidth: (Theme?.isVertical ?? false) ? ((Theme?.barHeight ?? 48) - 8) : (wpRow.implicitWidth + 24)
+    implicitHeight: (Theme?.barHeight ?? 48) - 8
+    radius: Theme?.radiusPill ?? 999
     color: popup.open ? Theme.primary_overlay : (wpMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
-    border.color: Theme.pillBorder
-    border.width: Theme.pillBorder === "transparent" ? 0 : 1
-    visible: Settings.showWallpaper
+    border.color: Theme?.pillBorder ?? "transparent"
+    border.width: (Theme?.pillBorder ?? "transparent") === "transparent" ? 0 : 1
+    visible: Settings?.showWallpaper ?? true
 
-    Behavior on color { ColorAnimation { duration: Theme.animFast } }
-    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+    Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
     property string activeTab: "local"
+    property string liveSubTab: "local"
     property string localCategoryFilter: "all"
     property string localSubCategoryFilter: "all"
     property string localSearchQuery: ""
     property string onlineQuery: ""
     property string onlineSorting: "date_added"
     property int onlinePage: 1
-    property string onlineResolution: (Quickshell.screens && Quickshell.screens.length > 0) ? (Quickshell.screens[0].width + "x" + Quickshell.screens[0].height) : "1920x1200"
+    property string onlineResolution: (Quickshell?.screens && Quickshell.screens.length > 0) ? (Quickshell.screens[0].width + "x" + Quickshell.screens[0].height) : "1920x1080"
     property string onlineResolutionMode: "exact"
     property bool isOnlineLoading: false
     property bool isBatchDownloading: false
     property string batchStatusText: ""
-
-    ListModel {
-        id: localWpModel
-    }
-
-    ListModel {
-        id: localLiveWpModel
-    }
-
-    ListModel {
-        id: onlineWpModel
-    }
-
-    ListModel {
-        id: liveWpModel
-    }
-
     property string liveSearchQuery: ""
 
-    property FileView liveWpFile: FileView {
+    ListModel { id: localWpModel }
+    ListModel { id: localLiveWpModel }
+    ListModel { id: onlineWpModel }
+    ListModel { id: liveWpModel }
+
+    FileView {
+        id: liveWpFile
         path: "/tmp/qs_live_wallpapers.json"
         watchChanges: true
         printErrors: false
@@ -58,7 +49,7 @@ Rectangle {
         }
     }
 
-    readonly property string wpScriptPath: Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, "")
+    readonly property string wpScriptPath: decodeURIComponent(Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, ""))
 
     function fetchLiveWallpapers(q) {
         Quickshell.execDetached(["python3", wpScriptPath, "fetch-live", q || ""]);
@@ -87,13 +78,15 @@ Rectangle {
     }
 
     Connections {
-        target: WallpaperService
+        target: WallpaperService ?? null
+        ignoreUnknownSignals: true
         function onWallpapersUpdated() {
             root.parseLocalWallpapers();
         }
     }
 
     function parseLocalWallpapers() {
+        if (!WallpaperService?.localWpListFile) return;
         WallpaperService.localWpListFile.reload();
         let str = WallpaperService.localWpListFile.text();
         if (!str || str.trim() === "") return;
@@ -111,7 +104,9 @@ Rectangle {
     }
 
     function reloadLocalWallpapers() {
-        WallpaperService.scanLocalWallpapers();
+        if (WallpaperService?.scanLocalWallpapers) {
+            WallpaperService.scanLocalWallpapers();
+        }
     }
 
     Component.onCompleted: {
@@ -120,94 +115,90 @@ Rectangle {
     }
 
     function fetchWallhaven(query, sort, page, resolution, resMode) {
-        root.isOnlineLoading = true
-        let req = new XMLHttpRequest()
-        let q = (query !== undefined && query !== null) ? query.trim() : root.onlineQuery
-        let s = sort || root.onlineSorting || "date_added"
-        let p = page || 1
-        let r = (resolution !== undefined && resolution !== null) ? resolution.trim() : root.onlineResolution
-        let rm = resMode || root.onlineResolutionMode || "exact"
+        root.isOnlineLoading = true;
+        let req = new XMLHttpRequest();
+        let q = (query !== undefined && query !== null) ? query.trim() : root.onlineQuery;
+        let s = sort || root.onlineSorting || "date_added";
+        let p = page || 1;
+        let r = (resolution !== undefined && resolution !== null) ? resolution.trim() : root.onlineResolution;
+        let rm = resMode || root.onlineResolutionMode || "exact";
 
-        root.onlineQuery = q
-        root.onlineSorting = s
-        root.onlinePage = p
-        root.onlineResolution = r
-        root.onlineResolutionMode = rm
+        root.onlineQuery = q;
+        root.onlineSorting = s;
+        root.onlinePage = p;
+        root.onlineResolution = r;
+        root.onlineResolutionMode = rm;
 
-        let params = []
-        if (q && q !== "") {
-            params.push("q=" + encodeURIComponent(q))
-        }
-        params.push("sorting=" + encodeURIComponent(s))
-        params.push("page=" + p)
-        params.push("categories=111")
-        params.push("purity=100")
+        let params = [];
+        if (q && q !== "") params.push("q=" + encodeURIComponent(q));
+        params.push("sorting=" + encodeURIComponent(s));
+        params.push("page=" + p);
+        params.push("categories=111");
+        params.push("purity=100");
 
         if (r && r !== "" && r.toLowerCase() !== "any") {
             if (rm === "atleast") {
-                params.push("atleast=" + encodeURIComponent(r))
+                params.push("atleast=" + encodeURIComponent(r));
             } else {
-                params.push("resolutions=" + encodeURIComponent(r))
+                params.push("resolutions=" + encodeURIComponent(r));
             }
         }
 
-        let url = "https://wallhaven.cc/api/v1/search?" + params.join("&")
-        req.open("GET", url)
-        req.timeout = 10000
-        req.ontimeout = function() {
-            root.isOnlineLoading = false
-        }
-        req.onerror = function() {
-            root.isOnlineLoading = false
-        }
-        req.onreadystatechange = function() {
+        let url = "https://wallhaven.cc/api/v1/search?" + params.join("&");
+        req.open("GET", url);
+        req.timeout = 10000;
+        req.ontimeout = () => { root.isOnlineLoading = false; };
+        req.onerror = () => { root.isOnlineLoading = false; };
+        req.onreadystatechange = () => {
             if (req.readyState === XMLHttpRequest.DONE) {
-                root.isOnlineLoading = false
+                root.isOnlineLoading = false;
                 if (req.status === 200) {
                     try {
-                        let data = JSON.parse(req.responseText).data
-                        onlineWpModel.clear()
+                        let parsed = JSON.parse(req.responseText);
+                        let data = parsed?.data ?? [];
+                        onlineWpModel.clear();
                         for (let i = 0; i < data.length; i++) {
                             onlineWpModel.append({
-                                thumbUrl: data[i].thumbs.small,
-                                fullUrl: data[i].path,
-                                id: data[i].id,
+                                thumbUrl: data[i].thumbs?.small ?? "",
+                                fullUrl: data[i].path ?? "",
+                                id: String(data[i].id ?? ""),
                                 resolution: data[i].resolution || "",
                                 fileType: (data[i].file_type || "").replace("image/", "").toUpperCase(),
                                 favorites: data[i].favorites || 0
-                            })
+                            });
                         }
                     } catch (e) {}
                 }
             }
-        }
-        req.send()
+        };
+        req.send();
     }
 
     function downloadCurrentSection() {
-        if (root.isBatchDownloading) return
-        let urls = []
+        if (root.isBatchDownloading) return;
+        let urls = [];
         if (root.activeTab === "online") {
             for (let i = 0; i < onlineWpModel.count; i++) {
-                let u = onlineWpModel.get(i).fullUrl
-                if (u) urls.push(u)
+                let u = onlineWpModel.get(i)?.fullUrl;
+                if (u) urls.push(u);
             }
         } else if (root.activeTab === "live") {
-            for (let i = 0; i < liveWpModel.count; i++) {
-                let item = liveWpModel.get(i)
-                let u = item.url || item.path
+            let activeModel = (root.liveSubTab === "local") ? localLiveWpModel : liveWpModel;
+            for (let i = 0; i < activeModel.count; i++) {
+                let item = activeModel.get(i);
+                let u = item?.url || item?.path;
                 if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    urls.push(u)
+                    urls.push(u);
                 }
             }
         }
 
-        if (urls.length === 0) return
+        if (urls.length === 0) return;
 
-        root.isBatchDownloading = true
-        root.batchStatusText = "downloading " + urls.length + " wallpapers..."
-        batchDownloadProc.command = ["python3", wpScriptPath, "batch-download", JSON.stringify(urls)]
-        batchDownloadProc.running = true
+        root.isBatchDownloading = true;
+        root.batchStatusText = "downloading " + urls.length + " wallpapers...";
+        batchDownloadProc.command = ["python3", wpScriptPath, "batch-download", JSON.stringify(urls)];
+        batchDownloadProc.running = true;
     }
 
     Process {
@@ -215,14 +206,10 @@ Rectangle {
         command: []
         running: false
         onExited: (code) => {
-            root.isBatchDownloading = false
-            if (code === 0) {
-                root.batchStatusText = "wallpapers saved to ~/.wallpapers/"
-            } else {
-                root.batchStatusText = "download completed with errors"
-            }
-            batchStatusResetTimer.restart()
-            reloadLocalWallpapers()
+            root.isBatchDownloading = false;
+            root.batchStatusText = (code === 0) ? "wallpapers saved to ~/.wallpapers/" : "download completed with errors";
+            batchStatusResetTimer.restart();
+            reloadLocalWallpapers();
         }
     }
 
@@ -239,9 +226,9 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: Theme.iconWallpaper
-            font.family: Theme.fontIcon
-            font.pixelSize: Theme.fontSizeMd
+            text: Theme?.iconWallpaper ?? "󰸉"
+            font.family: Theme?.fontIcon ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeMd ?? 14
             color: popup.open ? Theme.primary : Theme.on_surface
         }
     }
@@ -252,10 +239,11 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+            let pos = root.mapToItem(null, 0, 0);
+            if (Theme?.isVertical) {
+                popup.targetRelativeY = pos.y + (root.height / 2);
             } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                popup.targetRelativeX = pos.x + (root.width / 2);
             }
             popup.open = !popup.open;
             if (popup.open) reloadLocalWallpapers();
@@ -264,43 +252,43 @@ Rectangle {
 
     PopupPanel {
         id: popup
-        cardWidth: 700
+        cardWidth: 720
         cardHeight: 560
-        targetRelativeX: root.width / 2
+        targetRelativeX: root.x + (root.width / 2)
 
         content: ColumnLayout {
             anchors.fill: parent
-            spacing: Theme.widgetSpacing
+            spacing: Theme?.widgetSpacing ?? 10
 
-            // Tabs
+            // Header & Tabs
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 6
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 34
-                    radius: Theme.widgetRadius
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 34
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     color: root.activeTab === "local" ? Theme.primary : Theme.surface_container_highest
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 4
-
                         Text {
-                            text: Theme.iconFolder
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeXs
-                            color: root.activeTab === "local" ? Theme.on_primary : Theme.on_surface
+                            text: Theme?.iconFolder ?? "󰉋"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            color: root.activeTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                         Text {
                             text: "local"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
-                            color: root.activeTab === "local" ? Theme.on_primary : Theme.on_surface
+                            color: root.activeTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                     }
 
@@ -308,36 +296,36 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            root.activeTab = "local"
-                            reloadLocalWallpapers()
+                            root.activeTab = "local";
+                            reloadLocalWallpapers();
                         }
                     }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 34
-                    radius: Theme.widgetRadius
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 34
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     color: root.activeTab === "online" ? Theme.primary : Theme.surface_container_highest
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 4
-
                         Text {
-                            text: Theme.iconGlobe
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeXs
-                            color: root.activeTab === "online" ? Theme.on_primary : Theme.on_surface
+                            text: Theme?.iconGlobe ?? "󰖟"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            color: root.activeTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                         Text {
                             text: "wallhaven"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
-                            color: root.activeTab === "online" ? Theme.on_primary : Theme.on_surface
+                            color: root.activeTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                     }
 
@@ -345,36 +333,36 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            root.activeTab = "online"
-                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage, root.onlineResolution, root.onlineResolutionMode)
+                            root.activeTab = "online";
+                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage, root.onlineResolution, root.onlineResolutionMode);
                         }
                     }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 34
-                    radius: Theme.widgetRadius
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 34
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     color: root.activeTab === "live" ? Theme.primary : Theme.surface_container_highest
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 4
-
                         Text {
-                            text: Theme.iconFlame
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeXs
-                            color: root.activeTab === "live" ? Theme.on_primary : Theme.on_surface
+                            text: Theme?.iconFlame ?? "󰈸"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            color: root.activeTab === "live" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                         Text {
                             text: "live"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
-                            color: root.activeTab === "live" ? Theme.on_primary : Theme.on_surface
+                            color: root.activeTab === "live" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                     }
 
@@ -382,36 +370,36 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            root.activeTab = "live"
-                            if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery)
+                            root.activeTab = "live";
+                            if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
                         }
                     }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 34
-                    radius: Theme.widgetRadius
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 34
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     color: root.activeTab === "theme" ? Theme.primary : Theme.surface_container_highest
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.centerIn: parent
                         spacing: 4
-
                         Text {
-                            text: Theme.iconPalette
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeXs
-                            color: root.activeTab === "theme" ? Theme.on_primary : Theme.on_surface
+                            text: Theme?.iconPalette ?? "󰏘"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            color: root.activeTab === "theme" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                         Text {
                             text: "effects & theme"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
-                            color: root.activeTab === "theme" ? Theme.on_primary : Theme.on_surface
+                            color: root.activeTab === "theme" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         }
                     }
 
@@ -422,15 +410,15 @@ Rectangle {
                     }
                 }
 
-                // Batch download button (visible in online or live tab)
+                // Batch download button
                 Rectangle {
-                    height: 34
-                    width: dlAllRow.implicitWidth + 16
-                    radius: Theme.widgetRadius
+                    Layout.preferredHeight: 34
+                    Layout.preferredWidth: dlAllRow.implicitWidth + 16
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     color: dlAllMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
                     border.color: Theme.widgetBorder
                     border.width: 1
-                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && liveWpModel.count > 0)
+                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && ((root.liveSubTab === "local" ? localLiveWpModel.count : liveWpModel.count) > 0))
                     opacity: root.isBatchDownloading ? 0.6 : 1.0
 
                     RowLayout {
@@ -439,16 +427,16 @@ Rectangle {
                         spacing: 6
 
                         Text {
-                            text: root.isBatchDownloading ? Theme.iconRefresh : Theme.iconDownload
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeSm
+                            text: root.isBatchDownloading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconDownload ?? "󰇚")
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
                             color: Theme.primary
                         }
 
                         Text {
-                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : liveWpModel.count) + ")")
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : (root.liveSubTab === "local" ? localLiveWpModel.count : liveWpModel.count)) + ")")
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
                             color: Theme.on_surface
                         }
@@ -463,41 +451,48 @@ Rectangle {
                     }
                 }
 
-                // Random roll button
                 IconButton {
-                    icon: Theme.iconShuffle
-                    iconSize: Theme.fontSizeSm
+                    icon: Theme?.iconShuffle ?? "󰒝"
+                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "roll random wallpaper"
                     onClicked: {
-                        let activeCat = "all"
+                        let activeCat = "all";
                         if (root.localCategoryFilter !== "all") {
-                            activeCat = root.localCategoryFilter
+                            activeCat = root.localCategoryFilter;
                             if (root.localSubCategoryFilter !== "all") {
-                                activeCat = root.localCategoryFilter + "/" + root.localSubCategoryFilter
+                                activeCat = root.localCategoryFilter + "/" + root.localSubCategoryFilter;
                             }
                         }
-                        WallpaperService.applyRandomWallpaper(activeCat)
+                        WallpaperService?.applyRandomWallpaper ? WallpaperService.applyRandomWallpaper(activeCat) : null;
                     }
                 }
 
                 IconButton {
-                    icon: Theme.iconRefresh
-                    iconSize: Theme.fontSizeSm
+                    icon: Theme?.iconRefresh ?? "↺"
+                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "refresh / rescan"
                     onClicked: {
-                        if (root.activeTab === "local") reloadLocalWallpapers()
-                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
-                        else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery)
-                        else WallpaperService.reapplyTheme()
+                        if (root.activeTab === "local") reloadLocalWallpapers();
+                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
+                        else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery);
+                        else WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                     }
+                }
+
+                // escape hatch for mouse users
+                IconButton {
+                    icon: Theme?.iconClose ?? "✕"
+                    iconSize: Theme?.fontSizeSm ?? 12
+                    tooltip: "close panel"
+                    onClicked: popup.open = false
                 }
             }
 
             // Status notification banner
             Rectangle {
                 Layout.fillWidth: true
-                height: 28
-                radius: Theme.radiusSm
+                Layout.preferredHeight: 28
+                radius: Theme?.radiusSm ?? 6
                 color: Theme.primary_overlay
                 border.color: Theme.primary
                 border.width: 1
@@ -507,15 +502,15 @@ Rectangle {
                     anchors.centerIn: parent
                     spacing: 6
                     Text {
-                        text: Theme.iconCheck
-                        font.family: Theme.fontIcon
-                        font.pixelSize: Theme.fontSizeXs
+                        text: Theme?.iconCheck ?? "✓"
+                        font.family: Theme?.fontIcon ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.primary
                     }
                     Text {
                         text: root.batchStatusText
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         font.weight: Font.Medium
                         color: Theme.primary
                     }
@@ -529,64 +524,66 @@ Rectangle {
 
                 Text {
                     text: "monitor:"
-                    font.family: Theme.fontFamily
+                    font.family: Theme?.fontFamily ?? "sans-serif"
                     font.pixelSize: 10
                     font.weight: Font.Bold
                     color: Theme.on_surface_variant
                 }
 
-                // All monitors chip
                 Rectangle {
-                    height: 22
-                    width: allMonText.implicitWidth + 14
-                    radius: Theme.radiusPill
-                    color: WallpaperService.targetMonitor === "all" ? Theme.primary : Theme.cardBg
-                    border.color: Theme.cardBorder
+                    Layout.preferredHeight: 22
+                    Layout.preferredWidth: allMonText.implicitWidth + 14
+                    radius: Theme?.radiusPill ?? 999
+                    color: WallpaperService?.targetMonitor === "all" ? Theme.primary : (Theme?.cardBg ?? Theme.surface_container_high)
+                    border.color: Theme?.cardBorder ?? Theme.widgetBorder
                     border.width: 1
 
                     Text {
                         id: allMonText
                         text: "all monitors 󰍹"
-                        font.family: Theme.fontFamily
+                        font.family: Theme?.fontFamily ?? "sans-serif"
                         font.pixelSize: 9
                         font.weight: Font.Medium
-                        color: WallpaperService.targetMonitor === "all" ? Theme.on_primary : Theme.on_surface
+                        color: WallpaperService?.targetMonitor === "all" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                         anchors.centerIn: parent
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: WallpaperService.targetMonitor = "all"
+                        onClicked: {
+                            if (WallpaperService) WallpaperService.targetMonitor = "all";
+                        }
                     }
                 }
 
-                // Individual connected monitor chips
                 Repeater {
-                    model: Quickshell.screens
+                    model: Quickshell?.screens ?? []
                     delegate: Rectangle {
                         required property var modelData
-                        height: 22
-                        width: monChipText.implicitWidth + 14
-                        radius: Theme.radiusPill
-                        color: WallpaperService.targetMonitor === modelData.name ? Theme.primary : Theme.cardBg
-                        border.color: Theme.cardBorder
+                        Layout.preferredHeight: 22
+                        Layout.preferredWidth: monChipText.implicitWidth + 14
+                        radius: Theme?.radiusPill ?? 999
+                        color: WallpaperService?.targetMonitor === modelData.name ? Theme.primary : (Theme?.cardBg ?? Theme.surface_container_high)
+                        border.color: Theme?.cardBorder ?? Theme.widgetBorder
                         border.width: 1
 
                         Text {
                             id: monChipText
-                            text: modelData.name
-                            font.family: Theme.fontFamily
+                            text: modelData?.name ?? "screen"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: 9
                             font.weight: Font.Medium
-                            color: WallpaperService.targetMonitor === modelData.name ? Theme.on_primary : Theme.on_surface
+                            color: WallpaperService?.targetMonitor === modelData.name ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                             anchors.centerIn: parent
                         }
 
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: WallpaperService.targetMonitor = modelData.name
+                            onClicked: {
+                                if (WallpaperService) WallpaperService.targetMonitor = modelData.name;
+                            }
                         }
                     }
                 }
@@ -596,7 +593,7 @@ Rectangle {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: Theme.widgetBorder
             }
 
@@ -608,13 +605,12 @@ Rectangle {
                 visible: root.activeTab === "live"
                 spacing: 10
 
-                // Direct URL or local path input card
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: liveInputCol.implicitHeight + 20
-                    color: Theme.cardBg
-                    radius: Theme.widgetRadius
-                    border.color: Theme.cardBorder
+                    color: Theme?.cardBg ?? Theme.surface_container_low
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
+                    border.color: Theme?.cardBorder ?? Theme.widgetBorder
                     border.width: 1
 
                     ColumnLayout {
@@ -628,16 +624,16 @@ Rectangle {
                             spacing: 6
 
                             Text {
-                                text: Theme.iconFlame
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeSm
+                                text: Theme?.iconFlame ?? "󰈸"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 color: Theme.primary
                             }
 
                             Text {
                                 text: "custom video / animated url or path"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSm
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 font.weight: Font.Bold
                                 color: Theme.on_surface
                                 Layout.fillWidth: true
@@ -645,7 +641,7 @@ Rectangle {
 
                             Text {
                                 text: ".mp4 · .webm · .gif · .webp"
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 10
                                 color: Theme.on_surface_disabled
                             }
@@ -657,15 +653,15 @@ Rectangle {
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 36
-                                radius: Theme.radiusSm
+                                Layout.preferredHeight: 36
+                                radius: Theme?.radiusSm ?? 6
                                 color: Theme.surface_container_highest
                                 border.color: liveUrlInput.activeFocus ? Theme.primary : Theme.widgetBorder
                                 border.width: 1
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: Theme.widgetPaddingH
+                                    anchors.margins: Theme?.widgetPaddingH ?? 8
                                     spacing: 6
 
                                     TextInput {
@@ -673,19 +669,17 @@ Rectangle {
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         verticalAlignment: TextInput.AlignVCenter
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeSm ?? 12
                                         color: Theme.on_surface
                                         selectByMouse: true
                                         onAccepted: {
-                                            if (text.trim() !== "") {
-                                                WallpaperService.setWallpaper(text.trim());
-                                            }
+                                            if (text.trim() !== "") WallpaperService?.setWallpaper(text.trim());
                                         }
                                     }
 
                                     IconButton {
-                                        icon: Theme.iconClose
+                                        icon: Theme?.iconClose ?? "✕"
                                         tooltip: "clear input"
                                         iconSize: 10
                                         visible: liveUrlInput.text.length > 0
@@ -694,22 +688,19 @@ Rectangle {
                                 }
                             }
 
-                            // Paste from clipboard button
                             IconButton {
-                                icon: Theme.iconClipboard
+                                icon: Theme?.iconClipboard ?? "󰅌"
                                 tooltip: "paste url from clipboard"
                                 onClicked: {
-                                    if (Quickshell.clipboardText) {
-                                        liveUrlInput.text = Quickshell.clipboardText.trim();
-                                    }
+                                    let clip = Quickshell?.clipboardText ? Quickshell.clipboardText.trim() : "";
+                                    if (clip !== "") liveUrlInput.text = clip;
                                 }
                             }
 
-                            // Apply live wallpaper button
                             Rectangle {
-                                height: 36
-                                width: applyLiveText.implicitWidth + 24
-                                radius: Theme.radiusSm
+                                Layout.preferredHeight: 36
+                                Layout.preferredWidth: applyLiveText.implicitWidth + 24
+                                radius: Theme?.radiusSm ?? 6
                                 color: Theme.primary
                                 opacity: liveUrlInput.text.trim() !== "" ? 1.0 : 0.6
 
@@ -718,18 +709,18 @@ Rectangle {
                                     spacing: 4
 
                                     Text {
-                                        text: Theme.iconCheck
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeXs
-                                        color: Theme.on_primary
+                                        text: Theme?.iconCheck ?? "✓"
+                                        font.family: Theme?.fontIcon ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeXs ?? 10
+                                        color: Theme.on_primary ?? "#ffffff"
                                     }
                                     Text {
                                         id: applyLiveText
                                         text: "apply live"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeSm ?? 12
                                         font.weight: Font.Bold
-                                        color: Theme.on_primary
+                                        color: Theme.on_primary ?? "#ffffff"
                                     }
                                 }
 
@@ -738,21 +729,20 @@ Rectangle {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         if (liveUrlInput.text.trim() !== "") {
-                                            WallpaperService.setWallpaper(liveUrlInput.text.trim());
+                                            WallpaperService?.setWallpaper(liveUrlInput.text.trim());
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Curated sample preset chips
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
 
                             Text {
                                 text: "sample presets:"
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 10
                                 color: Theme.on_surface_variant
                             }
@@ -766,9 +756,9 @@ Rectangle {
                                 ]
                                 delegate: Rectangle {
                                     required property var modelData
-                                    height: 22
-                                    width: pChipText.implicitWidth + 10
-                                    radius: Theme.radiusPill
+                                    Layout.preferredHeight: 22
+                                    Layout.preferredWidth: pChipText.implicitWidth + 10
+                                    radius: Theme?.radiusPill ?? 999
                                     color: Theme.pillBg
                                     border.color: Theme.pillBorder
                                     border.width: 1
@@ -776,7 +766,7 @@ Rectangle {
                                     Text {
                                         id: pChipText
                                         text: modelData.label
-                                        font.family: Theme.fontFamily
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
                                         font.pixelSize: 9
                                         color: Theme.on_surface
                                         anchors.centerIn: parent
@@ -787,7 +777,7 @@ Rectangle {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             liveUrlInput.text = modelData.url;
-                                            WallpaperService.setWallpaper(modelData.url);
+                                            WallpaperService?.setWallpaper(modelData.url);
                                         }
                                     }
                                 }
@@ -796,22 +786,65 @@ Rectangle {
                     }
                 }
 
-                // Subheader for local live collection
+                // Subheader with catalog toggle so liveWpModel isnt dead code
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
 
-                    Text {
-                        text: "your local live wallpapers (" + localLiveWpModel.count + ")"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                        Layout.fillWidth: true
+                    Rectangle {
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: localLiveTabTxt.implicitWidth + 14
+                        radius: Theme?.radiusPill ?? 999
+                        color: root.liveSubTab === "local" ? Theme.primary : Theme.surface_container_highest
+
+                        Text {
+                            id: localLiveTabTxt
+                            anchors.centerIn: parent
+                            text: "local (" + localLiveWpModel.count + ")"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                            color: root.liveSubTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.liveSubTab = "local"
+                        }
                     }
+
+                    Rectangle {
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: onlineLiveTabTxt.implicitWidth + 14
+                        radius: Theme?.radiusPill ?? 999
+                        color: root.liveSubTab === "online" ? Theme.primary : Theme.surface_container_highest
+
+                        Text {
+                            id: onlineLiveTabTxt
+                            anchors.centerIn: parent
+                            text: "online stream (" + liveWpModel.count + ")"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                            color: root.liveSubTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.liveSubTab = "online";
+                                if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
 
                     Text {
                         text: "auto-extracted matugen palette"
-                        font.family: Theme.fontFamily
+                        font.family: Theme?.fontFamily ?? "sans-serif"
                         font.pixelSize: 10
                         color: Theme.on_surface_disabled
                     }
@@ -824,16 +857,16 @@ Rectangle {
                     clip: true
                     cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
-                    model: localLiveWpModel
+                    model: root.liveSubTab === "local" ? localLiveWpModel : liveWpModel
 
                     delegate: Item {
                         required property var modelData
-                        property string path: modelData.path
-                        property string thumb: modelData.thumb || modelData.path
-                        property string name: modelData.name
-                        property string ext: modelData.ext ?? "live"
-                        property bool isVideo: modelData.isVideo ?? false
-                        property bool isGif: modelData.isGif ?? false
+                        readonly property string path: modelData?.path || modelData?.url || ""
+                        readonly property string thumb: modelData?.thumb || modelData?.url || modelData?.path || ""
+                        readonly property string name: modelData?.name || modelData?.title || "live wallpaper"
+                        readonly property string ext: modelData?.ext ?? "live"
+                        readonly property bool isVideo: modelData?.isVideo ?? false
+                        readonly property bool isGif: modelData?.isGif ?? false
 
                         width: liveGrid.cellWidth
                         height: liveGrid.cellHeight
@@ -842,14 +875,14 @@ Rectangle {
                             anchors.fill: parent
                             anchors.margins: 4
                             color: Theme.surface_container_high
-                            radius: Theme.widgetRadius
+                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                             clip: true
                             border.color: liveLocMouse.containsMouse ? Theme.primary : "transparent"
                             border.width: 1
 
                             Image {
                                 anchors.fill: parent
-                                source: "file://" + thumb
+                                source: (thumb.startsWith("http://") || thumb.startsWith("https://") || thumb.startsWith("file://")) ? thumb : ("file://" + thumb)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                             }
@@ -866,15 +899,14 @@ Rectangle {
                                 Text {
                                     id: lBadgeText
                                     text: isVideo ? "LIVE VIDEO" : (isGif ? "ANIMATED GIF" : ext.toUpperCase())
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 8
                                     font.weight: Font.Bold
-                                    color: Theme.on_primary
+                                    color: Theme.on_primary ?? "#ffffff"
                                     anchors.centerIn: parent
                                 }
                             }
 
-                            // title overlay on hover
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
@@ -885,8 +917,8 @@ Rectangle {
 
                                 Text {
                                     text: name
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     color: "#ffffff"
                                     elide: Text.ElideRight
                                     anchors.centerIn: parent
@@ -901,7 +933,11 @@ Rectangle {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    WallpaperService.applyLocalWallpaper(path);
+                                    if (root.liveSubTab === "local") {
+                                        WallpaperService?.applyLocalWallpaper ? WallpaperService.applyLocalWallpaper(path) : WallpaperService?.setWallpaper(path);
+                                    } else {
+                                        WallpaperService?.setWallpaper(path);
+                                    }
                                 }
                             }
                         }
@@ -909,7 +945,7 @@ Rectangle {
                 }
             }
 
-            // local tab view so it doesnt explode
+            // LOCAL TAB VIEW
             ColumnLayout {
                 id: localView
                 Layout.fillWidth: true
@@ -920,23 +956,23 @@ Rectangle {
                 // Search Bar for Local
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 36
+                    Layout.preferredHeight: 36
                     color: Theme.surface_container_highest
-                    radius: Theme.widgetRadius
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                     border.color: localSearchInput.activeFocus ? Theme.primary : Theme.widgetBorder
                     border.width: 1
 
-                    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme.widgetPaddingH
+                        anchors.margins: Theme?.widgetPaddingH ?? 8
                         spacing: 8
 
                         Text {
-                            text: Theme.iconSearch
-                            font.family: Theme.fontIcon
-                            font.pixelSize: Theme.fontSizeSm
+                            text: Theme?.iconSearch ?? "󰍉"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
                             color: Theme.on_surface_variant
                         }
 
@@ -945,19 +981,19 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             verticalAlignment: TextInput.AlignVCenter
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
                             color: Theme.on_surface
                             onTextChanged: root.localSearchQuery = text.toLowerCase()
                         }
                     }
                 }
 
-                // Top-Level Category Chips
                 readonly property var uniqueParentCategories: {
                     let cats = ["all"];
                     for (let i = 0; i < localWpModel.count; i++) {
-                        let pCat = localWpModel.get(i).parentCategory || "root";
+                        let item = localWpModel.get(i);
+                        let pCat = item?.parentCategory || "root";
                         if (pCat && cats.indexOf(pCat) === -1) {
                             cats.push(pCat);
                         }
@@ -965,10 +1001,11 @@ Rectangle {
                     return cats;
                 }
 
+                // using implicitWidth prevents horizontal scrolling from dying
                 Flickable {
                     Layout.fillWidth: true
-                    height: 28
-                    contentWidth: catRow.width
+                    Layout.preferredHeight: 28
+                    contentWidth: catRow.implicitWidth
                     flickableDirection: Flickable.HorizontalFlick
                     clip: true
 
@@ -981,18 +1018,18 @@ Rectangle {
 
                             delegate: Rectangle {
                                 required property string modelData
-                                height: 26
-                                width: catText.implicitWidth + 16
-                                radius: Theme.radiusPill
+                                Layout.preferredHeight: 26
+                                Layout.preferredWidth: catText.implicitWidth + 16
+                                radius: Theme?.radiusPill ?? 999
                                 color: root.localCategoryFilter === modelData ? Theme.primary : Theme.surface_container_high
 
                                 Text {
                                     id: catText
                                     text: modelData
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Medium
-                                    color: root.localCategoryFilter === modelData ? Theme.on_primary : Theme.on_surface
+                                    color: root.localCategoryFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -1000,8 +1037,8 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        root.localCategoryFilter = modelData
-                                        root.localSubCategoryFilter = "all"
+                                        root.localCategoryFilter = modelData;
+                                        root.localSubCategoryFilter = "all";
                                     }
                                 }
                             }
@@ -1009,13 +1046,12 @@ Rectangle {
                     }
                 }
 
-                // Nested Subcategory Chips (when selected category has subfolders)
                 readonly property var uniqueSubCategories: {
                     if (root.localCategoryFilter === "all") return [];
                     let subs = ["all"];
                     for (let i = 0; i < localWpModel.count; i++) {
                         let item = localWpModel.get(i);
-                        if (item.parentCategory === root.localCategoryFilter && item.subCategory && item.subCategory !== "") {
+                        if (item && item.parentCategory === root.localCategoryFilter && item.subCategory && item.subCategory !== "") {
                             if (subs.indexOf(item.subCategory) === -1) {
                                 subs.push(item.subCategory);
                             }
@@ -1026,9 +1062,9 @@ Rectangle {
 
                 Flickable {
                     Layout.fillWidth: true
-                    height: 26
+                    Layout.preferredHeight: 26
                     visible: localView.uniqueSubCategories.length > 0
-                    contentWidth: subCatRow.width
+                    contentWidth: subCatRow.implicitWidth
                     flickableDirection: Flickable.HorizontalFlick
                     clip: true
 
@@ -1038,8 +1074,8 @@ Rectangle {
 
                         Text {
                             text: "󰉋 subfolder:"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             color: Theme.on_surface_variant
                             Layout.alignment: Qt.AlignVCenter
                         }
@@ -1049,18 +1085,18 @@ Rectangle {
 
                             delegate: Rectangle {
                                 required property string modelData
-                                height: 22
-                                width: subCatText.implicitWidth + 14
-                                radius: Theme.radiusPill
+                                Layout.preferredHeight: 22
+                                Layout.preferredWidth: subCatText.implicitWidth + 14
+                                radius: Theme?.radiusPill ?? 999
                                 color: root.localSubCategoryFilter === modelData ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     id: subCatText
                                     text: modelData
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 10
                                     font.weight: Font.Medium
-                                    color: root.localSubCategoryFilter === modelData ? Theme.on_primary : Theme.on_surface
+                                    color: root.localSubCategoryFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -1074,15 +1110,19 @@ Rectangle {
                     }
                 }
 
-                // Filtered local list
                 readonly property var filteredLocalWps: {
                     let result = [];
                     for (let i = 0; i < localWpModel.count; i++) {
                         let item = localWpModel.get(i);
-                        let pMatch = root.localCategoryFilter === "all" || item.parentCategory === root.localCategoryFilter || item.category.indexOf(root.localCategoryFilter) !== -1;
-                        let subMatch = root.localSubCategoryFilter === "all" || item.subCategory === root.localSubCategoryFilter;
-                        let sQuery = root.localSearchQuery.trim();
-                        let searchMatch = sQuery === "" || item.name.toLowerCase().indexOf(sQuery) !== -1 || item.category.toLowerCase().indexOf(sQuery) !== -1;
+                        if (!item) continue;
+                        let catStr = (item.category ?? "").toLowerCase();
+                        let nameStr = (item.name ?? "").toLowerCase();
+                        let pCat = item.parentCategory ?? "";
+                        let subCat = item.subCategory ?? "";
+                        let pMatch = root.localCategoryFilter === "all" || pCat === root.localCategoryFilter || catStr.indexOf(root.localCategoryFilter.toLowerCase()) !== -1;
+                        let subMatch = root.localSubCategoryFilter === "all" || subCat === root.localSubCategoryFilter;
+                        let sQuery = root.localSearchQuery.trim().toLowerCase();
+                        let searchMatch = sQuery === "" || nameStr.indexOf(sQuery) !== -1 || catStr.indexOf(sQuery) !== -1;
 
                         if (pMatch && subMatch && searchMatch) {
                             result.push(item);
@@ -1091,24 +1131,23 @@ Rectangle {
                     return result;
                 }
 
-                // Category summary and roll-random banner
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
                     Text {
                         text: (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
                     Item { Layout.fillWidth: true }
 
                     Rectangle {
-                        height: 24
-                        width: rollText.implicitWidth + 18
-                        radius: Theme.radiusPill
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: rollText.implicitWidth + 18
+                        radius: Theme?.radiusPill ?? 999
                         color: Theme.surface_container_highest
 
                         RowLayout {
@@ -1116,14 +1155,14 @@ Rectangle {
                             spacing: 4
                             Text {
                                 text: "󰒝"
-                                font.family: Theme.fontMono
+                                font.family: Theme?.fontMono ?? "monospace"
                                 font.pixelSize: 10
                                 color: Theme.primary
                             }
                             Text {
                                 id: rollText
                                 text: "random from here"
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 10
                                 font.weight: Font.Medium
                                 color: Theme.on_surface
@@ -1134,14 +1173,14 @@ Rectangle {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                let cat = "all"
+                                let cat = "all";
                                 if (root.localCategoryFilter !== "all") {
-                                    cat = root.localCategoryFilter
+                                    cat = root.localCategoryFilter;
                                     if (root.localSubCategoryFilter !== "all") {
-                                        cat = root.localCategoryFilter + "/" + root.localSubCategoryFilter
+                                        cat = root.localCategoryFilter + "/" + root.localSubCategoryFilter;
                                     }
                                 }
-                                WallpaperService.applyRandomWallpaper(cat)
+                                WallpaperService?.applyRandomWallpaper ? WallpaperService.applyRandomWallpaper(cat) : null;
                             }
                         }
                     }
@@ -1154,19 +1193,18 @@ Rectangle {
                     clip: true
                     cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
-
-                    model: parent.filteredLocalWps
+                    model: localView.filteredLocalWps
 
                     delegate: Item {
                         required property var modelData
-                        property string path: modelData.path
-                        property string thumb: modelData.thumb || modelData.path
-                        property string name: modelData.name
-                        property string category: modelData.category
-                        property bool isLive: modelData.isLive ?? false
-                        property bool isVideo: modelData.isVideo ?? false
-                        property bool isGif: modelData.isGif ?? false
-                        property string ext: modelData.ext ?? ""
+                        readonly property string path: modelData?.path ?? ""
+                        readonly property string thumb: modelData?.thumb || modelData?.path || ""
+                        readonly property string name: modelData?.name ?? ""
+                        readonly property string category: modelData?.category ?? ""
+                        readonly property bool isLive: modelData?.isLive ?? false
+                        readonly property bool isVideo: modelData?.isVideo ?? false
+                        readonly property bool isGif: modelData?.isGif ?? false
+                        readonly property string ext: modelData?.ext ?? ""
 
                         width: localGrid.cellWidth
                         height: localGrid.cellHeight
@@ -1175,20 +1213,19 @@ Rectangle {
                             anchors.fill: parent
                             anchors.margins: 4
                             color: Theme.surface_container_high
-                            radius: Theme.widgetRadius
+                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                             clip: true
-                            border.color: (path === WallpaperService.currentWallpaperPath) ? Theme.primary : (locMouse.containsMouse ? Theme.primary_overlay : "transparent")
-                            border.width: (path === WallpaperService.currentWallpaperPath) ? 2 : 1
+                            border.color: (path === WallpaperService?.currentWallpaperPath) ? Theme.primary : (locMouse.containsMouse ? Theme.primary_overlay : "transparent")
+                            border.width: (path === WallpaperService?.currentWallpaperPath) ? 2 : 1
 
                             Image {
                                 anchors.fill: parent
-                                source: "file://" + thumb
+                                source: (thumb.startsWith("http://") || thumb.startsWith("https://") || thumb.startsWith("file://")) ? thumb : ("file://" + thumb)
                                 sourceSize: Qt.size(240, 156)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
                             }
 
-                            // active indicator badge
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
@@ -1197,19 +1234,18 @@ Rectangle {
                                 width: 18
                                 radius: 9
                                 color: Theme.primary
-                                visible: path === WallpaperService.currentWallpaperPath
+                                visible: path === WallpaperService?.currentWallpaperPath
                                 z: 2
 
                                 Text {
-                                    text: Theme.iconCheck
-                                    font.family: Theme.fontIcon
+                                    text: Theme?.iconCheck ?? "✓"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
                                     font.pixelSize: 10
-                                    color: Theme.on_primary
+                                    color: Theme.on_primary ?? "#ffffff"
                                     anchors.centerIn: parent
                                 }
                             }
 
-                            // category badge
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.left: parent.left
@@ -1222,14 +1258,13 @@ Rectangle {
                                 Text {
                                     id: badgeText
                                     text: category === "root" ? "wallpapers" : category
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 8
                                     color: "#ffffff"
                                     anchors.centerIn: parent
                                 }
                             }
 
-                            // live / format badge
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
@@ -1243,15 +1278,14 @@ Rectangle {
                                 Text {
                                     id: formatBadgeText
                                     text: isVideo ? "LIVE" : (isGif ? "GIF" : ext.toUpperCase())
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 8
                                     font.weight: Font.Bold
-                                    color: isLive ? Theme.on_primary : "#ffffff"
+                                    color: isLive ? (Theme.on_primary ?? "#ffffff") : "#ffffff"
                                     anchors.centerIn: parent
                                 }
                             }
 
-                            // title overlay on hover
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
@@ -1262,8 +1296,8 @@ Rectangle {
 
                                 Text {
                                     text: name
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     color: "#ffffff"
                                     elide: Text.ElideRight
                                     anchors.centerIn: parent
@@ -1277,47 +1311,43 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    WallpaperService.applyLocalWallpaper(path)
-                                }
+                                onClicked: WallpaperService?.applyLocalWallpaper ? WallpaperService.applyLocalWallpaper(path) : null
                             }
                         }
                     }
                 }
             }
 
-            // online tab view (wallhaven)
+            // ONLINE TAB VIEW (Wallhaven)
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.activeTab === "online"
                 spacing: 8
 
-                // Row 1: Search Query + Resolution Input
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    // Search input
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 36
+                        Layout.preferredHeight: 36
                         color: Theme.surface_container_highest
-                        radius: Theme.widgetRadius
+                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                         border.color: onlineInput.activeFocus ? Theme.primary : Theme.widgetBorder
                         border.width: 1
 
-                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: Theme.widgetPaddingH
+                            anchors.margins: Theme?.widgetPaddingH ?? 8
                             spacing: 6
 
                             Text {
-                                text: Theme.iconSearch
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeSm
+                                text: Theme?.iconSearch ?? "󰍉"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 color: Theme.on_surface_variant
                             }
 
@@ -1326,16 +1356,16 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 verticalAlignment: TextInput.AlignVCenter
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSm
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 color: Theme.on_surface
                                 text: root.onlineQuery
                                 selectByMouse: true
 
                                 Text {
                                     text: "search wallpapers (leave empty for all)..."
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeSm
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
                                     color: Theme.on_surface_disabled
                                     visible: onlineInput.text.length === 0 && !onlineInput.activeFocus
                                     anchors.verticalCenter: parent.verticalCenter
@@ -1343,42 +1373,41 @@ Rectangle {
 
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                        fetchWallhaven(text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
-                                        event.accepted = true
+                                        fetchWallhaven(text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
+                                        event.accepted = true;
                                     }
                                 }
                             }
 
                             IconButton {
-                                icon: Theme.iconClose
+                                icon: Theme?.iconClose ?? "✕"
                                 iconSize: 10
                                 tooltip: "clear query"
                                 visible: onlineInput.text.length > 0
                                 onClicked: {
-                                    onlineInput.text = ""
-                                    fetchWallhaven("", root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                    onlineInput.text = "";
+                                    fetchWallhaven("", root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
                                 }
                             }
 
                             IconButton {
-                                icon: Theme.iconSearch
-                                iconSize: Theme.fontSizeSm
+                                icon: Theme?.iconSearch ?? "󰍉"
+                                iconSize: Theme?.fontSizeSm ?? 12
                                 tooltip: "search"
                                 onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
                             }
                         }
                     }
 
-                    // Resolution Input & Mode Toggle
                     Rectangle {
-                        width: 175
-                        height: 36
+                        Layout.preferredWidth: 175
+                        Layout.preferredHeight: 36
                         color: Theme.surface_container_highest
-                        radius: Theme.widgetRadius
+                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                         border.color: resInput.activeFocus ? Theme.primary : Theme.widgetBorder
                         border.width: 1
 
-                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                         RowLayout {
                             anchors.fill: parent
@@ -1388,8 +1417,8 @@ Rectangle {
 
                             Text {
                                 text: "󰍹"
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeXs
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 color: Theme.primary
                             }
 
@@ -1398,7 +1427,7 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 verticalAlignment: TextInput.AlignVCenter
-                                font.family: Theme.fontMono
+                                font.family: Theme?.fontMono ?? "monospace"
                                 font.pixelSize: 11
                                 color: Theme.on_surface
                                 text: root.onlineResolution
@@ -1406,7 +1435,7 @@ Rectangle {
 
                                 Text {
                                     text: "res (any)"
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 11
                                     color: Theme.on_surface_disabled
                                     visible: resInput.text.length === 0 && !resInput.activeFocus
@@ -1415,25 +1444,25 @@ Rectangle {
 
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, text, root.onlineResolutionMode)
-                                        event.accepted = true
+                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, text, root.onlineResolutionMode);
+                                        event.accepted = true;
                                     }
                                 }
                             }
 
                             Rectangle {
-                                height: 24
-                                width: modeToggleText.implicitWidth + 10
-                                radius: Theme.radiusSm
+                                Layout.preferredHeight: 24
+                                Layout.preferredWidth: modeToggleText.implicitWidth + 10
+                                radius: Theme?.radiusSm ?? 6
                                 color: root.onlineResolutionMode === "atleast" ? Theme.primary : Theme.surface_container_high
 
                                 Text {
                                     id: modeToggleText
                                     text: root.onlineResolutionMode === "atleast" ? "≥ min" : "exact"
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 9
                                     font.weight: Font.Bold
-                                    color: root.onlineResolutionMode === "atleast" ? Theme.on_primary : Theme.on_surface_variant
+                                    color: root.onlineResolutionMode === "atleast" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface_variant
                                     anchors.centerIn: parent
                                 }
 
@@ -1441,8 +1470,8 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        root.onlineResolutionMode = (root.onlineResolutionMode === "exact") ? "atleast" : "exact"
-                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                        root.onlineResolutionMode = (root.onlineResolutionMode === "exact") ? "atleast" : "exact";
+                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
                                     }
                                 }
                             }
@@ -1450,14 +1479,13 @@ Rectangle {
                     }
                 }
 
-                // Row 2: Quick Resolution Chips & Keyword Inspiration
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
 
                     Text {
                         text: "res:"
-                        font.family: Theme.fontFamily
+                        font.family: Theme?.fontFamily ?? "sans-serif"
                         font.pixelSize: 10
                         font.weight: Font.Bold
                         color: Theme.on_surface_variant
@@ -1474,20 +1502,20 @@ Rectangle {
 
                         delegate: Rectangle {
                             required property var modelData
-                            height: 22
-                            width: rChipText.implicitWidth + 12
-                            radius: Theme.radiusPill
+                            Layout.preferredHeight: 22
+                            Layout.preferredWidth: rChipText.implicitWidth + 12
+                            radius: Theme?.radiusPill ?? 999
                             color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? Theme.primary : Theme.surface_container_highest
-                            border.color: Theme.cardBorder
+                            border.color: Theme?.cardBorder ?? Theme.widgetBorder
                             border.width: 1
 
                             Text {
                                 id: rChipText
                                 text: modelData.label
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 9
                                 font.weight: Font.Medium
-                                color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? Theme.on_primary : Theme.on_surface
+                                color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 anchors.centerIn: parent
                             }
 
@@ -1495,24 +1523,24 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    let v = modelData.val
-                                    resInput.text = (v === "any" ? "" : v)
-                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, (v === "any" ? "" : v), root.onlineResolutionMode)
+                                    let v = modelData.val;
+                                    resInput.text = (v === "any" ? "" : v);
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, (v === "any" ? "" : v), root.onlineResolutionMode);
                                 }
                             }
                         }
                     }
 
                     Rectangle {
-                        width: 1
-                        height: 14
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 14
                         color: Theme.widgetBorder
                     }
 
                     Flickable {
                         Layout.fillWidth: true
-                        height: 22
-                        contentWidth: kwRow.width
+                        Layout.preferredHeight: 22
+                        contentWidth: kwRow.implicitWidth
                         flickableDirection: Flickable.HorizontalFlick
                         clip: true
 
@@ -1524,17 +1552,17 @@ Rectangle {
                                 model: ["cyberpunk", "nature", "minimalist", "space", "anime", "city", "dark", "abstract"]
                                 delegate: Rectangle {
                                     required property string modelData
-                                    height: 20
-                                    width: kwText.implicitWidth + 10
-                                    radius: Theme.radiusPill
+                                    Layout.preferredHeight: 20
+                                    Layout.preferredWidth: kwText.implicitWidth + 10
+                                    radius: Theme?.radiusPill ?? 999
                                     color: root.onlineQuery === modelData ? Theme.primary : Theme.surface_container_high
 
                                     Text {
                                         id: kwText
                                         text: modelData
-                                        font.family: Theme.fontFamily
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
                                         font.pixelSize: 9
-                                        color: root.onlineQuery === modelData ? Theme.on_primary : Theme.on_surface
+                                        color: root.onlineQuery === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                         anchors.centerIn: parent
                                     }
 
@@ -1542,8 +1570,8 @@ Rectangle {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            onlineInput.text = modelData
-                                            fetchWallhaven(modelData, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                            onlineInput.text = modelData;
+                                            fetchWallhaven(modelData, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
                                         }
                                     }
                                 }
@@ -1552,12 +1580,10 @@ Rectangle {
                     }
                 }
 
-                // Row 3: Sorting Chips + Download Page + Pagination
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
 
-                    // Sorting chips
                     Repeater {
                         model: [
                             { label: "latest", val: "date_added" },
@@ -1569,38 +1595,35 @@ Rectangle {
 
                         delegate: Rectangle {
                             required property var modelData
-                            height: 24
-                            width: sortText.implicitWidth + 12
-                            radius: Theme.radiusSm
+                            Layout.preferredHeight: 24
+                            Layout.preferredWidth: sortText.implicitWidth + 12
+                            radius: Theme?.radiusSm ?? 6
                             color: root.onlineSorting === modelData.val ? Theme.primary : Theme.surface_container_highest
 
                             Text {
                                 id: sortText
                                 text: modelData.label
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 10
                                 font.weight: root.onlineSorting === modelData.val ? Font.Bold : Font.Normal
-                                color: root.onlineSorting === modelData.val ? Theme.on_primary : Theme.on_surface
+                                color: root.onlineSorting === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 anchors.centerIn: parent
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    fetchWallhaven(onlineInput.text, modelData.val, 1, resInput.text, root.onlineResolutionMode)
-                                }
+                                onClicked: fetchWallhaven(onlineInput.text, modelData.val, 1, resInput.text, root.onlineResolutionMode)
                             }
                         }
                     }
 
                     Item { Layout.fillWidth: true }
 
-                    // Download page button
                     Rectangle {
-                        height: 24
-                        width: dlPageText.implicitWidth + 18
-                        radius: Theme.radiusSm
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: dlPageText.implicitWidth + 18
+                        radius: Theme?.radiusSm ?? 6
                         color: dlPageMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
                         border.color: Theme.widgetBorder
                         border.width: 1
@@ -1610,15 +1633,15 @@ Rectangle {
                             anchors.centerIn: parent
                             spacing: 4
                             Text {
-                                text: root.isBatchDownloading ? Theme.iconRefresh : Theme.iconDownload
-                                font.family: Theme.fontIcon
+                                text: root.isBatchDownloading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconDownload ?? "󰇚")
+                                font.family: Theme?.fontIcon ?? "sans-serif"
                                 font.pixelSize: 10
                                 color: Theme.primary
                             }
                             Text {
                                 id: dlPageText
                                 text: root.isBatchDownloading ? "downloading..." : ("download page (" + onlineWpModel.count + ")")
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
                                 color: Theme.on_surface
@@ -1634,17 +1657,16 @@ Rectangle {
                         }
                     }
 
-                    // Pagination controls
                     Rectangle {
-                        height: 24
-                        width: 28
-                        radius: Theme.radiusSm
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: 28
+                        radius: Theme?.radiusSm ?? 6
                         color: root.onlinePage > 1 ? Theme.surface_container_highest : Theme.surface_container_low
                         opacity: root.onlinePage > 1 ? 1.0 : 0.4
 
                         Text {
                             text: "◀"
-                            font.family: Theme.fontMono
+                            font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: 10
                             color: Theme.on_surface
                             anchors.centerIn: parent
@@ -1656,22 +1678,22 @@ Rectangle {
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
                                 if (root.onlinePage > 1) {
-                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1, resInput.text, root.onlineResolutionMode)
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1, resInput.text, root.onlineResolutionMode);
                                 }
                             }
                         }
                     }
 
                     Rectangle {
-                        height: 24
-                        width: pageText.implicitWidth + 12
-                        radius: Theme.radiusSm
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: pageText.implicitWidth + 12
+                        radius: Theme?.radiusSm ?? 6
                         color: Theme.surface_container_high
 
                         Text {
                             id: pageText
                             text: "p. " + root.onlinePage
-                            font.family: Theme.fontFamily
+                            font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             color: Theme.primary
@@ -1680,14 +1702,14 @@ Rectangle {
                     }
 
                     Rectangle {
-                        height: 24
-                        width: 28
-                        radius: Theme.radiusSm
+                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: 28
+                        radius: Theme?.radiusSm ?? 6
                         color: Theme.surface_container_highest
 
                         Text {
                             text: "▶"
-                            font.family: Theme.fontMono
+                            font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: 10
                             color: Theme.on_surface
                             anchors.centerIn: parent
@@ -1697,14 +1719,11 @@ Rectangle {
                             anchors.fill: parent
                             enabled: !root.isOnlineLoading
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1, resInput.text, root.onlineResolutionMode)
-                            }
+                            onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1, resInput.text, root.onlineResolutionMode)
                         }
                     }
                 }
 
-                // Online Grid (3 Columns)
                 GridView {
                     id: onlineGrid
                     Layout.fillWidth: true
@@ -1729,7 +1748,7 @@ Rectangle {
                             anchors.fill: parent
                             anchors.margins: 4
                             color: Theme.surface_container_high
-                            radius: Theme.widgetRadius
+                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                             clip: true
                             border.color: onMouse.containsMouse ? Theme.primary : "transparent"
                             border.width: 1
@@ -1742,7 +1761,6 @@ Rectangle {
                                 asynchronous: true
                             }
 
-                            // Resolution badge top-left
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.left: parent.left
@@ -1756,7 +1774,7 @@ Rectangle {
                                 Text {
                                     id: resBadgeText
                                     text: resolution
-                                    font.family: Theme.fontMono
+                                    font.family: Theme?.fontMono ?? "monospace"
                                     font.pixelSize: 8
                                     font.weight: Font.Bold
                                     color: "#ffffff"
@@ -1764,7 +1782,6 @@ Rectangle {
                                 }
                             }
 
-                            // File type badge top-right
                             Rectangle {
                                 anchors.top: parent.top
                                 anchors.right: parent.right
@@ -1778,7 +1795,7 @@ Rectangle {
                                 Text {
                                     id: ftBadgeText
                                     text: fileType
-                                    font.family: Theme.fontMono
+                                    font.family: Theme?.fontMono ?? "monospace"
                                     font.pixelSize: 8
                                     font.weight: Font.Bold
                                     color: "#ffffff"
@@ -1791,10 +1808,9 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService.setWallpaper(fullUrl)
+                                onClicked: WallpaperService?.setWallpaper ? WallpaperService.setWallpaper(fullUrl) : null
                             }
 
-                            // Hover bottom action bar
                             Rectangle {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
@@ -1813,7 +1829,7 @@ Rectangle {
                                     Text {
                                         Layout.fillWidth: true
                                         text: "click to apply"
-                                        font.family: Theme.fontFamily
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
                                         font.pixelSize: 9
                                         color: "#ffffff"
                                     }
@@ -1825,8 +1841,8 @@ Rectangle {
                                         color: dlOnlyMouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.2)
 
                                         Text {
-                                            text: Theme.iconDownload
-                                            font.family: Theme.fontIcon
+                                            text: Theme?.iconDownload ?? "󰇚"
+                                            font.family: Theme?.fontIcon ?? "sans-serif"
                                             font.pixelSize: 9
                                             color: "#ffffff"
                                             anchors.centerIn: parent
@@ -1837,9 +1853,7 @@ Rectangle {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                WallpaperService.batchDownload([fullUrl])
-                                            }
+                                            onClicked: WallpaperService?.batchDownload ? WallpaperService.batchDownload([fullUrl]) : null
                                         }
                                     }
                                 }
@@ -1848,16 +1862,17 @@ Rectangle {
                     }
                 }
 
-                // Empty / loading state
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     visible: root.isOnlineLoading || onlineWpModel.count === 0
 
                     Text {
-                        text: root.isOnlineLoading ? (Theme.iconRefresh + "\nfetching " + (root.onlineSorting === "date_added" ? "latest" : root.onlineSorting) + (root.onlineResolution && root.onlineResolution !== "any" ? (" " + root.onlineResolution) : "") + " wallpapers...") : "no wallpapers found\ntry adjusting search or resolution"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeMd
+                        text: root.isOnlineLoading
+                            ? ((Theme?.iconRefresh ?? "↺") + "\nfetching " + (root.onlineSorting === "date_added" ? "latest" : root.onlineSorting) + (root.onlineResolution && root.onlineResolution !== "any" ? (" " + root.onlineResolution) : "") + " wallpapers...")
+                            : "no wallpapers found\ntry adjusting search or resolution"
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeMd ?? 14
                         color: Theme.on_surface_variant
                         horizontalAlignment: Text.AlignHCenter
                         anchors.centerIn: parent
@@ -1866,7 +1881,7 @@ Rectangle {
                 }
             }
 
-            // effects & theme tab view so it doesnt explode
+            // EFFECTS & THEME TAB VIEW
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -1881,11 +1896,10 @@ Rectangle {
                     width: parent.width - 4
                     spacing: 12
 
-                    // Matugen Mode
                     Text {
                         text: "matugen color mode"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeSm ?? 12
                         font.weight: Font.Bold
                         color: Theme.primary
                     }
@@ -1896,74 +1910,73 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 32
-                            radius: Theme.widgetRadius
-                            color: WallpaperService.currentMode === "dark" ? Theme.primary : Theme.surface_container_highest
+                            Layout.preferredHeight: 32
+                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
+                            color: WallpaperService?.currentMode === "dark" ? Theme.primary : Theme.surface_container_highest
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
 
                                 Text {
-                                    text: Theme.iconMoon
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: WallpaperService.currentMode === "dark" ? Theme.on_primary : Theme.on_surface
+                                    text: Theme?.iconMoon ?? "󰖔"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: WallpaperService?.currentMode === "dark" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                                 Text {
                                     text: "dark mode"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Medium
-                                    color: WallpaperService.currentMode === "dark" ? Theme.on_primary : Theme.on_surface
+                                    color: WallpaperService?.currentMode === "dark" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService.setMode("dark")
+                                onClicked: WallpaperService?.setMode ? WallpaperService.setMode("dark") : null
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 32
-                            radius: Theme.widgetRadius
-                            color: WallpaperService.currentMode === "light" ? Theme.primary : Theme.surface_container_highest
+                            Layout.preferredHeight: 32
+                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
+                            color: WallpaperService?.currentMode === "light" ? Theme.primary : Theme.surface_container_highest
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
 
                                 Text {
-                                    text: Theme.iconSun
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: WallpaperService.currentMode === "light" ? Theme.on_primary : Theme.on_surface
+                                    text: Theme?.iconSun ?? "󰖙"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: WallpaperService?.currentMode === "light" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                                 Text {
                                     text: "light mode"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Medium
-                                    color: WallpaperService.currentMode === "light" ? Theme.on_primary : Theme.on_surface
+                                    color: WallpaperService?.currentMode === "light" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService.setMode("light")
+                                onClicked: WallpaperService?.setMode ? WallpaperService.setMode("light") : null
                             }
                         }
                     }
 
-                    // Scheme Type Grid
                     Text {
                         text: "matugen scheme type"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -1989,32 +2002,31 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 28
-                                radius: Theme.radiusSm
-                                color: WallpaperService.currentSchemeType === modelData.val ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 28
+                                radius: Theme?.radiusSm ?? 6
+                                color: WallpaperService?.currentSchemeType === modelData.val ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: WallpaperService.currentSchemeType === modelData.val ? Theme.on_primary : Theme.on_surface
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: WallpaperService?.currentSchemeType === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: WallpaperService.setScheme(modelData.val)
+                                    onClicked: WallpaperService?.setScheme ? WallpaperService.setScheme(modelData.val) : null
                                 }
                             }
                         }
                     }
 
-                    // Hex Color Picker & Palette Override
                     Text {
                         text: "custom hex color override"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2023,12 +2035,12 @@ Rectangle {
                         spacing: 8
 
                         Rectangle {
-                            width: 32
-                            height: 32
-                            radius: Theme.radiusSm
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 32
+                            radius: Theme?.radiusSm ?? 6
                             color: {
-                                let h = hexInput.text.trim()
-                                return (h.startsWith("#") && (h.length === 7 || h.length === 9)) ? h : Theme.primary
+                                let h = hexInput.text.trim();
+                                return (h.startsWith("#") && (h.length === 7 || h.length === 9)) ? h : Theme.primary;
                             }
                             border.color: Theme.on_surface
                             border.width: 1
@@ -2036,8 +2048,8 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 32
-                            radius: Theme.radiusSm
+                            Layout.preferredHeight: 32
+                            radius: Theme?.radiusSm ?? 6
                             color: Theme.surface_container_highest
                             border.color: hexInput.activeFocus ? Theme.primary : Theme.widgetBorder
                             border.width: 1
@@ -2048,32 +2060,32 @@ Rectangle {
                                 anchors.leftMargin: 8
                                 anchors.rightMargin: 8
                                 verticalAlignment: TextInput.AlignVCenter
-                                text: Theme.source_color || "#a8c8ff"
-                                font.family: Theme.fontMono
-                                font.pixelSize: Theme.fontSizeXs
+                                text: Theme?.source_color || "#a8c8ff"
+                                font.family: Theme?.fontMono ?? "monospace"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 color: Theme.on_surface
                                 onAccepted: {
-                                    let h = text.trim()
+                                    let h = text.trim();
                                     if (h.startsWith("#") && (h.length === 7 || h.length === 9)) {
-                                        WallpaperService.applyColor(h)
+                                        WallpaperService?.applyColor ? WallpaperService.applyColor(h) : null;
                                     }
                                 }
                             }
                         }
 
                         Rectangle {
-                            width: 64
-                            height: 32
-                            radius: Theme.radiusSm
+                            Layout.preferredWidth: 64
+                            Layout.preferredHeight: 32
+                            radius: Theme?.radiusSm ?? 6
                             color: applyHexMouse.containsMouse ? Theme.primary_overlay : Theme.primary
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "apply"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 font.weight: Font.Bold
-                                color: applyHexMouse.containsMouse ? Theme.primary : Theme.on_primary
+                                color: applyHexMouse.containsMouse ? Theme.primary : (Theme.on_primary ?? "#ffffff")
                             }
 
                             MouseArea {
@@ -2082,16 +2094,15 @@ Rectangle {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    let h = hexInput.text.trim()
+                                    let h = hexInput.text.trim();
                                     if (h.startsWith("#") && (h.length === 7 || h.length === 9)) {
-                                        WallpaperService.applyColor(h)
+                                        WallpaperService?.applyColor ? WallpaperService.applyColor(h) : null;
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Quick Color Swatches
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 4
@@ -2106,8 +2117,8 @@ Rectangle {
                             delegate: Rectangle {
                                 required property string modelData
                                 Layout.fillWidth: true
-                                height: 22
-                                radius: Theme.radiusSm
+                                Layout.preferredHeight: 22
+                                radius: Theme?.radiusSm ?? 6
                                 color: modelData
                                 border.color: Theme.on_surface
                                 border.width: hexInput.text === modelData ? 2 : 0
@@ -2116,19 +2127,18 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        hexInput.text = modelData
-                                        WallpaperService.applyColor(modelData)
+                                        hexInput.text = modelData;
+                                        WallpaperService?.applyColor ? WallpaperService.applyColor(modelData) : null;
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Reapply theme button
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 32
-                        radius: Theme.widgetRadius
+                        Layout.preferredHeight: 32
+                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                         color: Theme.surface_container_high
 
                         RowLayout {
@@ -2136,15 +2146,15 @@ Rectangle {
                             spacing: 6
 
                             Text {
-                                text: Theme.iconRefresh
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeXs
+                                text: Theme?.iconRefresh ?? "↺"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 color: Theme.on_surface
                             }
                             Text {
                                 text: "sync colors with current wallpaper"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 font.weight: Font.Medium
                                 color: Theme.on_surface
                             }
@@ -2153,29 +2163,29 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: WallpaperService.reapplyTheme()
+                            onClicked: WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null
                         }
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 1
+                        Layout.preferredHeight: 1
                         color: Theme.widgetBorder
                     }
 
-                    // awww Transitions
+                    // Transitions
                     Text {
                         text: "awww transition effects"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeSm ?? 12
                         font.weight: Font.Bold
                         color: Theme.primary
                     }
 
                     Text {
                         text: "transition type"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2191,15 +2201,16 @@ Rectangle {
                             delegate: Rectangle {
                                 required property string modelData
                                 Layout.fillWidth: true
-                                height: 26
-                                radius: Theme.radiusSm
-                                color: Settings.awwwTransitionType === modelData ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 26
+                                radius: Theme?.radiusSm ?? 6
+                                readonly property string currentVal: Settings?.awwwTransitionType ?? Settings?.swwwTransitionType ?? "fade"
+                                color: currentVal === modelData ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Settings.awwwTransitionType === modelData ? Theme.on_primary : Theme.on_surface
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: parent.currentVal === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -2207,19 +2218,21 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Settings.awwwTransitionType = modelData
-                                        Settings.save()
+                                        if (Settings) {
+                                            if (Settings.awwwTransitionType !== undefined) Settings.awwwTransitionType = modelData;
+                                            if (Settings.swwwTransitionType !== undefined) Settings.swwwTransitionType = modelData;
+                                            if (Settings.save) Settings.save();
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Transition Angle
                     Text {
                         text: "transition angle"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2231,30 +2244,24 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "0°", val: 0 },
-                                { label: "30°", val: 30 },
-                                { label: "45°", val: 45 },
-                                { label: "60°", val: 60 },
-                                { label: "90°", val: 90 },
-                                { label: "120°", val: 120 },
-                                { label: "135°", val: 135 },
-                                { label: "180°", val: 180 },
-                                { label: "225°", val: 225 },
-                                { label: "270°", val: 270 }
+                                { label: "0°", val: 0 }, { label: "30°", val: 30 }, { label: "45°", val: 45 },
+                                { label: "60°", val: 60 }, { label: "90°", val: 90 }, { label: "120°", val: 120 },
+                                { label: "135°", val: 135 }, { label: "180°", val: 180 }, { label: "225°", val: 225 }, { label: "270°", val: 270 }
                             ]
 
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 24
-                                radius: Theme.radiusSm
-                                color: Settings.awwwTransitionAngle === modelData.val ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 24
+                                radius: Theme?.radiusSm ?? 6
+                                readonly property int currentAngle: Settings?.awwwTransitionAngle ?? Settings?.swwwTransitionAngle ?? 0
+                                color: currentAngle === modelData.val ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Settings.awwwTransitionAngle === modelData.val ? Theme.on_primary : Theme.on_surface
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: parent.currentAngle === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -2262,19 +2269,21 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Settings.awwwTransitionAngle = modelData.val
-                                        Settings.save()
+                                        if (Settings) {
+                                            if (Settings.awwwTransitionAngle !== undefined) Settings.awwwTransitionAngle = modelData.val;
+                                            if (Settings.swwwTransitionAngle !== undefined) Settings.swwwTransitionAngle = modelData.val;
+                                            if (Settings.save) Settings.save();
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Transition FPS
                     Text {
                         text: "transition frame rate (fps)"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2284,27 +2293,25 @@ Rectangle {
 
                         Repeater {
                             model: [
-                                { label: "30 fps", val: 30 },
-                                { label: "60 fps", val: 60 },
-                                { label: "90 fps", val: 90 },
-                                { label: "120 fps", val: 120 },
-                                { label: "144 fps", val: 144 },
-                                { label: "165 fps", val: 165 },
+                                { label: "30 fps", val: 30 }, { label: "60 fps", val: 60 },
+                                { label: "90 fps", val: 90 }, { label: "120 fps", val: 120 },
+                                { label: "144 fps", val: 144 }, { label: "165 fps", val: 165 },
                                 { label: "240 fps", val: 240 }
                             ]
 
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 24
-                                radius: Theme.radiusSm
-                                color: Settings.awwwTransitionFps === modelData.val ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 24
+                                radius: Theme?.radiusSm ?? 6
+                                readonly property int currentFps: Settings?.awwwTransitionFps ?? Settings?.swwwTransitionFps ?? 60
+                                color: currentFps === modelData.val ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: 10
-                                    color: Settings.awwwTransitionFps === modelData.val ? Theme.on_primary : Theme.on_surface
+                                    color: parent.currentFps === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -2312,19 +2319,21 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Settings.awwwTransitionFps = modelData.val
-                                        Settings.save()
+                                        if (Settings) {
+                                            if (Settings.awwwTransitionFps !== undefined) Settings.awwwTransitionFps = modelData.val;
+                                            if (Settings.swwwTransitionFps !== undefined) Settings.swwwTransitionFps = modelData.val;
+                                            if (Settings.save) Settings.save();
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Scaling Filter
                     Text {
                         text: "awww scaling filter"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2338,15 +2347,16 @@ Rectangle {
                             delegate: Rectangle {
                                 required property string modelData
                                 Layout.fillWidth: true
-                                height: 24
-                                radius: Theme.radiusSm
-                                color: Settings.awwwFilter === modelData ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 24
+                                radius: Theme?.radiusSm ?? 6
+                                readonly property string currentFilter: Settings?.awwwFilter ?? Settings?.swwwFilter ?? "Lanczos3"
+                                color: currentFilter === modelData ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.toLowerCase()
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Settings.awwwFilter === modelData ? Theme.on_primary : Theme.on_surface
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: parent.currentFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -2354,8 +2364,11 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Settings.awwwFilter = modelData
-                                        Settings.save()
+                                        if (Settings) {
+                                            if (Settings.awwwFilter !== undefined) Settings.awwwFilter = modelData;
+                                            if (Settings.swwwFilter !== undefined) Settings.swwwFilter = modelData;
+                                            if (Settings.save) Settings.save();
+                                        }
                                     }
                                 }
                             }
@@ -2364,23 +2377,23 @@ Rectangle {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 1
+                        Layout.preferredHeight: 1
                         color: Theme.widgetBorder
                     }
 
                     // mpvpaper Live Video Settings
                     Text {
                         text: "mpvpaper live video controls"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeSm
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeSm ?? 12
                         font.weight: Font.Bold
                         color: Theme.primary
                     }
 
                     Text {
                         text: "video scaling & crop mode (panscan)"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2398,15 +2411,15 @@ Rectangle {
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 26
-                                radius: Theme.radiusSm
-                                color: Math.abs(Settings.mpvPanscan - modelData.val) < 0.05 ? Theme.primary : Theme.surface_container_highest
+                                Layout.preferredHeight: 26
+                                radius: Theme?.radiusSm ?? 6
+                                color: Math.abs((Settings?.mpvPanscan ?? 1.0) - modelData.val) < 0.05 ? Theme.primary : Theme.surface_container_highest
 
                                 Text {
                                     text: modelData.label
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Math.abs(Settings.mpvPanscan - modelData.val) < 0.05 ? Theme.on_primary : Theme.on_surface
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: Math.abs((Settings?.mpvPanscan ?? 1.0) - modelData.val) < 0.05 ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                     anchors.centerIn: parent
                                 }
 
@@ -2414,9 +2427,11 @@ Rectangle {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Settings.mpvPanscan = modelData.val;
-                                        Settings.save();
-                                        WallpaperService.reapplyTheme();
+                                        if (Settings) {
+                                            Settings.mpvPanscan = modelData.val;
+                                            if (Settings.save) Settings.save();
+                                        }
+                                        WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                                     }
                                 }
                             }
@@ -2425,8 +2440,8 @@ Rectangle {
 
                     Text {
                         text: "video audio"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.on_surface_variant
                     }
 
@@ -2436,26 +2451,26 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 28
-                            radius: Theme.radiusSm
-                            color: !Settings.mpvAudio ? Theme.primary : Theme.surface_container_highest
+                            Layout.preferredHeight: 28
+                            radius: Theme?.radiusSm ?? 6
+                            color: !(Settings?.mpvAudio ?? false) ? Theme.primary : Theme.surface_container_highest
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
 
                                 Text {
-                                    text: Theme.iconVolMute
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: !Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                    text: Theme?.iconVolMute ?? "󰝟"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: !(Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                                 Text {
                                     text: "mute audio (silent)"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Medium
-                                    color: !Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                    color: !(Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                             }
 
@@ -2463,35 +2478,37 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    Settings.mpvAudio = false;
-                                    Settings.save();
-                                    WallpaperService.reapplyTheme();
+                                    if (Settings) {
+                                        Settings.mpvAudio = false;
+                                        if (Settings.save) Settings.save();
+                                    }
+                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                                 }
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 28
-                            radius: Theme.radiusSm
-                            color: Settings.mpvAudio ? Theme.primary : Theme.surface_container_highest
+                            Layout.preferredHeight: 28
+                            radius: Theme?.radiusSm ?? 6
+                            color: (Settings?.mpvAudio ?? false) ? Theme.primary : Theme.surface_container_highest
 
                             RowLayout {
                                 anchors.centerIn: parent
                                 spacing: 6
 
                                 Text {
-                                    text: Theme.iconVolHigh
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                    text: Theme?.iconVolHigh ?? "󰕾"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: (Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                                 Text {
                                     text: "play ambient sound"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Medium
-                                    color: Settings.mpvAudio ? Theme.on_primary : Theme.on_surface
+                                    color: (Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
                                 }
                             }
 
@@ -2499,9 +2516,11 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    Settings.mpvAudio = true;
-                                    Settings.save();
-                                    WallpaperService.reapplyTheme();
+                                    if (Settings) {
+                                        Settings.mpvAudio = true;
+                                        if (Settings.save) Settings.save();
+                                    }
+                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                                 }
                             }
                         }

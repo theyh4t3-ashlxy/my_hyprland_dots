@@ -14,12 +14,12 @@ PopupPanel {
     screen: modelData
 
     cardWidth: Math.min(1080, (root.screen?.width ?? 1920) - 48)
-    cardHeight: Math.min(460, (root.screen?.height ?? 1080) - Theme.barHeight - 32)
+    cardHeight: Math.min(460, (root.screen?.height ?? 1080) - (Theme?.barHeight ?? 48) - 32)
     open: false
 
     Component.onCompleted: {
         if (Settings?.showBarStudio) {
-            let focused = Hyprland.focusedMonitor?.name;
+            let focused = Hyprland?.focusedMonitor?.name;
             if (!focused || !root.screen || root.screen?.name === focused) {
                 root.open = true;
             }
@@ -30,8 +30,8 @@ PopupPanel {
         target: Settings
 
         function onShowBarStudioChanged() {
-            if (Settings.showBarStudio) {
-                let focused = Hyprland.focusedMonitor?.name;
+            if (Settings?.showBarStudio) {
+                let focused = Hyprland?.focusedMonitor?.name;
                 if (!focused || !root.screen || root.screen?.name === focused) {
                     root.open = true;
                 } else {
@@ -44,18 +44,15 @@ PopupPanel {
     }
 
     onOpenChanged: {
-        if (!open) {
-            if (Settings.showBarStudio) {
-                Settings.showBarStudio = false;
-            }
+        if (!open && Settings?.showBarStudio) {
+            Settings.showBarStudio = false;
         }
     }
 
-    // human readable module metadata
     function getModuleInfo(modId) {
         let meta = {
             "launcher":       { name: "app launcher",       icon: Theme.iconArch ?? "󰣇",     desc: "application search & grid" },
-            "wallpaper":      { name: "wallpaper browser",  icon: Theme.iconWallpaper ?? "󰸉", desc: "swww & mpvpaper selector" },
+            "wallpaper":      { name: "wallpaper browser",  icon: Theme.iconWallpaper ?? "󰸉", desc: "awww & mpvpaper selector" },
             "workspaces":     { name: "workspaces",         icon: Theme.iconWorkspaces ?? "󰍹", desc: "hyprland workspace dots" },
             "windowTitle":    { name: "active window",      icon: Theme.iconSparkles ?? "󰄛", desc: "focused window title badge" },
             "clock":          { name: "clock & date",       icon: Theme.iconClock ?? "󰅐",    desc: "time, date & calendar" },
@@ -97,6 +94,7 @@ PopupPanel {
     }
 
     function toggleModuleVisibility(modId) {
+        if (!Settings) return;
         if (modId === "launcher") Settings.showLauncher = !Settings.showLauncher;
         else if (modId === "wallpaper") Settings.showWallpaper = !Settings.showWallpaper;
         else if (modId === "workspaces") Settings.showWorkspaces = !Settings.showWorkspaces;
@@ -126,10 +124,11 @@ PopupPanel {
             spacing: 12
 
             Rectangle {
-                width: 34
-                height: 34
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
                 radius: Theme.radiusPill
                 color: Theme.primary_overlay
+
                 Text {
                     anchors.centerIn: parent
                     text: Theme.iconSparkles
@@ -140,8 +139,8 @@ PopupPanel {
             }
 
             ColumnLayout {
-                Layout.fillWidth: true
                 spacing: 2
+
                 Text {
                     text: "bar layout studio"
                     font.family: Theme.fontFamily
@@ -157,10 +156,15 @@ PopupPanel {
                 }
             }
 
+            // shove the control buttons to the far right
+            Item {
+                Layout.fillWidth: true
+            }
+
             // Reset Layout Button
             Rectangle {
-                height: 30
-                width: resetRow.implicitWidth + 20
+                Layout.preferredHeight: 30
+                Layout.preferredWidth: resetRow.implicitWidth + 20
                 radius: Theme.radiusPill
                 color: resetMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high
                 border.color: Theme.widgetBorder
@@ -190,14 +194,14 @@ PopupPanel {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Settings.resetBarLayout()
+                    onClicked: Settings?.resetBarLayout ? Settings.resetBarLayout() : null
                 }
             }
 
             // Close Button
             Rectangle {
-                width: 30
-                height: 30
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
                 radius: Theme.radiusPill
                 color: closeMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_high
                 border.color: Theme.widgetBorder
@@ -217,7 +221,7 @@ PopupPanel {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Settings.showBarStudio = false;
+                        if (Settings) Settings.showBarStudio = false;
                         root.open = false;
                     }
                 }
@@ -236,7 +240,7 @@ PopupPanel {
                 Layout.fillHeight: true
                 zoneId: "left"
                 zoneTitle: "left modules"
-                modulesList: Settings.barModulesLeft ?? []
+                modulesList: Settings?.barModulesLeft ?? []
             }
 
             // CENTER ZONE
@@ -245,7 +249,7 @@ PopupPanel {
                 Layout.fillHeight: true
                 zoneId: "center"
                 zoneTitle: "center modules"
-                modulesList: Settings.barModulesCenter ?? []
+                modulesList: Settings?.barModulesCenter ?? []
             }
 
             // RIGHT ZONE
@@ -254,7 +258,7 @@ PopupPanel {
                 Layout.fillHeight: true
                 zoneId: "right"
                 zoneTitle: "right modules"
-                modulesList: Settings.barModulesRight ?? []
+                modulesList: Settings?.barModulesRight ?? []
             }
         }
     }
@@ -296,6 +300,7 @@ PopupPanel {
 
             // Scrollable list of modules
             Flickable {
+                id: flickable
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -305,7 +310,8 @@ PopupPanel {
 
                 Column {
                     id: moduleCol
-                    width: parent.width
+                    // dont use parent.width here or flickable contentItem implodes
+                    width: flickable.width
                     spacing: 6
 
                     Repeater {
@@ -325,6 +331,13 @@ PopupPanel {
                             border.color: isVisible ? Theme.widgetBorder : Theme.error_overlay
                             border.width: 1
 
+                            MouseArea {
+                                id: cardMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                            }
+
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 6
@@ -343,6 +356,7 @@ PopupPanel {
                                     Layout.fillWidth: true
                                     spacing: 1
                                     Text {
+                                        Layout.fillWidth: true
                                         text: card.info.name
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
@@ -354,8 +368,8 @@ PopupPanel {
 
                                 // Move up / left button
                                 Rectangle {
-                                    width: 22
-                                    height: 22
+                                    Layout.preferredWidth: 22
+                                    Layout.preferredHeight: 22
                                     radius: Theme.radiusSm
                                     color: upMouse.containsMouse ? Theme.primary_overlay : "transparent"
                                     opacity: card.index > 0 ? 1.0 : 0.25
@@ -372,15 +386,15 @@ PopupPanel {
                                         hoverEnabled: true
                                         cursorShape: card.index > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: {
-                                            if (card.index > 0) Settings.moveModule(zoneRoot.zoneId, card.index, card.index - 1);
+                                            if (card.index > 0) Settings?.moveModule(zoneRoot.zoneId, card.index, card.index - 1);
                                         }
                                     }
                                 }
 
                                 // Move down / right button
                                 Rectangle {
-                                    width: 22
-                                    height: 22
+                                    Layout.preferredWidth: 22
+                                    Layout.preferredHeight: 22
                                     radius: Theme.radiusSm
                                     color: downMouse.containsMouse ? Theme.primary_overlay : "transparent"
                                     opacity: card.index < zoneRoot.modulesList.length - 1 ? 1.0 : 0.25
@@ -397,15 +411,15 @@ PopupPanel {
                                         hoverEnabled: true
                                         cursorShape: card.index < zoneRoot.modulesList.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
                                         onClicked: {
-                                            if (card.index < zoneRoot.modulesList.length - 1) Settings.moveModule(zoneRoot.zoneId, card.index, card.index + 1);
+                                            if (card.index < zoneRoot.modulesList.length - 1) Settings?.moveModule(zoneRoot.zoneId, card.index, card.index + 1);
                                         }
                                     }
                                 }
 
                                 // Move Zone Left / Right
                                 Rectangle {
-                                    width: 22
-                                    height: 22
+                                    Layout.preferredWidth: 22
+                                    Layout.preferredHeight: 22
                                     radius: Theme.radiusSm
                                     color: zoneShiftMouse.containsMouse ? Theme.secondary_overlay : "transparent"
                                     visible: true
@@ -423,15 +437,15 @@ PopupPanel {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             let nextZone = (zoneRoot.zoneId === "left") ? "center" : (zoneRoot.zoneId === "center" ? "right" : "left");
-                                            Settings.transferModule(zoneRoot.zoneId, nextZone, card.index);
+                                            Settings?.transferModule(zoneRoot.zoneId, nextZone, card.index);
                                         }
                                     }
                                 }
 
                                 // Toggle Visibility Button
                                 Rectangle {
-                                    width: 22
-                                    height: 22
+                                    Layout.preferredWidth: 22
+                                    Layout.preferredHeight: 22
                                     radius: Theme.radiusSm
                                     color: eyeMouse.containsMouse ? (card.isVisible ? Theme.primary_overlay : Theme.error_overlay) : "transparent"
 
@@ -449,13 +463,6 @@ PopupPanel {
                                         onClicked: root.toggleModuleVisibility(card.modelData)
                                     }
                                 }
-                            }
-
-                            MouseArea {
-                                id: cardMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                z: -1
                             }
                         }
                     }

@@ -5,45 +5,53 @@ import "../controls"
 
 Rectangle {
     id: clockRoot
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : clockRow.implicitWidth + 24
-    implicitHeight: Theme.isVertical ? 38 : Theme.barHeight - 8
-    radius: Theme.radiusPill
+    implicitWidth: (Theme?.isVertical ?? false) ? ((Theme?.barHeight ?? 48) - 8) : (clockRow.implicitWidth + 24)
+    implicitHeight: (Theme?.isVertical ?? false) ? 42 : ((Theme?.barHeight ?? 48) - 8)
+    radius: Theme?.radiusPill ?? 999
     color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
-    border.color: Theme.pillBorder
-    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+    border.color: Theme?.pillBorder ?? "transparent"
+    border.width: (Theme?.pillBorder ?? "transparent") === "transparent" ? 0 : 1
+    visible: Settings?.showClock ?? true
 
-    Behavior on color { ColorAnimation { duration: Theme.animFast } }
-    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
-    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+    Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme?.animFast ?? 150; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
 
     property date now: new Date()
-    property int selectedYear: now.getFullYear()
-    property int selectedMonth: now.getMonth() // 0-11
+    // breaking date parts out prevents the calendar from recreating 42 delegates every tick
+    readonly property int todayYear: now.getFullYear()
+    readonly property int todayMonth: now.getMonth()
+    readonly property int todayDate: now.getDate()
+
+    property int selectedYear: todayYear
+    property int selectedMonth: todayMonth // 0-11
 
     Timer {
         interval: 1000
         running: true
         repeat: true
         onTriggered: {
-            clockRoot.now = new Date()
+            clockRoot.now = new Date();
         }
     }
 
     function getDayOfYear(d) {
-        let start = new Date(d.getFullYear(), 0, 0);
-        let diff = (d - start) + ((start.getTimezoneOffset() - d.getTimezoneOffset()) * 60 * 1000);
+        let target = d || clockRoot.now;
+        let start = new Date(target.getFullYear(), 0, 0);
+        let diff = (target - start) + ((start.getTimezoneOffset() - target.getTimezoneOffset()) * 60 * 1000);
         return Math.floor(diff / 86400000);
     }
 
     function getClockMoodIcon(hrs) {
+        if (!Theme?.getIcon) return Theme?.iconClock ?? "󰅐";
         if (hrs < 6) {
-            return Theme.getIcon("󰤄", "\uE708", "", "moon", Theme.kaoSleepy, "night");
+            return Theme.getIcon("󰤄", "\uE708", "", "moon", Theme?.kaoSleepy ?? "(u_u)", "night");
         } else if (hrs < 12) {
-            return Theme.getIcon("󰖨", "\uE706", "", "coffee", Theme.kaoCoffee, "morn");
+            return Theme.getIcon("󰖨", "\uE706", "", "coffee", Theme?.kaoCoffee ?? "[_]~", "morn");
         } else if (hrs < 18) {
-            return Theme.getIcon("󰖙", "\uE706", "", "sun", Theme.kaoCool, "day");
+            return Theme.getIcon("󰖙", "\uE706", "", "sun", Theme?.kaoCool ?? "(^o^)", "day");
         } else {
-            return Theme.getIcon("󰖔", "\uE708", "", "music", Theme.kaoMusic, "eve");
+            return Theme.getIcon("󰖔", "\uE708", "", "music", Theme?.kaoMusic ?? "♫", "eve");
         }
     }
 
@@ -56,13 +64,13 @@ Rectangle {
             id: clockMoodText
             anchors.verticalCenter: parent.verticalCenter
             text: {
-                if (Theme.isVertical) return "";
+                if (Theme?.isVertical ?? false) return "";
                 let hrs = clockRoot.now.getHours();
                 return clockRoot.getClockMoodIcon(hrs);
             }
-            visible: text !== "" && !Theme.isVertical
-            font.family: Theme.fontIcon
-            font.pixelSize: Theme.fontSizeSm
+            visible: text !== "" && !(Theme?.isVertical ?? false)
+            font.family: Theme?.fontIcon ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeSm ?? 12
             color: calPopup.open ? Theme.primary : Theme.on_surface_variant
         }
 
@@ -72,17 +80,18 @@ Rectangle {
             horizontalAlignment: Text.AlignHCenter
             lineHeight: 0.9
             text: {
-                if (Theme.isVertical) {
+                if (Theme?.isVertical ?? false) {
                     return Qt.formatDateTime(clockRoot.now, "HH\nmm");
                 }
-                let timeStr = Qt.formatDateTime(clockRoot.now, Settings.clockFormat);
-                let dateFmt = (Settings.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
-                let showDate = (Settings.showBarDate ?? false) && dateFmt !== "";
+                let timeFmt = Settings?.clockFormat || "HH:mm";
+                let timeStr = Qt.formatDateTime(clockRoot.now, timeFmt);
+                let dateFmt = (Settings?.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
+                let showDate = (Settings?.showBarDate ?? false) && dateFmt !== "";
                 let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
                 return (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
             }
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.isVertical ? 10 : Theme.fontSizeMd
+            font.family: Theme?.fontFamily ?? "sans-serif"
+            font.pixelSize: (Theme?.isVertical ?? false) ? 10 : (Theme?.fontSizeMd ?? 14)
             font.weight: Font.Medium
             color: calPopup.open ? Theme.primary : Theme.on_surface
         }
@@ -94,31 +103,37 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            calPopup.targetRelativeX = clockRoot.mapToItem(null, 0, 0).x + (clockRoot.width / 2)
-            calPopup.targetRelativeY = clockRoot.mapToItem(null, 0, 0).y + (clockRoot.height / 2)
-            calPopup.open = !calPopup.open
+            let pt = clockRoot.mapToItem(null, 0, 0);
+            if (pt) {
+                if (Theme?.isVertical ?? false) {
+                    calPopup.targetRelativeY = pt.y + (clockRoot.height / 2);
+                } else {
+                    calPopup.targetRelativeX = pt.x + (clockRoot.width / 2);
+                }
+            }
+            calPopup.open = !calPopup.open;
             if (calPopup.open) {
-                clockRoot.selectedYear = clockRoot.now.getFullYear()
-                clockRoot.selectedMonth = clockRoot.now.getMonth()
+                clockRoot.selectedYear = clockRoot.todayYear;
+                clockRoot.selectedMonth = clockRoot.todayMonth;
             }
         }
     }
 
-    // Welded Calendar & Date Overview Popup
     PopupPanel {
         id: calPopup
         cardWidth: 360
         cardHeight: 480
+        targetRelativeX: clockRoot.x + (clockRoot.width / 2)
 
         content: ColumnLayout {
             anchors.fill: parent
-            spacing: Theme.widgetSpacing
+            spacing: Theme?.widgetSpacing ?? 10
 
             // Calendar Header: Current Date & Time
             Rectangle {
                 Layout.fillWidth: true
-                height: 64
-                radius: Theme.widgetRadius
+                Layout.preferredHeight: 64
+                radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
                 color: Theme.surface_container_highest
                 border.color: Theme.widgetBorder
                 border.width: 1
@@ -133,16 +148,21 @@ Rectangle {
                         spacing: 2
 
                         Text {
-                            text: Qt.formatDateTime(clockRoot.now, (Settings.dateFormat && Settings.dateFormat !== "") ? Settings.dateFormat : "dddd, MMMM d, yyyy")
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeSm
+                            text: {
+                                let dFmt = (Settings?.dateFormat && Settings.dateFormat !== "none" && Settings.dateFormat !== "")
+                                    ? Settings.dateFormat
+                                    : "dddd, MMMM d, yyyy";
+                                return Qt.formatDateTime(clockRoot.now, dFmt);
+                            }
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
                             font.weight: Font.Bold
                             color: Theme.on_surface
                         }
 
                         Text {
                             text: "day " + clockRoot.getDayOfYear(clockRoot.now) + " of " + clockRoot.now.getFullYear()
-                            font.family: Theme.fontFamily
+                            font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: 10
                             color: Theme.on_surface_variant
                         }
@@ -154,16 +174,16 @@ Rectangle {
 
                         Text {
                             text: Qt.formatDateTime(clockRoot.now, "HH:mm:ss")
-                            font.family: Theme.fontMono
-                            font.pixelSize: Theme.fontSizeLg
+                            font.family: Theme?.fontMono ?? "monospace"
+                            font.pixelSize: Theme?.fontSizeLg ?? 16
                             font.weight: Font.Bold
                             color: Theme.primary
                             Layout.alignment: Qt.AlignRight
                         }
 
                         Text {
-                            text: Theme.iconClock
-                            font.family: Theme.fontIcon
+                            text: Theme?.iconClock ?? "󰅐"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
                             font.pixelSize: 11
                             color: Theme.primary
                             Layout.alignment: Qt.AlignRight
@@ -183,16 +203,19 @@ Rectangle {
                         let d = new Date(clockRoot.selectedYear, clockRoot.selectedMonth, 1);
                         return Qt.formatDate(d, "MMMM yyyy");
                     }
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeMd
+                    font.family: Theme?.fontFamily ?? "sans-serif"
+                    font.pixelSize: Theme?.fontSizeMd ?? 14
                     font.weight: Font.Bold
                     color: Theme.primary
+                }
+
+                Item {
                     Layout.fillWidth: true
                 }
 
                 IconButton {
-                    icon: Theme.iconChevronLeft
-                    iconSize: Theme.fontSizeSm
+                    icon: Theme?.iconChevronLeft ?? "◀"
+                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "previous month"
                     onClicked: {
                         if (clockRoot.selectedMonth === 0) {
@@ -205,18 +228,18 @@ Rectangle {
                 }
 
                 IconButton {
-                    icon: Theme.iconClock
-                    iconSize: Theme.fontSizeSm
+                    icon: Theme?.iconClock ?? "󰅐"
+                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "jump to today"
                     onClicked: {
-                        clockRoot.selectedYear = clockRoot.now.getFullYear();
-                        clockRoot.selectedMonth = clockRoot.now.getMonth();
+                        clockRoot.selectedYear = clockRoot.todayYear;
+                        clockRoot.selectedMonth = clockRoot.todayMonth;
                     }
                 }
 
                 IconButton {
-                    icon: Theme.iconChevronRight
-                    iconSize: Theme.fontSizeSm
+                    icon: Theme?.iconChevronRight ?? "▶"
+                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "next month"
                     onClicked: {
                         if (clockRoot.selectedMonth === 11) {
@@ -227,11 +250,18 @@ Rectangle {
                         }
                     }
                 }
+
+                IconButton {
+                    icon: Theme?.iconClose ?? "✕"
+                    iconSize: Theme?.fontSizeSm ?? 12
+                    tooltip: "close calendar"
+                    onClicked: calPopup.open = false
+                }
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: Theme.widgetBorder
             }
 
@@ -247,12 +277,13 @@ Rectangle {
                         required property string modelData
                         required property int index
                         Layout.fillWidth: true
-                        height: 22
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 22
 
                         Text {
                             anchors.centerIn: parent
                             text: modelData
-                            font.family: Theme.fontMono
+                            font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             color: (index >= 5) ? Theme.primary : Theme.on_surface_variant
@@ -261,7 +292,7 @@ Rectangle {
                 }
             }
 
-            // Calendar Days Grid (5 or 6 rows x 7 columns)
+            // Calendar Days Grid
             GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -270,6 +301,7 @@ Rectangle {
                 columnSpacing: 4
 
                 Repeater {
+                    // relies on cached day/month/year properties so ticks dont force full grid rebuilds
                     model: {
                         let y = clockRoot.selectedYear;
                         let m = clockRoot.selectedMonth;
@@ -283,7 +315,7 @@ Rectangle {
                             cells.push({ day: prevDaysInMonth - i, currentMonth: false, isToday: false });
                         }
                         for (let d = 1; d <= daysInMonth; d++) {
-                            let isToday = (y === clockRoot.now.getFullYear() && m === clockRoot.now.getMonth() && d === clockRoot.now.getDate());
+                            let isToday = (y === clockRoot.todayYear && m === clockRoot.todayMonth && d === clockRoot.todayDate);
                             cells.push({ day: d, currentMonth: true, isToday: isToday });
                         }
                         let totalCells = (cells.length > 35) ? 42 : 35;
@@ -298,7 +330,9 @@ Rectangle {
                         required property var modelData
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        radius: Theme.radiusSm
+                        Layout.preferredWidth: 1
+                        Layout.preferredHeight: 1
+                        radius: Theme?.radiusSm ?? 6
                         color: (modelData.currentMonth && modelData.isToday)
                             ? Theme.primary
                             : (dayMouse.containsMouse && modelData.day > 0)
@@ -311,11 +345,11 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             text: modelData.day
-                            font.family: Theme.fontMono
+                            font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: 11
                             font.weight: modelData.isToday ? Font.Bold : Font.Normal
                             color: (modelData.currentMonth && modelData.isToday)
-                                ? Theme.on_primary
+                                ? (Theme.on_primary ?? "#ffffff")
                                 : (modelData.currentMonth ? Theme.on_surface : Theme.on_surface_disabled)
                         }
 
@@ -327,7 +361,6 @@ Rectangle {
                             onClicked: {
                                 if (!modelData.currentMonth) {
                                     if (modelData.day > 15) {
-                                        // clicked day in previous month
                                         if (clockRoot.selectedMonth === 0) {
                                             clockRoot.selectedMonth = 11;
                                             clockRoot.selectedYear--;
@@ -335,7 +368,6 @@ Rectangle {
                                             clockRoot.selectedMonth--;
                                         }
                                     } else {
-                                        // clicked day in next month
                                         if (clockRoot.selectedMonth === 11) {
                                             clockRoot.selectedMonth = 0;
                                             clockRoot.selectedYear++;
@@ -352,24 +384,26 @@ Rectangle {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: Theme.widgetBorder
             }
 
-            // Footer: Day progress & quick quote
+            // Footer: Day progress
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 6
+                    Layout.preferredHeight: 6
                     radius: 3
                     color: Theme.surface_container_highest
 
                     Rectangle {
-                        height: parent.height
-                        width: parent.width * Math.min(1.0, ((clockRoot.now.getHours() * 60 + clockRoot.now.getMinutes()) / 1440))
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: parent.width * Math.min(1.0, Math.max(0.0, ((clockRoot.now.getHours() * 60 + clockRoot.now.getMinutes()) / 1440)))
                         radius: 3
                         color: Theme.primary
                     }
@@ -377,7 +411,7 @@ Rectangle {
 
                 Text {
                     text: Math.round(((clockRoot.now.getHours() * 60 + clockRoot.now.getMinutes()) / 1440) * 100) + "% day elapsed"
-                    font.family: Theme.fontMono
+                    font.family: Theme?.fontMono ?? "monospace"
                     font.pixelSize: 9
                     color: Theme.on_surface_variant
                 }

@@ -1,17 +1,18 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../controls"
 import Quickshell
 import Quickshell.Wayland
 
 Rectangle {
     id: root
-    implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : pwrRow.implicitWidth + 24
-    implicitHeight: Theme.barHeight - 8
+    implicitWidth: (Theme?.isVertical ?? false) ? ((Theme?.barHeight ?? 48) - 8) : (pwrRow.implicitWidth + 24)
+    implicitHeight: (Theme?.barHeight ?? 48) - 8
     radius: Theme.radiusPill
     color: popup.open ? Theme.error_overlay : (pwrMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
-    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+    border.width: (Theme?.pillBorder ?? "transparent") === "transparent" ? 0 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
@@ -23,7 +24,7 @@ Rectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: Theme.iconPower
+            text: Theme.iconPower ?? "󰐥"
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.error : Theme.on_surface
@@ -36,12 +37,13 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+            let pos = root.mapToItem(null, 0, 0);
+            if (Theme?.isVertical) {
+                popup.targetRelativeY = pos.y + (root.height / 2);
             } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                popup.targetRelativeX = pos.x + (root.width / 2);
             }
-            popup.open = !popup.open
+            popup.open = !popup.open;
         }
     }
 
@@ -49,10 +51,19 @@ Rectangle {
         id: popup
         cardWidth: 440
         cardHeight: 330
-        targetRelativeX: root.mapToItem(null, 0, 0).x + (root.width / 2)
+        targetRelativeX: root.x + (root.width / 2)
 
         property string pendingAction: ""
         property int confirmCountdown: 0
+
+        onOpenChanged: {
+            // dont let confirming state haunt us next time it opens
+            if (!open) {
+                confirmTimer.stop();
+                pendingAction = "";
+                confirmCountdown = 0;
+            }
+        }
 
         Timer {
             id: confirmTimer
@@ -69,7 +80,7 @@ Rectangle {
             }
         }
 
-        readonly property string sessionScriptPath: Qt.resolvedUrl("../scripts/session.py").toString().replace(/^file:\/\//, "")
+        readonly property string sessionScriptPath: decodeURIComponent(Qt.resolvedUrl("../scripts/session.py").toString().replace(/^file:\/\//, ""))
 
         function triggerAction(actionKey, needsConfirm) {
             if (needsConfirm) {
@@ -92,7 +103,7 @@ Rectangle {
 
         content: ColumnLayout {
             anchors.fill: parent
-            spacing: Theme.widgetSpacing
+            spacing: Theme?.widgetSpacing ?? 12
 
             // User Profile & System Header
             RowLayout {
@@ -107,7 +118,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: Theme.iconPower
+                        text: Theme.iconPower ?? "󰐥"
                         font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
                         color: Theme.primary
@@ -115,7 +126,6 @@ Rectangle {
                 }
 
                 ColumnLayout {
-                    Layout.fillWidth: true
                     spacing: 2
 
                     Text {
@@ -134,8 +144,13 @@ Rectangle {
                     }
                 }
 
+                // stops close button from huddling with the title on the left
+                Item {
+                    Layout.fillWidth: true
+                }
+
                 IconButton {
-                    icon: Theme.iconClose
+                    icon: Theme.iconClose ?? "✕"
                     iconSize: Theme.fontSizeSm
                     tooltip: "close menu"
                     onClicked: popup.open = false
@@ -144,7 +159,7 @@ Rectangle {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 1
+                Layout.preferredHeight: 1
                 color: Theme.widgetBorder
             }
 
@@ -160,6 +175,8 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 1
                     radius: Theme.radiusMd
                     color: lockMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high
                     border.color: lockMouse.containsMouse ? Theme.primary : "transparent"
@@ -172,7 +189,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: Theme.iconLock
+                            text: Theme.iconLock ?? "󰌾"
                             font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.primary
@@ -202,6 +219,8 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 1
                     radius: Theme.radiusMd
                     color: sleepMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high
                     border.color: sleepMouse.containsMouse ? Theme.primary : "transparent"
@@ -214,7 +233,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: Theme.iconSuspend
+                            text: Theme.iconSuspend ?? "󰤄"
                             font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.primary
@@ -244,6 +263,8 @@ Rectangle {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 1
                     radius: Theme.radiusMd
                     color: logoutMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high
                     border.color: logoutMouse.containsMouse ? Theme.warn : "transparent"
@@ -256,7 +277,7 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: Theme.iconLogout
+                            text: Theme.iconLogout ?? "󰍃"
                             font.family: Theme.fontIcon
                             font.pixelSize: 22
                             color: Theme.warn
@@ -284,8 +305,11 @@ Rectangle {
 
                 // Reboot Card with Confirmation
                 Rectangle {
+                    id: rebootCard
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 1
                     radius: Theme.radiusMd
                     readonly property bool isConfirming: popup.pendingAction === "reboot"
                     color: isConfirming ? Theme.warn_container : (rebootMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
@@ -299,19 +323,19 @@ Rectangle {
                         spacing: 4
 
                         Text {
-                            text: Theme.iconReboot
+                            text: Theme.iconReboot ?? "󰑐"
                             font.family: Theme.fontIcon
                             font.pixelSize: 22
-                            color: parent.parent.isConfirming ? Theme.on_warn_container : Theme.primary
+                            color: rebootCard.isConfirming ? Theme.on_warn_container : Theme.primary
                             Layout.alignment: Qt.AlignHCenter
                         }
 
                         Text {
-                            text: parent.parent.isConfirming ? ("confirm (" + popup.confirmCountdown + "s)") : "restart"
+                            text: rebootCard.isConfirming ? ("confirm (" + popup.confirmCountdown + "s)") : "restart"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeXs
                             font.weight: Font.Bold
-                            color: parent.parent.isConfirming ? Theme.on_warn_container : Theme.on_surface
+                            color: rebootCard.isConfirming ? Theme.on_warn_container : Theme.on_surface
                             Layout.alignment: Qt.AlignHCenter
                         }
                     }
@@ -327,9 +351,13 @@ Rectangle {
 
                 // Power Off Card with Confirmation
                 Rectangle {
+                    id: powerCard
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.columnSpan: 2
+                    // keeps the 2:1 column ratio intact so countdown text doesnt reshape the grid
+                    Layout.preferredWidth: 2
+                    Layout.preferredHeight: 1
                     radius: Theme.radiusMd
                     readonly property bool isConfirming: popup.pendingAction === "poweroff"
                     color: isConfirming ? Theme.error_container : (powerMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_high)
@@ -343,7 +371,7 @@ Rectangle {
                         spacing: 10
 
                         Text {
-                            text: Theme.iconPower
+                            text: Theme.iconPower ?? "󰐥"
                             font.family: Theme.fontIcon
                             font.pixelSize: 24
                             color: Theme.error
@@ -352,17 +380,17 @@ Rectangle {
                         ColumnLayout {
                             spacing: 2
                             Text {
-                                text: parent.parent.parent.isConfirming ? ("click to confirm (" + popup.confirmCountdown + "s)") : "shut down"
+                                text: powerCard.isConfirming ? ("click to confirm (" + popup.confirmCountdown + "s)") : "shut down"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSm
                                 font.weight: Font.Bold
-                                color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface
+                                color: powerCard.isConfirming ? Theme.on_error_container : Theme.on_surface
                             }
                             Text {
                                 text: Theme.getVibe(Theme.kaoSleepy + " goodnight", "󰐥 power off", "power off device")
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
-                                color: parent.parent.parent.isConfirming ? Theme.on_error_container : Theme.on_surface_variant
+                                color: powerCard.isConfirming ? Theme.on_error_container : Theme.on_surface_variant
                             }
                         }
                     }
