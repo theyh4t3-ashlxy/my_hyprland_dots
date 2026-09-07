@@ -21,9 +21,7 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        BarStudio {
-            open: Settings.showBarStudio
-        }
+        BarStudio {}
     }
 
     Variants {
@@ -87,6 +85,22 @@ ShellRoot {
 
         function dnd(): void {
             Settings.dnd = !Settings.dnd;
+        }
+    }
+
+    IpcHandler {
+        target: "studio"
+
+        function toggle(): void {
+            Settings.showBarStudio = !Settings.showBarStudio;
+        }
+
+        function open(): void {
+            Settings.showBarStudio = true;
+        }
+
+        function close(): void {
+            Settings.showBarStudio = false;
         }
     }
 }

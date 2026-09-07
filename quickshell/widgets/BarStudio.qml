@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import ".."
 import "../controls"
 import "../corners"
@@ -14,12 +15,39 @@ PopupPanel {
 
     cardWidth: Math.min(1080, (root.screen?.width ?? 1920) - 48)
     cardHeight: Math.min(460, (root.screen?.height ?? 1080) - Theme.barHeight - 32)
-    targetRelativeX: (root.screen?.width ?? 1920) / 2
-    open: Settings?.showBarStudio ?? false
+    open: false
+
+    Component.onCompleted: {
+        if (Settings?.showBarStudio) {
+            let focused = Hyprland.focusedMonitor?.name;
+            if (!focused || !root.screen || root.screen?.name === focused) {
+                root.open = true;
+            }
+        }
+    }
+
+    Connections {
+        target: Settings
+
+        function onShowBarStudioChanged() {
+            if (Settings.showBarStudio) {
+                let focused = Hyprland.focusedMonitor?.name;
+                if (!focused || !root.screen || root.screen?.name === focused) {
+                    root.open = true;
+                } else {
+                    root.open = false;
+                }
+            } else {
+                root.open = false;
+            }
+        }
+    }
 
     onOpenChanged: {
         if (!open) {
-            if (Settings.showBarStudio) Settings.showBarStudio = false;
+            if (Settings.showBarStudio) {
+                Settings.showBarStudio = false;
+            }
         }
     }
 
