@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import ".."
+import "../controls"
+import "../corners"
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -17,7 +19,8 @@ Scope {
     property bool isChecking: false
     property date currentTime: new Date()
 
-    // time loop so our clock doesn't freeze in time
+    signal triggerShake()
+
     Timer {
         interval: 1000
         running: lockRoot.locked
@@ -42,9 +45,17 @@ Scope {
     PamContext {
         id: pam
         config: "login"
-        user: Quickshell.env("USER")
+        user: Quickshell.env("USER") ?? ""
 
         onPamMessage: {
+            if (responseRequired && lockRoot.pendingPassword) {
+                let pw = lockRoot.pendingPassword;
+                lockRoot.pendingPassword = "";
+                pam.respond(pw);
+            }
+        }
+
+        onResponseRequiredChanged: {
             if (responseRequired && lockRoot.pendingPassword) {
                 let pw = lockRoot.pendingPassword;
                 lockRoot.pendingPassword = "";
@@ -55,13 +66,13 @@ Scope {
         onCompleted: (result) => {
             lockRoot.isChecking = false;
             lockRoot.pendingPassword = "";
-            let success = (result === 0 || PamResult.toString(result) === "Success");
+            let success = (result === PamResult.Success || result === 0 || PamResult.toString(result) === "Success");
             if (success) {
                 lockRoot.locked = false;
                 lockRoot.authFailed = false;
             } else {
                 lockRoot.authFailed = true;
-                shakeAnim.restart();
+                lockRoot.triggerShake();
                 shakeTimer.restart();
             }
         }
@@ -70,7 +81,7 @@ Scope {
             lockRoot.isChecking = false;
             lockRoot.pendingPassword = "";
             lockRoot.authFailed = true;
-            shakeAnim.restart();
+            lockRoot.triggerShake();
             shakeTimer.restart();
         }
     }
@@ -98,28 +109,55 @@ Scope {
             WlSessionLockSurface {
                 id: surface
 
-                readonly property var activePlayer: Mpris.players.values[0] ?? null
+                // calculates background luminance so light mode doesnt paint black text on black voids
+                readonly property bool isDark: {
+                    if (WallpaperService?.currentMode) return WallpaperService.currentMode === "dark";
+                    let bg = Theme?.background ?? Theme?.surface;
+                    if (bg) {
+                        let lum = (0.299 * bg.r + 0.587 * bg.g + 0.114 * bg.b);
+                        return lum < 0.5;
+                    }
+                    return true;
+                }
+
+                readonly property var activePlayer: Mpris?.players?.values?.[0] ?? null
                 readonly property int cornerRadius: Settings?.screenCornerRadius ?? 16
-                readonly property color cornerColor: Theme?.cornerFill ?? Theme?.barBg ?? Theme?.surface_container_low ?? "#14140c"
+                readonly property color cornerColor: {
+                    let cm = Settings?.cornerColorMode ?? "bar";
+                    if (cm === "accent") return Theme?.primary ?? "#ffffff";
+                    if (cm === "pure-black") return "#000000";
+                    if (cm === "theme") return Theme?.surface_container_high ?? (surface.isDark ? "#14140c" : "#f5f5f5");
+                    return Theme?.barBg ?? (surface.isDark ? (Theme?.background ?? "#050505") : (Theme?.background ?? "#ffffff"));
+                }
 
                 Rectangle {
                     anchors.fill: parent
-                    color: "#050505"
+                    color: surface.isDark ? (Theme?.background ?? "#050505") : (Theme?.background ?? "#fbf8ff")
+
+                    MouseArea {
+                        anchors.fill: parent
+                        z: -1
+                        onClicked: pwInput.forceActiveFocus()
+                    }
 
                     // wallpaper backdrop
                     Image {
                         anchors.fill: parent
-                        source: WallpaperService.currentWallpaperPath ? ("file://" + WallpaperService.currentWallpaperPath) : ""
+                        source: {
+                            let wp = WallpaperService?.currentWallpaperPath ?? "";
+                            if (!wp) return "";
+                            return (wp.startsWith("file://") || wp.startsWith("http://") || wp.startsWith("https://")) ? wp : ("file://" + wp);
+                        }
                         fillMode: Image.PreserveAspectCrop
-                        opacity: 0.35
+                        opacity: surface.isDark ? 0.35 : 0.40
                         asynchronous: true
                     }
 
-                    // vignette overlay
+                    // adapt wash tint to mode instead of crushing everything in black ink
                     Rectangle {
                         anchors.fill: parent
-                        color: "black"
-                        opacity: 0.50
+                        color: surface.isDark ? "#000000" : (Theme?.background ?? "#ffffff")
+                        opacity: surface.isDark ? 0.50 : 0.65
                     }
 
                     // top status row
@@ -132,15 +170,19 @@ Scope {
                         RowLayout {
                             spacing: 6
                             Text {
-                                text: NetworkService.isWiredConnected ? Theme.iconEthernet : (NetworkService.isWifiConnected ? Theme.iconWifiHigh : Theme.iconWifiOff)
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeMd
-                                color: NetworkService.isConnected ? Theme.primary : Theme.on_surface_variant
+                                text: (NetworkService?.isWiredConnected ?? false)
+                                    ? (Theme?.iconEthernet ?? "󰈀")
+                                    : ((NetworkService?.isWifiConnected ?? false) ? (Theme?.iconWifiHigh ?? "󰤨") : (Theme?.iconWifiOff ?? "󰤭"))
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeMd ?? 14
+                                color: (NetworkService?.isConnected ?? false) ? Theme.primary : Theme.on_surface_variant
                             }
                             Text {
-                                text: NetworkService.activeSsid
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSm
+                                text: (NetworkService?.isWiredConnected ?? false)
+                                    ? "wired"
+                                    : (NetworkService?.activeSsid || ((NetworkService?.isConnected ?? false) ? "connected" : "offline"))
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 font.weight: Font.Medium
                                 color: Theme.on_surface
                             }
@@ -149,16 +191,24 @@ Scope {
                         RowLayout {
                             spacing: 6
                             visible: UPower.displayDevice?.isPresent ?? false
+
+                            readonly property int batPct: {
+                                let p = UPower.displayDevice?.percentage ?? 1.0;
+                                return Math.min(100, Math.max(0, Math.round(p <= 1.0 ? p * 100 : p)));
+                            }
+
                             Text {
-                                text: Theme.getBatteryIcon(Math.round((UPower.displayDevice?.percentage ?? 1.0) * 100), UPower.displayDevice?.state === UPowerDeviceState.Charging, false, false)
-                                font.family: Theme.fontIcon
-                                font.pixelSize: Theme.fontSizeMd
+                                text: Theme?.getBatteryIcon
+                                    ? Theme.getBatteryIcon(parent.batPct, UPower.displayDevice?.state === UPowerDeviceState.Charging, !(UPower?.onBattery ?? true), false)
+                                    : (Theme?.iconBatFull ?? "󰁹")
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeMd ?? 14
                                 color: Theme.primary
                             }
                             Text {
-                                text: Math.round((UPower.displayDevice?.percentage ?? 1.0) * 100) + "%"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeSm
+                                text: parent.batPct + "%"
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 font.weight: Font.Medium
                                 color: Theme.on_surface
                             }
@@ -178,7 +228,7 @@ Scope {
 
                             Text {
                                 text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clockFormat ?? (Settings?.clock24h ? "HH:mm" : "hh:mm A"))
-                                font.family: Theme.fontFamily
+                                font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 84
                                 font.weight: Font.Bold
                                 color: Theme.on_surface
@@ -187,8 +237,8 @@ Scope {
 
                             Text {
                                 text: Qt.formatDateTime(lockRoot.currentTime, "dddd, MMMM d")
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeMd
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeMd ?? 14
                                 font.weight: Font.Medium
                                 color: Theme.primary
                                 Layout.alignment: Qt.AlignHCenter
@@ -198,12 +248,12 @@ Scope {
                         // media player card
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 72
-                            radius: Theme.radiusMd
-                            color: Theme.cardBg
-                            border.color: Theme.cardBorder
+                            Layout.preferredHeight: 72
+                            radius: Theme?.radiusMd ?? 8
+                            color: Theme?.cardBg ?? Theme.surface_container_high
+                            border.color: Theme?.cardBorder ?? Theme.widgetBorder
                             border.width: 1
-                            visible: surface.activePlayer !== null && (surface.activePlayer.trackTitle !== "" || surface.activePlayer.isPlaying)
+                            visible: surface.activePlayer !== null && ((surface.activePlayer?.trackTitle ?? "") !== "" || (surface.activePlayer?.isPlaying ?? false))
 
                             RowLayout {
                                 anchors.fill: parent
@@ -211,9 +261,9 @@ Scope {
                                 spacing: 12
 
                                 Rectangle {
-                                    width: 48
-                                    height: 48
-                                    radius: Theme.radiusSm
+                                    Layout.preferredWidth: 48
+                                    Layout.preferredHeight: 48
+                                    radius: Theme?.radiusSm ?? 6
                                     color: Theme.surface_container_highest
                                     clip: true
 
@@ -225,9 +275,9 @@ Scope {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Theme.iconMusic
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeMd
+                                        text: Theme?.iconMusic ?? "󰝚"
+                                        font.family: Theme?.fontIcon ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeMd ?? 14
                                         color: Theme.primary
                                         visible: !surface.activePlayer?.trackArtUrl
                                     }
@@ -239,8 +289,8 @@ Scope {
 
                                     Text {
                                         text: surface.activePlayer?.trackTitle || "no track playing"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeSm ?? 12
                                         font.weight: Font.Bold
                                         color: Theme.on_surface
                                         Layout.fillWidth: true
@@ -249,8 +299,8 @@ Scope {
 
                                     Text {
                                         text: surface.activePlayer?.trackArtist || "unknown artist"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeXs ?? 10
                                         color: Theme.on_surface_variant
                                         Layout.fillWidth: true
                                         elide: Text.ElideRight
@@ -258,22 +308,22 @@ Scope {
                                 }
 
                                 IconButton {
-                                    icon: Theme.iconPrev
-                                    iconSize: Theme.fontSizeXs
+                                    icon: Theme?.iconPrev ?? "⏮"
+                                    iconSize: Theme?.fontSizeXs ?? 10
                                     tooltip: "previous"
                                     onClicked: surface.activePlayer?.previous()
                                 }
 
                                 IconButton {
-                                    icon: surface.activePlayer?.isPlaying ? Theme.iconPause : Theme.iconPlay
-                                    iconSize: Theme.fontSizeSm
+                                    icon: (surface.activePlayer?.isPlaying ?? false) ? (Theme?.iconPause ?? "⏸") : (Theme?.iconPlay ?? "▶")
+                                    iconSize: Theme?.fontSizeSm ?? 12
                                     tooltip: "toggle play"
                                     onClicked: surface.activePlayer?.togglePlaying()
                                 }
 
                                 IconButton {
-                                    icon: Theme.iconNext
-                                    iconSize: Theme.fontSizeXs
+                                    icon: Theme?.iconNext ?? "⏭"
+                                    iconSize: Theme?.fontSizeXs ?? 10
                                     tooltip: "next"
                                     onClicked: surface.activePlayer?.next()
                                 }
@@ -284,13 +334,12 @@ Scope {
                         Rectangle {
                             id: pwContainer
                             Layout.fillWidth: true
-                            height: 48
-                            radius: Theme.radiusPill
-                            color: Theme.cardBg
-                            border.color: lockRoot.authFailed ? Theme.error : (pwInput.activeFocus ? Theme.primary : Theme.cardBorder)
+                            Layout.preferredHeight: 48
+                            radius: Theme?.radiusPill ?? 999
+                            color: Theme?.cardBg ?? Theme.surface_container_high
+                            border.color: lockRoot.authFailed ? Theme.error : (pwInput.activeFocus ? Theme.primary : (Theme?.cardBorder ?? Theme.widgetBorder))
                             border.width: 2
 
-                            // transform translate so columnlayout doesn't fight our animation
                             transform: Translate { id: pwShake }
 
                             SequentialAnimation {
@@ -302,6 +351,13 @@ Scope {
                                 NumberAnimation { target: pwShake; property: "x"; from: 8; to: 0; duration: 45; easing.type: Easing.OutQuad }
                             }
 
+                            Connections {
+                                target: lockRoot
+                                function onTriggerShake() {
+                                    shakeAnim.restart();
+                                }
+                            }
+
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 16
@@ -309,9 +365,9 @@ Scope {
                                 spacing: 10
 
                                 Text {
-                                    text: Theme.iconLock
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeMd
+                                    text: Theme?.iconLock ?? "\uE899"
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeMd ?? 14
                                     color: lockRoot.authFailed ? Theme.error : Theme.primary
                                 }
 
@@ -319,8 +375,8 @@ Scope {
                                     id: pwInput
                                     Layout.fillWidth: true
                                     echoMode: TextInput.Password
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeMd
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeMd ?? 14
                                     color: Theme.on_surface
                                     enabled: !lockRoot.isChecking
                                     passwordCharacter: "•"
@@ -329,10 +385,14 @@ Scope {
                                         anchors.fill: parent
                                         verticalAlignment: Text.AlignVCenter
                                         text: "enter password to unlock..."
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        color: Theme.on_surface_disabled
+                                        font.family: Theme?.fontFamily ?? "sans-serif"
+                                        font.pixelSize: Theme?.fontSizeSm ?? 12
+                                        color: Theme?.on_surface_disabled ?? Theme?.on_surface_variant ?? "#888888"
                                         visible: pwInput.text === "" && !pwInput.activeFocus
+                                    }
+
+                                    onTextChanged: {
+                                        if (lockRoot.authFailed) lockRoot.authFailed = false;
                                     }
 
                                     onAccepted: {
@@ -354,9 +414,9 @@ Scope {
                                 }
 
                                 IconButton {
-                                    icon: Theme.iconChevronRight
+                                    icon: Theme?.iconChevronRight ?? "➜"
                                     tooltip: "unlock"
-                                    iconSize: Theme.fontSizeSm
+                                    iconSize: Theme?.fontSizeSm ?? 12
                                     visible: pwInput.text.length > 0
                                     onClicked: {
                                         const p = pwInput.text;
@@ -370,8 +430,8 @@ Scope {
                         // feedback status
                         Text {
                             text: lockRoot.isChecking ? "authenticating..." : (lockRoot.authFailed ? "incorrect password, try again" : "")
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Medium
                             color: lockRoot.authFailed ? Theme.error : Theme.on_surface_disabled
                             Layout.alignment: Qt.AlignHCenter
@@ -387,28 +447,27 @@ Scope {
                         spacing: 24
 
                         IconButton {
-                            icon: Theme.iconPower
+                            icon: Theme?.iconPower ?? "\uF8C7"
                             tooltip: "shut down"
-                            iconSize: Theme.fontSizeMd
+                            iconSize: Theme?.fontSizeMd ?? 14
                             onClicked: Quickshell.execDetached(["systemctl", "poweroff"])
                         }
 
                         IconButton {
-                            icon: Theme.iconRefresh
+                            icon: Theme?.iconRefresh ?? "\uF053"
                             tooltip: "restart"
-                            iconSize: Theme.fontSizeMd
+                            iconSize: Theme?.fontSizeMd ?? 14
                             onClicked: Quickshell.execDetached(["systemctl", "reboot"])
                         }
 
                         IconButton {
-                            icon: Theme.iconMoon
+                            icon: Theme?.iconMoon ?? "\uF159"
                             tooltip: "sleep"
-                            iconSize: Theme.fontSizeMd
+                            iconSize: Theme?.fontSizeMd ?? 14
                             onClicked: Quickshell.execDetached(["systemctl", "suspend"])
                         }
                     }
 
-                    // matching screen corners so our curved monitor bezels don't disappear
                     ConcaveCorner {
                         anchors.top: parent.top
                         anchors.left: parent.left

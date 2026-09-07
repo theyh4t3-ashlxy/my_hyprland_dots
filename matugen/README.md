@@ -1,11 +1,15 @@
 # matugen
 
-material you color engine that extracts palettes from wallpapers and terrorizes every config file on the system.
+the material you color engine that extracts dynamic palettes from wallpapers and terrorizes every config file on your filesystem.
 
-one wallpaper to rule them all
+one wallpaper to rule them all. one binary to bind them.
 
-reads an image, does math on color vectors, and dumps synchronized hex codes into hyprland, kitty, quickshell, fastfetch, zsh, nvim, yazi, and gtk.
+matugen reads your wallpaper image, runs color quantizer math on raw rgb vectors, generates harmonic material 3 palette tokens, and violently writes them across hyprland, kitty, quickshell, fastfetch, zsh, nvim, yazi, and gtk stylesheets simultaneously.
 
-- `config.toml`: the hit list of every config file matugen is allowed to assassinate.
-- `templates/`: raw files with template tokens waiting for fresh hex codes.
-- `post-hook-scripts/`: reload hooks that smack programs upside the head so they notice the theme changed.
+## components
+- `config.toml`: the hit list. defines input templates, output destinations, keywords, and reload hooks. every app that matugen is legally permitted to assassinate is listed here.
+- `templates/`: skeleton files filled with template variables waiting for fresh hex codes. this includes `Theme.qml` which houses our official google material symbols and color tokens.
+- `post-hook-scripts/`: reactive shell scripts executed after templates compile to kick running daemons and force them to redraw their surfaces.
+
+## life-saving invocation note
+never run matugen interactively in automated background scripts without `--source-color-index 0` unless you enjoy having your terminal hang forever waiting for a phantom stdin input that will never come.

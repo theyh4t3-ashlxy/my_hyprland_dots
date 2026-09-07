@@ -1,7 +1,8 @@
 # bar
 
-the status bar that docks anywhere without having an identity crisis.
+the status bar that docks anywhere because commitment is terrifying.
 
-dock it top bottom left or right and pray
+top? bottom? left? right? dock it wherever your executive dysfunction feels like today. unlike archaic bars that demand a full config reload and a sacrificial prayer just to move ten pixels to the left, this thing adapts dynamically without restarting the compositor.
 
-- `StatusBar.qml`: dynamically positions itself on any screen edge ("top", "bottom", "left", "right"). supports pill groupings, hover expansions, liquid corner docking, and live layout switching via BarStudio without restarting quickshell.
+## components
+- `StatusBar.qml`: the chameleon bar. dynamically repositions itself on whatever screen edge `Settings.barEdge` demands. supports smooth hover expansions, liquid corner docking via canvas mathematics, pill groupings with spring physics, and hot-reloading widget layouts dispatched straight from `BarStudio`.

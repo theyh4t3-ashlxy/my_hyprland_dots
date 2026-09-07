@@ -1,7 +1,8 @@
 # lockscreen
 
-hyprland lockscreen built directly into quickshell.
+keep out unless you know the magic words.
 
-keep out unless you know the magic words
+hyprlock is fine if you like plaintext configs, but having your lockscreen wired directly into the quickshell layer-shell engine means zero flickering, seamless token sharing, and total aesthetic continuity.
 
-- `LockScreen.qml`: full-screen security surface with pam authentication, password input, clock, media playback controls, and battery status. hooks into quickshell's `qs ipc call lock lock` for instant manual locking.
+## the bouncer
+- `LockScreen.qml`: full-screen security surface backed by native pam authentication. includes a live digital clock, material battery and wifi status pills, media playback controls with mpris album art, and a password field that shivers aggressively when you fat-finger your credentials. hooks into `qs ipc call lock lock` for instant manual locking from keybindings.

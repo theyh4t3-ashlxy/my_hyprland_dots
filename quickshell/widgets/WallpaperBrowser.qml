@@ -32,6 +32,7 @@ Rectangle {
     property bool isBatchDownloading: false
     property string batchStatusText: ""
     property string liveSearchQuery: ""
+    property var allLocalWallpapers: []
 
     ListModel { id: localWpModel }
     ListModel { id: localLiveWpModel }
@@ -92,6 +93,7 @@ Rectangle {
         if (!str || str.trim() === "") return;
         try {
             let items = JSON.parse(str);
+            root.allLocalWallpapers = items || [];
             localWpModel.clear();
             localLiveWpModel.clear();
             for (let i = 0; i < items.length; i++) {
@@ -991,8 +993,9 @@ Rectangle {
 
                 readonly property var uniqueParentCategories: {
                     let cats = ["all"];
-                    for (let i = 0; i < localWpModel.count; i++) {
-                        let item = localWpModel.get(i);
+                    let items = root.allLocalWallpapers || [];
+                    for (let i = 0; i < items.length; i++) {
+                        let item = items[i];
                         let pCat = item?.parentCategory || "root";
                         if (pCat && cats.indexOf(pCat) === -1) {
                             cats.push(pCat);
@@ -1049,8 +1052,9 @@ Rectangle {
                 readonly property var uniqueSubCategories: {
                     if (root.localCategoryFilter === "all") return [];
                     let subs = ["all"];
-                    for (let i = 0; i < localWpModel.count; i++) {
-                        let item = localWpModel.get(i);
+                    let items = root.allLocalWallpapers || [];
+                    for (let i = 0; i < items.length; i++) {
+                        let item = items[i];
                         if (item && item.parentCategory === root.localCategoryFilter && item.subCategory && item.subCategory !== "") {
                             if (subs.indexOf(item.subCategory) === -1) {
                                 subs.push(item.subCategory);
@@ -1073,7 +1077,7 @@ Rectangle {
                         spacing: 6
 
                         Text {
-                            text: "󰉋 subfolder:"
+                            text: (Theme?.iconFolder ?? "\uE2C7") + " subfolder:"
                             font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeXs ?? 10
                             color: Theme.on_surface_variant
@@ -1112,16 +1116,19 @@ Rectangle {
 
                 readonly property var filteredLocalWps: {
                     let result = [];
-                    for (let i = 0; i < localWpModel.count; i++) {
-                        let item = localWpModel.get(i);
+                    let items = root.allLocalWallpapers || [];
+                    let pFilter = root.localCategoryFilter;
+                    let subFilter = root.localSubCategoryFilter;
+                    let sQuery = root.localSearchQuery.trim().toLowerCase();
+                    for (let i = 0; i < items.length; i++) {
+                        let item = items[i];
                         if (!item) continue;
                         let catStr = (item.category ?? "").toLowerCase();
                         let nameStr = (item.name ?? "").toLowerCase();
                         let pCat = item.parentCategory ?? "";
                         let subCat = item.subCategory ?? "";
-                        let pMatch = root.localCategoryFilter === "all" || pCat === root.localCategoryFilter || catStr.indexOf(root.localCategoryFilter.toLowerCase()) !== -1;
-                        let subMatch = root.localSubCategoryFilter === "all" || subCat === root.localSubCategoryFilter;
-                        let sQuery = root.localSearchQuery.trim().toLowerCase();
+                        let pMatch = pFilter === "all" || pCat === pFilter || catStr.indexOf(pFilter.toLowerCase()) !== -1;
+                        let subMatch = subFilter === "all" || subCat === subFilter;
                         let searchMatch = sQuery === "" || nameStr.indexOf(sQuery) !== -1 || catStr.indexOf(sQuery) !== -1;
 
                         if (pMatch && subMatch && searchMatch) {
@@ -1154,8 +1161,8 @@ Rectangle {
                             anchors.centerIn: parent
                             spacing: 4
                             Text {
-                                text: "󰒝"
-                                font.family: Theme?.fontMono ?? "monospace"
+                                text: Theme?.iconShuffle ?? "\uE043"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
                                 font.pixelSize: 10
                                 color: Theme.primary
                             }

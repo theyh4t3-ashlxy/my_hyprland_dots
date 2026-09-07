@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // matugen color soup that burns my retinas
+    // --- Dynamic Palette Injection (Matugen / M3 tokens) ---
     readonly property color primary:               "{{colors.primary.default.hex}}"
     readonly property color on_primary:            "{{colors.on_primary.default.hex}}"
     readonly property color primary_container:     "{{colors.primary_container.default.hex}}"
@@ -51,8 +51,10 @@ QtObject {
     readonly property color inverse_primary:        "{{colors.inverse_primary.default.hex}}"
     readonly property color source_color:           "{{colors.source_color.default.hex}}"
 
+    // --- Utility Functions ---
     function alpha(c: color, a: real): color { return Qt.rgba(c.r, c.g, c.b, a) }
 
+    // --- State Tints & Overlays ---
     readonly property color primary_overlay:        alpha(primary, 0.18)
     readonly property color secondary_overlay:      alpha(secondary, 0.18)
     readonly property color tertiary_overlay:       alpha(tertiary, 0.18)
@@ -68,6 +70,7 @@ QtObject {
     readonly property color textStroke:             "#000000"
     readonly property color textShadow:             "#000000"
 
+    // --- Typography & Metrics ---
     readonly property string fontSans:              Settings?.fontSans ?? Settings?.fontFamily ?? "Noto Sans"
     readonly property string fontMono:              Settings?.fontMono ?? "JetBrainsMono Nerd Font"
     readonly property string fontDisplay:           Settings?.fontDisplay ?? fontSans
@@ -88,6 +91,7 @@ QtObject {
     readonly property int    fontSizeXl:            Math.round(18 * fontScale)
     readonly property int    fontSizeTitle:         Math.round(22 * fontScale)
 
+    // --- Geometric Curvature & Shell Measurements ---
     readonly property int    radiusSm:              2
     readonly property int    radiusMd:              4
     readonly property int    radiusLg:              8
@@ -112,6 +116,7 @@ QtObject {
     readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "bar"
     readonly property string barStyle:              Settings?.barStyle ?? "glass"
 
+    // --- Surface & Backplate Visual Resolvers ---
     function getStyleColor(role: string, bs: string): color {
         switch (role) {
             case "barBg":
@@ -217,12 +222,14 @@ QtObject {
     readonly property color pillHover:        getStyleColor("pillHover", barStyle)
     readonly property color pillBorder:       getStyleColor("pillBorder", barStyle)
 
+    // --- Flyout Geometry ---
     readonly property int    popupWidth:            460
     readonly property int    popupHeight:           580
     readonly property int    popupPadding:          16
     readonly property int    popupSpacing:          10
     readonly property int    thumbSize:             180
 
+    // --- Animation Timings & Curves ---
     readonly property real   animSpeedMult:         Settings?.animSpeed === "instant" ? 0.01 : ((Settings?.animSpeed === "snappy" || Settings?.animSpeed === "superSnappy") ? 0.7 : (Settings?.animSpeed === "hyper" ? 0.4 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)))
     readonly property bool   isVertical:            Settings?.barPosition === "left" || Settings?.barPosition === "right"
     readonly property int    animFast:              Math.round(120 * animSpeedMult)
@@ -230,6 +237,7 @@ QtObject {
     readonly property int    animSlow:              Math.round(350 * animSpeedMult)
     readonly property var    animEasing:            Easing.OutCubic
 
+    // --- Font Icon Font-Family Selection ---
     readonly property string iconSet:               Settings?.iconSet ?? "material"
     readonly property string fontIcon: {
         if (iconSet === "kaomoji" || iconSet === "text") return fontFamily;
@@ -240,9 +248,16 @@ QtObject {
             if (families.indexOf(target) >= 0) return target;
             return fontMono;
         }
-        return Settings?.fontIcon ?? fontMono;
+        let fams = Qt.fontFamilies();
+        let chosen = Settings?.fontMaterial ?? "Material Symbols Rounded";
+        if (fams.indexOf(chosen) >= 0) return chosen;
+        if (fams.indexOf("Material Symbols Rounded") >= 0) return "Material Symbols Rounded";
+        if (fams.indexOf("Material Symbols Outlined") >= 0) return "Material Symbols Outlined";
+        if (fams.indexOf("Material Symbols Sharp") >= 0) return "Material Symbols Sharp";
+        return fontMono;
     }
 
+    // --- Kaomoji Mode Dictionary ---
     readonly property var kaomojiMap: ({
         "arch": "(^_^)v",
         "appLauncher": "(^_^)v",
@@ -339,6 +354,7 @@ QtObject {
         "collapse": "[-]"
     })
 
+    // --- Minimal Text Mode Dictionary ---
     readonly property var textMap: ({
         "arch": "apps",
         "appLauncher": "apps",
@@ -451,6 +467,7 @@ QtObject {
         return mat;
     }
 
+    // --- Dynamic State Glyph Resolvers ---
     function getBatteryIcon(pct: int, isCharging: bool, isSaver: bool, isVertical: bool): string {
         let p = (pct === undefined || pct === null || isNaN(pct)) ? -1 : Math.max(0, Math.min(100, Math.round(pct)));
         let lvl = p < 0 ? -1 : Math.min(10, Math.floor(p / 10));
@@ -502,12 +519,12 @@ QtObject {
             return "";
         }
 
-        if (lvl < 0) return "󰂎";
+        if (lvl < 0) return "\uE19C";
         if (isCharging) {
-            const matCharging = ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"];
+            const matCharging = ["\uF0A2", "\uF0A2", "\uF0A3", "\uF0A3", "\uF0A4", "\uF0A4", "\uF0A5", "\uF0A6", "\uF0A6", "\uF0A7", "\uE1A3"];
             return matCharging[lvl];
         }
-        const matDischarging = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"];
+        const matDischarging = ["\uE19C", "\uF09C", "\uF09D", "\uF09D", "\uF09E", "\uF09E", "\uF09F", "\uF0A0", "\uF0A0", "\uF0A1", "\uE1A5"];
         return matDischarging[lvl];
     }
 
@@ -525,17 +542,17 @@ QtObject {
             return pct + "%";
         }
         if (iconSet === "windows") {
-            if (pct <= 33) return "\uE993";
-            if (pct <= 66) return "\uE994";
-            return "\uE995";
+            if (pct <= 33) return "\uE993"; // Volume1
+            if (pct <= 66) return "\uE994"; // Volume2
+            return "\uE995";               // Volume3
         }
         if (iconSet === "awesome") {
             if (pct <= 50) return "";
             return "";
         }
-        if (pct <= 33) return "󰕿";
-        if (pct <= 66) return "󰖀";
-        return "󰕾";
+        if (pct <= 33) return "\uE04D";
+        if (pct <= 66) return "\uE04D";
+        return "\uE050";
     }
 
     function getWifiIcon(signalPct: int, isConnected: bool, isEthernet: bool): string {
@@ -553,121 +570,123 @@ QtObject {
             return "high";
         }
         if (iconSet === "windows") {
-            if (sig < 35) return "\uE872";
-            if (sig < 70) return "\uE873";
-            return "\uE874";
+            if (sig < 35) return "\uE872"; // Wifi2
+            if (sig < 70) return "\uE873"; // Wifi3
+            return "\uE874";               // Wifi4
         }
         if (iconSet === "awesome") {
             return "";
         }
-        if (sig < 35) return "󰤢";
-        if (sig < 70) return "󰤥";
-        return "󰤨";
+        if (sig < 35) return "\uE4CA";
+        if (sig < 70) return "\uE4D9";
+        return "\uE63E";
     }
 
-    readonly property string iconArch:              getIcon("󰣇", "\uE700", "", "arch")
-    readonly property string iconAppLauncher:       iconArch
-    readonly property string iconWorkspaces:        getIcon("󰍹", "\uF0E2", "", "workspaces")
-    readonly property string iconSearch:            getIcon("󰍉", "\uE721", "", "search")
-    readonly property string iconClose:             getIcon("󰅖", "\uE711", "", "close")
-    readonly property string iconCheck:             getIcon("󰄬", "\uE73E", "", "check")
-    readonly property string iconCheckCircle:       getIcon("󰄲", "\uF13E", "", "checkCircle")
-    readonly property string iconSettings:          getIcon("󰒓", "\uE713", "", "settings")
+    // --- Static Glyph Index (Material Symbols, Segoe Fluent, FontAwesome) ---
+    readonly property string iconArch:              getIcon("\uE88A", "\uE71D", "", "arch")
+    readonly property string iconAppLauncher:       getIcon("\uE5C3", "\uE71D", "", "appLauncher")
+    readonly property string iconWorkspaces:        getIcon("\uE871", "\uE7C4", "", "workspaces") // Win: TaskView
+    readonly property string iconSearch:            getIcon("\uE8B6", "\uE721", "", "search")
+    readonly property string iconClose:             getIcon("\uE5CD", "\uE711", "", "close")
+    readonly property string iconCheck:             getIcon("\uE5CA", "\uE73E", "", "check")
+    readonly property string iconCheckCircle:       getIcon("\uF0BE", "\uF13E", "", "checkCircle")
+    readonly property string iconSettings:          getIcon("\uE8B8", "\uE713", "", "settings")
     readonly property string iconGear:              iconSettings
-    readonly property string iconSave:              getIcon("󰆓", "\uE74E", "", "save")
-    readonly property string iconRefresh:           getIcon("󰑐", "\uE895", "", "refresh")
-    readonly property string iconTrash:             getIcon("󰩹", "\uE74D", "", "trash")
-    readonly property string iconClipboard:         getIcon("󰅌", "\uF0E3", "", "clipboard")
-    readonly property string iconTray:              getIcon("󱊖", "\uE718", "", "tray")
-    readonly property string iconGrid:              getIcon("󰕰", "\uE74C", "", "grid")
-    readonly property string iconNote:              getIcon("󰏫", "\uE70F", "", "note")
+    readonly property string iconSave:              getIcon("\uE161", "\uE74E", "", "save")
+    readonly property string iconRefresh:           getIcon("\uE5D5", "\uE895", "", "refresh")
+    readonly property string iconTrash:             getIcon("\uE92E", "\uE74D", "", "trash")
+    readonly property string iconClipboard:         getIcon("\uE14D", "\uF0E3", "", "clipboard")
+    readonly property string iconTray:              getIcon("\uE5CE", "\uE70E", "", "tray")      // Win: ChevronUp
+    readonly property string iconGrid:              getIcon("\uE9B0", "\uE74C", "", "grid")
+    readonly property string iconNote:              getIcon("\uF097", "\uE70F", "", "note")
     readonly property string iconEdit:              iconNote
-    readonly property string iconCoffee:            getIcon("󰅠", "\uE703", "", "coffee")
-    readonly property string iconClock:             getIcon("󰅐", "\uEC92", "", "clock")
-    readonly property string iconCpu:               getIcon("󰍛", "\uE9F5", "", "cpu")
-    readonly property string iconMem:               getIcon("󰘚", "\uE772", "", "mem")
-    readonly property string iconThermo:            getIcon("󰔏", "\uE9CA", "", "thermo")
-    readonly property string iconEye:               getIcon("󰈈", "\uE890", "", "eye")
-    readonly property string iconEyeOff:            getIcon("󰈉", "\uED1A", "", "eyeOff")
-    readonly property string iconHeart:             getIcon("󰋑", "\uEB51", "", "heart")
-    readonly property string iconDownload:          getIcon("󰇚", "\uE896", "", "download")
-    readonly property string iconFolder:            getIcon("󰉋", "\uE838", "", "folder")
-    readonly property string iconGlobe:             getIcon("󰖟", "\uE774", "", "globe")
+    readonly property string iconCoffee:            getIcon("\uEFEF", "\uEC32", "", "coffee")    // Win: Cafe
+    readonly property string iconClock:             getIcon("\uEFD6", "\uE917", "", "clock")     // Win: Clock
+    readonly property string iconCpu:               getIcon("\uE322", "\uE9F5", "", "cpu")
+    readonly property string iconMem:               getIcon("\uE322", "\uE772", "", "mem")
+    readonly property string iconThermo:            getIcon("\uF076", "\uE9CA", "", "thermo")
+    readonly property string iconEye:               getIcon("\uE8F4", "\uE890", "", "eye")
+    readonly property string iconEyeOff:            getIcon("\uE8F5", "\uED1A", "", "eyeOff")
+    readonly property string iconHeart:             getIcon("\uE87E", "\uEB51", "", "heart")
+    readonly property string iconDownload:          getIcon("\uF090", "\uE896", "", "download")
+    readonly property string iconFolder:            getIcon("\uE2C7", "\uE838", "", "folder")
+    readonly property string iconGlobe:             getIcon("\uE80B", "\uE774", "", "globe")
 
-    readonly property string iconVolMute:           getIcon("󰝟", "\uE74F", "", "volMute")
-    readonly property string iconVolLow:            getIcon("󰕿", "\uE992", "", "volLow")
-    readonly property string iconVolMid:            getIcon("󰖀", "\uE994", "", "volMid")
-    readonly property string iconVolHigh:           getIcon("󰕾", "\uE767", "", "volHigh")
-    readonly property string iconMic:               getIcon("󰍬", "\uE720", "", "mic")
-    readonly property string iconMicMute:           getIcon("󰍭", "\uF781", "", "micMute")
-    readonly property string iconPalette:           getIcon("󰏘", "\uE790", "", "palette")
-    readonly property string iconHeadphones:        getIcon("󰋋", "\uE7F6", "", "headphones")
-    readonly property string iconEqualizer:         getIcon("󰎎", "\uE9E9", "", "equalizer")
+    readonly property string iconVolMute:           getIcon("\uE04F", "\uE74F", "", "volMute")
+    readonly property string iconVolLow:            getIcon("\uE04D", "\uE992", "", "volLow")
+    readonly property string iconVolMid:            getIcon("\uE04D", "\uE994", "", "volMid")
+    readonly property string iconVolHigh:           getIcon("\uE050", "\uE995", "", "volHigh")
+    readonly property string iconMic:               getIcon("\uE31D", "\uE720", "", "mic")
+    readonly property string iconMicMute:           getIcon("\uE02B", "\uF781", "", "micMute")
+    readonly property string iconPalette:           getIcon("\uE40A", "\uE790", "", "palette")
+    readonly property string iconHeadphones:        getIcon("\uF01F", "\uE7F6", "", "headphones")
+    readonly property string iconEqualizer:         getIcon("\uE01D", "\uE9E9", "", "equalizer")
 
-    readonly property string iconBatFull:           getIcon("󰁹", "\uE83F", "", "batFull")
-    readonly property string iconBatHalf:           getIcon("󰁾", "\uE855", "", "batHalf")
-    readonly property string iconBatQuarter:        getIcon("󰁼", "\uE852", "", "batQuarter")
-    readonly property string iconBatEmpty:          getIcon("󰁺", "\uE850", "", "batEmpty")
-    readonly property string iconBatCharge:         getIcon("󰂄", "\uE83E", "", "batCharge")
+    readonly property string iconBatFull:           getIcon("\uE1A5", "\uE83F", "", "batFull")
+    readonly property string iconBatHalf:           getIcon("\uF0A0", "\uE855", "", "batHalf")
+    readonly property string iconBatQuarter:        getIcon("\uF09D", "\uE852", "", "batQuarter")
+    readonly property string iconBatEmpty:          getIcon("\uE19C", "\uE850", "", "batEmpty")
+    readonly property string iconBatCharge:         getIcon("\uE1A3", "\uE83E", "", "batCharge")
     readonly property string iconBatCharging:       iconBatCharge
 
-    readonly property string iconSun:               getIcon("󰃠", "\uE706", "", "sun")
-    readonly property string iconMoon:              getIcon("󰃞", "\uE708", "", "moon")
+    readonly property string iconSun:               getIcon("\uE518", "\uE706", "", "sun")
+    readonly property string iconMoon:              getIcon("\uE51C", "\uE708", "", "moon")
     readonly property string iconBrightness:        iconSun
 
-    readonly property string iconMusic:             getIcon("󰝚", "\uE8D6", "", "music")
-    readonly property string iconPlay:              getIcon("󰐊", "\uE768", "", "play")
-    readonly property string iconPause:             getIcon("󰏤", "\uE769", "", "pause")
-    readonly property string iconNext:              getIcon("󰒭", "\uE893", "", "next")
-    readonly property string iconPrev:              getIcon("󰒮", "\uE892", "", "prev")
-    readonly property string iconShuffle:           getIcon("󰒝", "\uE8B1", "", "shuffle")
-    readonly property string iconRepeat:            getIcon("󰑖", "\uE8EE", "", "repeat")
-    readonly property string iconRepeatOne:         getIcon("󰑘", "\uE8ED", "", "repeatOne")
+    readonly property string iconMusic:             getIcon("\uE405", "\uE8D6", "", "music")
+    readonly property string iconPlay:              getIcon("\uE037", "\uE768", "", "play")
+    readonly property string iconPause:             getIcon("\uE034", "\uE769", "", "pause")
+    readonly property string iconNext:              getIcon("\uE044", "\uE893", "", "next")
+    readonly property string iconPrev:              getIcon("\uE045", "\uE892", "", "prev")
+    readonly property string iconShuffle:           getIcon("\uE043", "\uE8B1", "", "shuffle")
+    readonly property string iconRepeat:            getIcon("\uE040", "\uE8EE", "", "repeat")
+    readonly property string iconRepeatOne:         getIcon("\uE041", "\uE8ED", "", "repeatOne")
 
-    readonly property string iconWallhaven:         getIcon("󰸉", "\uE91B", "", "wallhaven")
-    readonly property string iconWallpaper:         getIcon("󰸉", "\uE91B", "", "wallpaper")
-    readonly property string iconBell:              getIcon("󰂙", "\uE7E7", "", "bell")
-    readonly property string iconBellOutline:       getIcon("󰂚", "\uE7E7", "", "bellOutline")
-    readonly property string iconBellOff:           getIcon("󰂛", "\uEE79", "", "bellOff")
+    readonly property string iconWallhaven:         getIcon("\uE1BC", "\uE91B", "", "wallhaven")
+    readonly property string iconWallpaper:         getIcon("\uE1BC", "\uE91B", "", "wallpaper")
+    readonly property string iconBell:              getIcon("\uE7F5", "\uE7E7", "", "bell")
+    readonly property string iconBellOutline:       getIcon("\uE7F5", "\uEA8F", "", "bellOutline")
+    readonly property string iconBellOff:           getIcon("\uE7F6", "\uEE79", "", "bellOff")
 
-    readonly property string iconEthernet:          getIcon("󰈀", "\uE839", "", "ethernet")
-    readonly property string iconWifi:              getIcon("󰤨", "\uE701", "", "wifi")
-    readonly property string iconWifiHigh:          getIcon("󰤨", "\uE874", "", "wifiHigh")
-    readonly property string iconWifiMed:           getIcon("󰤥", "\uE873", "", "wifiMed")
-    readonly property string iconWifiLow:           getIcon("󰤢", "\uE872", "", "wifiLow")
-    readonly property string iconWifiOff:           getIcon("󰤮", "\uE998", "", "wifiOff")
-    readonly property string iconBluetooth:         getIcon("󰂯", "\uE702", "", "bluetooth")
-    readonly property string iconBluetoothConnected:getIcon("󰂱", "\uE702", "", "bluetoothConnected")
-    readonly property string iconBluetoothOff:      getIcon("󰂲", "\uE702", "", "bluetoothOff")
+    readonly property string iconEthernet:          getIcon("\uEB2F", "\uE839", "", "ethernet")
+    readonly property string iconWifi:              getIcon("\uE63E", "\uE701", "", "wifi")
+    readonly property string iconWifiHigh:          getIcon("\uE63E", "\uE874", "", "wifiHigh")
+    readonly property string iconWifiMed:           getIcon("\uE4D9", "\uE873", "", "wifiMed")
+    readonly property string iconWifiLow:           getIcon("\uE4CA", "\uE872", "", "wifiLow")
+    readonly property string iconWifiOff:           getIcon("\uE648", "\uE998", "", "wifiOff")
+    readonly property string iconBluetooth:         getIcon("\uE1A7", "\uE702", "", "bluetooth")
+    readonly property string iconBluetoothConnected:getIcon("\uE1A8", "\uF5B8", "", "bluetoothConnected") // Win: Paired
+    readonly property string iconBluetoothOff:      getIcon("\uE1A9", "\uE8B8", "", "bluetoothOff")       // Win: Disconnected
 
-    readonly property string iconPower:             getIcon("󰐥", "\uE7E8", "", "power")
+    readonly property string iconPower:             getIcon("\uF8C7", "\uE7E8", "", "power")
     readonly property string iconShutdown:          iconPower
-    readonly property string iconLock:              getIcon("󰌾", "\uE72E", "", "lock")
-    readonly property string iconLogout:            getIcon("󰍃", "\uF3B1", "", "logout")
-    readonly property string iconReboot:            getIcon("󰑐", "\uE895", "", "reboot")
-    readonly property string iconSuspend:           getIcon("󰤄", "\uE708", "", "suspend")
-    readonly property string iconHibernate:         getIcon("󰒲", "\uE708", "", "hibernate")
+    readonly property string iconLock:              getIcon("\uE899", "\uE72E", "", "lock")
+    readonly property string iconLogout:            getIcon("\uE9BA", "\uF3B1", "", "logout")
+    readonly property string iconReboot:            getIcon("\uF053", "\uE895", "", "reboot")
+    readonly property string iconSuspend:           getIcon("\uF159", "\uE708", "", "suspend")
+    readonly property string iconHibernate:         getIcon("\uEB3B", "\uEC55", "", "hibernate")
 
-    readonly property string iconChevronRight:      getIcon("󰅂", "\uE974", "", "chevronRight")
-    readonly property string iconChevronLeft:       getIcon("󰅁", "\uE973", "", "chevronLeft")
-    readonly property string iconChevronDown:       getIcon("󰅀", "\uE972", "", "chevronDown")
-    readonly property string iconChevronUp:         getIcon("󰅃", "\uE70E", "", "chevronUp")
-    readonly property string iconFlame:             getIcon("󰈸", "\uE7E8", "", "flame")
-    readonly property string iconSparkles:          getIcon("󰓏", "\uE7C5", "", "sparkles")
-    readonly property string iconRadio:             getIcon("󰐹", "\uE8D6", "", "radio")
-    readonly property string iconSliders:           getIcon("󰘮", "\uE9E9", "", "sliders")
-    readonly property string iconTerminal:          getIcon("󰆍", "\uE756", "", "terminal")
-    readonly property string iconCalendar:          getIcon("󰸉", "\uE787", "", "calendar")
-    readonly property string iconHistory:           getIcon("󰋚", "\uE81C", "", "history")
-    readonly property string iconCopy:              getIcon("󰆏", "\uE8C8", "", "copy")
-    readonly property string iconExternalLink:      getIcon("󰌹", "\uE8A7", "", "externalLink")
-    readonly property string iconSignal:            getIcon("󰈀", "\uE874", "", "signal")
-    readonly property string iconFilter:            getIcon("󰈲", "\uE71C", "", "filter")
-    readonly property string iconUser:              getIcon("󰄛", "\uE77B", "", "user")
-    readonly property string iconShield:            getIcon("󰞌", "\uEA18", "", "shield")
-    readonly property string iconExpand:            getIcon("󰁌", "\uE740", "", "expand")
-    readonly property string iconCollapse:          getIcon("󰁋", "\uE73F", "", "collapse")
+    readonly property string iconChevronRight:      getIcon("\uE5CC", "\uE974", "", "chevronRight")
+    readonly property string iconChevronLeft:       getIcon("\uE5CB", "\uE973", "", "chevronLeft")
+    readonly property string iconChevronDown:       getIcon("\uE5CF", "\uE972", "", "chevronDown")
+    readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE70E", "", "chevronUp")
+    readonly property string iconFlame:             getIcon("\uEF55", "\uE814", "", "flame")      // Win: HeartPulse/Energy
+    readonly property string iconSparkles:          getIcon("\uE65F", "\uE7C5", "", "sparkles")
+    readonly property string iconRadio:             getIcon("\uE03E", "\uEC18", "", "radio")      // Win: Boombox
+    readonly property string iconSliders:           getIcon("\uE429", "\uE9E9", "", "sliders")
+    readonly property string iconTerminal:          getIcon("\uEB8E", "\uE756", "", "terminal")
+    readonly property string iconCalendar:          getIcon("\uE935", "\uE787", "", "calendar")   // MDI: Calendar Fixed!
+    readonly property string iconHistory:           getIcon("\uE8B3", "\uE81C", "", "history")
+    readonly property string iconCopy:              getIcon("\uE14D", "\uE8C8", "", "copy")
+    readonly property string iconExternalLink:      getIcon("\uE89E", "\uE8A7", "", "externalLink")
+    readonly property string iconSignal:            getIcon("\uE202", "\uEC3A", "", "signal")     // MDI & Win Fixed!
+    readonly property string iconFilter:            getIcon("\uE152", "\uE71C", "", "filter")
+    readonly property string iconUser:              getIcon("\uF0D3", "\uE77B", "", "user")       // MDI: Account Fixed!
+    readonly property string iconShield:            getIcon("\uE9E0", "\uEA18", "", "shield")
+    readonly property string iconExpand:            getIcon("\uE5D0", "\uE740", "", "expand")
+    readonly property string iconCollapse:          getIcon("\uE5D1", "\uE73F", "", "collapse")
 
+    // --- Emotive Kaomoji Presets ---
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
     readonly property string kaoSad:                "(╥_╥)"
     readonly property string kaoCoffee:             "( ᐛ )و"
@@ -708,177 +727,180 @@ QtObject {
         return text ?? "";
     }
 
+    // --- Subsystem Status / Flavor Texts Generator ---
     function getFlavor(category: string, fallback: string): string {
         if (!Settings?.unhingedFlavor) return fallback ?? "";
         let quotes = {
             "network_on": [
-                "beaming photons into brain",
-                "locked into the grid",
-                "surveillance feed online",
-                "5g brain waves active",
-                "feeding packets to the machine",
-                "interceptor telemetry online",
-                "direct fiber link to the void",
-                "ping is crisp like autumn leaves",
-                "downloading more ram",
-                "wired directly into the matrix",
-                "packet sniffing in progress"
+                "beaming photons directly into frontal lobe",
+                "locked into the planetary hypergrid",
+                "surveillance feed calibrated & online",
+                "5g brain waves humming at optimal resonance",
+                "stuffing uncompressed packets into kernel socket",
+                "direct fiber link tunneling to the digital abyss",
+                "ping is crisp like autumn gravel under boot",
+                "downloading extra physical RAM via UDP",
+                "hardwired straight to the cyber matrix",
+                "packet sniffing every zero and one",
+                "handshake verified: hello darkness my old friend",
+                "latency lower than my attention span"
             ],
             "network_off": [
-                "off the grid, touching grass",
-                "wifi machine broke",
-                "radio silence",
-                "airgapped paranoia mode",
-                "carrier pigeon deployed",
-                "no packets no masters",
-                "wifi card went to buy milk",
-                "router took a dirt nap",
-                "offline goblin mode",
-                "pure analog silence",
-                "unplugged and untouchable"
+                "airgapped paranoia protocol activated",
+                "wifi adapter went to the corner store for milk",
+                "touching physical grass in real 4K",
+                "carrier pigeon squadron en route",
+                "no packets, no masters, pure anarchy",
+                "router took an eternal dirt nap",
+                "offline goblin mode initialized",
+                "pure untraceable analog radio silence",
+                "cut the fiber cord, escaped the simulation",
+                "unreachable, untracked, unbothered",
+                "zero ping because zero network exists",
+                "transmitting exclusively via telepathy"
             ],
             "battery_charging": [
-                "injecting pure voltage",
-                "drinking from the wall",
-                "fast charging go brrr",
-                "sipping raw current like boba",
-                "detachable power grid tether",
-                "gluttonous electron feast",
-                "wired life support running",
-                "sucking the wall dry",
-                "energy levels ascending",
-                "dangerously energized"
+                "mainlining raw high-voltage current",
+                "drinking straight from the breaker box",
+                "electrons aggressively cramming into lithium cages",
+                "sipping sweet grid power like boba tea",
+                "detachable wall tether keeping machine alive",
+                "gluttonous electron banquet underway",
+                "recharging anger cells at maximum amperage",
+                "wired life support running at capacity",
+                "absorbing wall juice directly into copper traces",
+                "dangerously energized and unstable"
             ],
             "battery_low": [
-                "running on pure spite",
-                "im literally dying",
-                "plug me in coward",
-                "hanging by a single electron",
-                "one gust of wind and im gone",
-                "seconds away from flatline",
-                "emergency life support failing",
-                "battery hospice care",
-                "fade to black speedrun",
-                "feed me voltage or witness my demise"
+                "running purely on stubbornness and spite",
+                "dying an agonizing digital death right now",
+                "feed me voltage this instant you coward",
+                "clinging to life by a single desperate electron",
+                "one gentle sneeze and the display goes dark",
+                "three seconds away from flatlining",
+                "emergency battery hospice care engaged",
+                "initiating fade-to-black speedrun",
+                "screen dims as my will to live evaporates",
+                "battery gasping its final microscopic breath"
             ],
             "battery_full": [
-                "overflowing with juice",
-                "100% pure power",
-                "ready for chaos",
-                "unplug me before i detonate",
-                "bursting with electrical rage",
-                "certified portable menace",
-                "battery capacity maxed out",
-                "ready to conquer the universe"
+                "brimming with unbridled electrical violence",
+                "100% capacity: unleashed portable catastrophe",
+                "fully saturated with grid power",
+                "unplug me before the desk spontaneously combusts",
+                "bursting with clean chemical anger",
+                "certified mobile threat to local coffee shops",
+                "ready to execute infinite loops indefinitely",
+                "power reserve peaked: untouchable machine god"
             ],
             "media_playing": [
-                "ears are being blessed",
-                "vibing at reckless volumes",
-                "soundtrack to my downfall",
-                "sonic waves invading skull",
-                "banger detected in the wild",
-                "aux cord privileges validated",
-                "ear drum torture (positive)",
-                "music therapy in progress",
-                "head nodding uncontrollably",
-                "frequencies are immaculate"
+                "ears currently receiving celestial blessings",
+                "vibing at criminally irresponsible volumes",
+                "playing the definitive soundtrack to bad life choices",
+                "acoustic compression waves rattling eardrums",
+                "certified certified auditory masterpiece identified",
+                "aux cord privileges completely uncontested",
+                "acoustic therapy driving away all coherent thoughts",
+                "cranial resonance synchronized to the bassline",
+                "delivering raw serotonin via audio pipeline",
+                "head oscillating in rhythmic compliance"
             ],
             "media_quiet": [
-                "dead silence",
-                "eerie calm",
-                "no bangers playing",
-                "silence is deafening",
-                "tumbleweed drifting across aux",
-                "waiting for the drop",
-                "zero decibels detected",
-                "give the ears a break",
-                "not a single acoustic vibration"
+                "dead silence in the auditory corridor",
+                "eerie tranquility engulfing the soundstage",
+                "not a single banger detected within 50 miles",
+                "silence loud enough to reveal inner tinnitus",
+                "digital tumbleweeds drifting past the audio buffer",
+                "waiting for the bass to drop... forever",
+                "exact zero decibels detected by audio server",
+                "letting the DAC enjoy an unpaid lunch break",
+                "the silence is practically vibrating"
             ],
             "notes_empty": [
-                "head empty, no thoughts",
-                "void of ideas",
-                "not a single braincell",
-                "whiteboard wiped clean",
-                "brain smooth like marble",
-                "zero plots or schemes concocted",
-                "tabula rasa in the membrane",
-                "thoughts postponed indefinitely"
+                "head totally empty, smooth like polished marble",
+                "cavernous void where master plans should be",
+                "not a single synapse fired today",
+                "clean slate: zero conspiracies currently drafted",
+                "whiteboard bleached clean by temporal amnesia",
+                "zero schemes, zero notes, absolute zen emptiness",
+                "all thoughts dismissed without prejudice",
+                "mental notepad awaiting catastrophic epiphany"
             ],
             "notifs_empty": [
-                "all quiet in the matrix",
-                "zero drama detected",
-                "nobody is bothering you",
-                "peace and quiet at last",
-                "blissful void achieved",
-                "unbothered, moisturized, in my lane",
-                "zero pings in the ether",
-                "ghost town inbox paradise"
+                "matrix is quiet: nobody is demanding anything",
+                "absolute zero drama reported in local airspace",
+                "unbothered, moisturized, staying in my lane",
+                "notification inbox declared a nature sanctuary",
+                "peace and quiet at levels never thought possible",
+                "zero pings rattling the digital perimeter",
+                "ghost town inbox paradise achieved",
+                "the bliss of being completely ignored"
             ],
             "dnd_on": [
-                "do not disturb (touch grass)",
-                "anti-social mode active",
-                "leave me alone forever",
-                "do not perceive me",
-                "bunker door sealed tight",
-                "introvert defense shield engaged",
-                "talking to me is forbidden",
-                "silence is the highest law"
+                "anti-social defense perimeter active",
+                "do not look at me, do not perceive me",
+                "blast doors sealed, communications severed",
+                "social battery at -400% and rapidly dropping",
+                "touch grass protocol enforced by martial law",
+                "talking to me is currently a felony offense",
+                "introvert bunker buried under ten miles of concrete",
+                "all incoming pings redirected straight to /dev/null"
             ],
             "volume_muted": [
-                "deafening silence",
-                "muted so i dont get jumpscared",
-                "absolute zero decibels",
-                "ears on paid vacation",
-                "audio drivers asleep at the wheel",
-                "stealth mode engaged"
+                "silence dialed to eleven",
+                "muted so YouTube ads don't detonate my soul",
+                "absolute sound vacuum inside speakers",
+                "ears on fully subsidized vacation",
+                "ALSA/Pipewire snoozing peacefully",
+                "stealth operations: not even a click escapes"
             ],
             "volume_high": [
-                "eardrum obliteration incoming",
-                "speaker drivers begging for mercy",
-                "permanent hearing loss speedrun",
-                "sound wave assault initiated",
-                "neighbors will remember this",
-                "max gain chaos"
+                "permanent hearing loss tutorial (any%)",
+                "speaker cones begging for humanitarian intervention",
+                "neighbors drafting a strongly worded cease & desist",
+                "acoustic air cannon active on your desk",
+                "skull reverberating with maximum gain chaos",
+                "decibels exceeding OSHA recommendations"
             ],
             "brightness_high": [
-                "flashbang directly into corneas",
-                "retinal incineration underway",
-                "solar flare simulator active",
-                "i can see through time and space",
-                "corneal crisping mode on"
+                "deploying tactical flashbang straight into corneas",
+                "retinal incinerator operating at nominal output",
+                "illuminating entire apartment with raw screen glow",
+                "competing directly against the noon sun",
+                "corneal crisping level: well-done"
             ],
             "brightness_low": [
-                "vampire cave lighting",
-                "goblin mode stealth shadow",
-                "saving eyes from burning agony",
-                "light photon rations engaged",
-                "living in the dark realm"
+                "vampire cave ambience successfully calibrated",
+                "undercover goblin operation under the blankets",
+                "saving optical nerves from certain destruction",
+                "photon conservation mode strictly observed",
+                "barely visible even to creatures of the night"
             ],
             "idle_inhibited": [
-                "pumped full of espresso",
-                "no sleeping on my watch",
-                "eyes taped open permanently",
-                "caffeine drip wide open",
-                "display nap privileges revoked"
+                "machine pumped full of intravenous espresso",
+                "display eyelids taped permanently open",
+                "no sleeping allowed on this workstation",
+                "caffeine drip wide open inside ACPI driver",
+                "screensaver execution privileges revoked"
             ],
             "idle_normal": [
-                "naptime permitted",
-                "resting my weary circuits",
-                "screensaver countdown ticking",
-                "idle and utterly unbothered",
-                "ready to pass out anytime"
+                "ready to take an afternoon nap at any second",
+                "screensaver countdown quietly ticking down",
+                "circuits cooling down into peaceful slumber",
+                "sleep timers running on schedule",
+                "machine dreaming of electric sheep"
             ],
             "system": [
-                "barely holding together",
-                "no crashes yet (suspicious)",
-                "kernel is vibing",
-                "held together with duct tape and hope",
-                "cpu is gently poaching an egg",
-                "linux kernel doing heavy lifting",
-                "memory leaks under control (mostly)",
-                "not on fire yet",
-                "operating within chaotic tolerances",
-                "running on optimism and swap space"
+                "held together by duct tape, prayer, and swap memory",
+                "no kernel panics yet (extremely suspicious)",
+                "CPU is currently slow-cooking a gourmet omelette",
+                "running on sheer adrenaline and open-source love",
+                "memory leaks kept under strict surveillance",
+                "not on fire yet, defying all laws of physics",
+                "kernel is vibing within reckless thermal limits",
+                "functioning purely because the bug hasn't noticed us",
+                "hardware screaming, software chilling",
+                "operating on optimism and unmerged pull requests"
             ]
         };
         let list = quotes[category];

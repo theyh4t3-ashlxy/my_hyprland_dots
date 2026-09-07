@@ -51,25 +51,25 @@ PopupPanel {
 
     function getModuleInfo(modId) {
         let meta = {
-            "launcher":       { name: "app launcher",       icon: Theme.iconArch ?? "󰣇",     desc: "application search & grid" },
-            "wallpaper":      { name: "wallpaper browser",  icon: Theme.iconWallpaper ?? "󰸉", desc: "awww & mpvpaper selector" },
-            "workspaces":     { name: "workspaces",         icon: Theme.iconWorkspaces ?? "󰍹", desc: "hyprland workspace dots" },
-            "windowTitle":    { name: "active window",      icon: Theme.iconSparkles ?? "󰄛", desc: "focused window title badge" },
-            "clock":          { name: "clock & date",       icon: Theme.iconClock ?? "󰅐",    desc: "time, date & calendar" },
-            "media":          { name: "media player",       icon: Theme.iconMusic ?? "󰝚",    desc: "mpris music controls" },
-            "quickNotes":     { name: "quick notes",        icon: Theme.iconEdit ?? "󰏫",     desc: "floating scratchpad notes" },
-            "clipboard":      { name: "clipboard manager",  icon: Theme.iconClipboard ?? "󰅌", desc: "cliphist history & sync" },
-            "idleInhibitor":  { name: "idle inhibitor",     icon: Theme.iconCoffee ?? "󰅠",   desc: "stay awake toggle" },
-            "notifications":  { name: "notifications",      icon: Theme.iconBell ?? "󰂙",     desc: "alert center & toast log" },
-            "systemTray":     { name: "system tray",        icon: Theme.iconGrid ?? "󰕰",     desc: "statusnotifier tray icons" },
-            "bluetooth":      { name: "bluetooth",          icon: Theme.iconBluetooth ?? "󰂯", desc: "bluetooth devices & scan" },
-            "network":        { name: "network status",     icon: Theme.iconWifi ?? "󰤨",      desc: "wifi & ethernet monitor" },
-            "volume":         { name: "volume & sink",      icon: Theme.iconVolHigh ?? "󰕾",  desc: "pipewire audio controls" },
-            "battery":        { name: "battery & power",    icon: Theme.iconBatFull ?? "󰁹",  desc: "upower level & charging" },
-            "quickSettings":  { name: "quick settings",     icon: Theme.iconSettings ?? "󰒓", desc: "system & appearance toggles" },
-            "powerMenu":      { name: "power menu",         icon: Theme.iconPower ?? "󰐥",    desc: "lock, logout & power off" }
+            "launcher":       { name: "app launcher",       icon: Theme.iconArch ?? "\uE88A",     desc: "application search & grid" },
+            "wallpaper":      { name: "wallpaper browser",  icon: Theme.iconWallpaper ?? "\uE1BC", desc: "awww & mpvpaper selector" },
+            "workspaces":     { name: "workspaces",         icon: Theme.iconWorkspaces ?? "\uE871", desc: "hyprland workspace dots" },
+            "windowTitle":    { name: "active window",      icon: Theme.iconSparkles ?? "\uE65F", desc: "focused window title badge" },
+            "clock":          { name: "clock & date",       icon: Theme.iconClock ?? "\uEFD6",    desc: "time, date & calendar" },
+            "media":          { name: "media player",       icon: Theme.iconMusic ?? "\uE405",    desc: "mpris music controls" },
+            "quickNotes":     { name: "quick notes",        icon: Theme.iconEdit ?? "\uF097",     desc: "floating scratchpad notes" },
+            "clipboard":      { name: "clipboard manager",  icon: Theme.iconClipboard ?? "\uE14D", desc: "cliphist history & sync" },
+            "idleInhibitor":  { name: "idle inhibitor",     icon: Theme.iconCoffee ?? "\uEFEF",   desc: "stay awake toggle" },
+            "notifications":  { name: "notifications",      icon: Theme.iconBell ?? "\uE7F5",     desc: "alert center & toast log" },
+            "systemTray":     { name: "system tray",        icon: Theme.iconGrid ?? "\uE9B0",     desc: "statusnotifier tray icons" },
+            "bluetooth":      { name: "bluetooth",          icon: Theme.iconBluetooth ?? "\uE1A7", desc: "bluetooth devices & scan" },
+            "network":        { name: "network status",     icon: Theme.iconWifi ?? "\uE63E",      desc: "wifi & ethernet monitor" },
+            "volume":         { name: "volume & sink",      icon: Theme.iconVolHigh ?? "\uE050",  desc: "pipewire audio controls" },
+            "battery":        { name: "battery & power",    icon: Theme.iconBatFull ?? "\uE1A5",  desc: "upower level & charging" },
+            "quickSettings":  { name: "quick settings",     icon: Theme.iconSettings ?? "\uE8B8", desc: "system & appearance toggles" },
+            "powerMenu":      { name: "power menu",         icon: Theme.iconPower ?? "\uF8C7",    desc: "lock, logout & power off" }
         };
-        return meta[modId] ?? { name: modId, icon: Theme.iconGrid ?? "󰕰", desc: "status bar widget" };
+        return meta[modId] ?? { name: modId, icon: Theme.iconGrid ?? "\uE9B0", desc: "status bar widget" };
     }
 
     function isModuleVisible(modId) {

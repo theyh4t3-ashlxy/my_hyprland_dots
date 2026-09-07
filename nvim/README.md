@@ -1,11 +1,12 @@
 # nvim
 
-neovim setup configured with lua because vimscript belongs in a museum of horrors.
+neovim configured cleanly in lua because vimscript belongs in a museum of ancient curses.
 
-exit with :qa! or pull the power plug
+exit with `:qa!` or pull the power cord out of the wall. there is no middle ground.
 
-powered by lazy.nvim. light, snappy, and themed dynamically by matugen so your code matches your desktop wallpaper.
+powered by `lazy.nvim`. snappy startup times, zero plugin bloat, intelligent lsp auto-completion, treesitter parsing, and synchronized dynamically with matugen so your editor colors match whatever wallpaper is currently gracing your display.
 
-- `init.lua`: boots lazy.nvim and loads core modules.
-- `lazy-lock.json`: locked dependency tree so plugin updates don't obliterate our sanity.
-- `lua/`: all the actual lua configs and plugins.
+## directory map
+- `init.lua`: the bootstrap script. downloads `lazy.nvim` if missing and initializes the lua module tree.
+- `lazy-lock.json`: deterministic lockfile pinning plugin commits so an upstream breaking change doesn't murder your workflow while you are in the zone.
+- `lua/`: the entire modular configuration containing your keymaps, options, and plugin specifications.

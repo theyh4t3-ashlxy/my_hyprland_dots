@@ -1,11 +1,12 @@
 # controls
 
-custom ui building blocks for quickshell.
+custom ui building blocks forged from scratch because qtquick controls 2 can suck an egg.
 
-qtquick controls 2 can suck an egg
+stock qt widgets look like a corporate intranet dashboard from 2007. we wrote our own primitives with material tokens, ripple animations, and physics curves that actually feel alive.
 
-- `IconButton.qml`: clickable icon buttons with ripple feedback and hover states.
-- `ToggleSwitch.qml`: smooth animated toggle switches for quick settings.
-- `PopupPanel.qml`: base wrapper for floating dropdown cards and menus.
-- `FlickList.qml`: buttery smooth flickable scrolling list container.
-- `BarPreview.qml`: mini live preview used inside BarStudio for drag-and-drop layout editing.
+## the arsenal
+- `IconButton.qml`: clickable glyph buttons featuring material symbols, subtle hover fills, smooth scale down on press, and zero bloated stylesheets.
+- `ToggleSwitch.qml`: satisfying pill toggles with physics-based thumb sliding and dynamic active tint.
+- `PopupPanel.qml`: lightweight floating modal card wrapper with blur effects and proper elevation shadows that don't clip your contents.
+- `FlickList.qml`: buttery kinetic scrolling list container tuned with the right friction coefficients so scrolling does not feel like pushing a brick through wet cement.
+- `BarPreview.qml`: micro interactive preview component used inside `BarStudio` to drag and drop widgets around like legos.

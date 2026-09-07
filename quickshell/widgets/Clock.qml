@@ -43,15 +43,15 @@ Rectangle {
     }
 
     function getClockMoodIcon(hrs) {
-        if (!Theme?.getIcon) return Theme?.iconClock ?? "󰅐";
+        if (!Theme?.getIcon) return Theme?.iconClock ?? "\uEFD6";
         if (hrs < 6) {
-            return Theme.getIcon("󰤄", "\uE708", "", "moon", Theme?.kaoSleepy ?? "(u_u)", "night");
+            return Theme.getIcon("\uF159", "\uE708", "", "moon", Theme?.kaoSleepy ?? "(u_u)", "night");
         } else if (hrs < 12) {
-            return Theme.getIcon("󰖨", "\uE706", "", "coffee", Theme?.kaoCoffee ?? "[_]~", "morn");
+            return Theme.getIcon("\uEFEF", "\uE706", "", "coffee", Theme?.kaoCoffee ?? "[_]~", "morn");
         } else if (hrs < 18) {
-            return Theme.getIcon("󰖙", "\uE706", "", "sun", Theme?.kaoCool ?? "(^o^)", "day");
+            return Theme.getIcon("\uE518", "\uE706", "", "sun", Theme?.kaoCool ?? "(^o^)", "day");
         } else {
-            return Theme.getIcon("󰖔", "\uE708", "", "music", Theme?.kaoMusic ?? "♫", "eve");
+            return Theme.getIcon("\uE405", "\uE708", "", "music", Theme?.kaoMusic ?? "♫", "eve");
         }
     }
 

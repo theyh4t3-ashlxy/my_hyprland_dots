@@ -78,6 +78,7 @@ QtObject {
     property string fontMono: "JetBrainsMono Nerd Font"
     property string fontWindows: "Segoe Fluent Icons"
     property string fontAwesome: "Font Awesome 6 Free"
+    property string fontMaterial: "Material Symbols Rounded"
     property real fontScale: 1.0
     property string fontWeight: "regular"
     property var networkAliases: ({})
@@ -156,6 +157,7 @@ QtObject {
     onFontMonoChanged: queueSave()
     onFontWindowsChanged: queueSave()
     onFontAwesomeChanged: queueSave()
+    onFontMaterialChanged: queueSave()
     onFontScaleChanged: queueSave()
     onFontWeightChanged: queueSave()
     onMpvPanscanChanged: queueSave()
@@ -224,6 +226,7 @@ QtObject {
         { key: "fontMono", type: "string", def: "JetBrainsMono Nerd Font" },
         { key: "fontWindows", type: "string", def: "Segoe Fluent Icons" },
         { key: "fontAwesome", type: "string", def: "Font Awesome 6 Free" },
+        { key: "fontMaterial", type: "string", def: "Material Symbols Rounded" },
         { key: "fontScale", type: "float", def: 1.0 },
         { key: "fontWeight", type: "string", def: "regular" },
         { key: "networkAliases", type: "json", def: ({}) }

@@ -6,6 +6,8 @@ this is my hyprland setup. gemini, antigravity, and ai studio vibecoded this ent
 
 # what got unfucked
 
+- google material symbols migration: burned legacy nerd font mdi glyphs in a fire and migrated to official google material symbols with runtime variant switching (rounded, outlined, sharp).
+- wallpaper browser binding loop massacre: eradicated 50+ recursive qml binding loops so your cpu doesn't melt while opening the wallpaper grid.
 - bar layout studio: live interactive widget reordering (left, center, right) with liquid concave scoops. zero restarts, infinite hubris.
 - app launcher: no longer renders at 0x0 invisible ghost pixels in the shadow realm.
 - python script unification: deleted fragmented shell forks in favor of unified python scripts (wallpaper.py, session.py, clipboard.py) because bash arrays are cursed.
@@ -17,6 +19,7 @@ this is my hyprland setup. gemini, antigravity, and ai studio vibecoded this ent
 - curl pipe installer fixed: install.zsh reads from /dev/tty so piping curl doesn't instantly die on eof.
 - zsh prompt customizer: live interactive customizer with prompt styles (two-line, single-line, minimal, bracket, unhinged), custom symbols, and colors for artificial dopamine.
 - help cheatsheet: instant colorized keybind cheat sheet so you remember what keys you remapped at 4 am.
+- unhinged readme overhaul: purged corporate chatbot drivel from every directory in this repository.
 
 # how to destroy your display server
 

@@ -1,12 +1,13 @@
 # services
 
-singleton system state daemons communicating between linux subsystems and quickshell ui.
+the unholy singletons talking to linux subsystems so your ui doesn't have to get its hands dirty.
 
-the wiring behind the wallpaper
+if the widgets are the glossy face of the setup, this directory is the central nervous system. dbus listeners, wireplumber audio pipes, network status probes, backlight sysfs readers, and persistent storage engines all live here as shared singletons.
 
-- `Settings.qml`: persistent json/conf engine managing user preferences and bar configuration.
-- `NotificationService.qml`: freedesktop notification daemon implementation with ipc triggers.
-- `NetworkService.qml`: networkmanager dbus listener for wifi and ethernet connections.
-- `BrightnessService.qml`: backlight controller reading `/sys/class/backlight`.
-- `IdleService.qml`: hypridle / idle inhibitor hooks.
-- `WallpaperService.qml`: wallpaper selection and live preview manager.
+## the daemon council
+- `Settings.qml`: the config kingpin. persists bar positions, widget orders, colors, and the newly anointed `fontMaterial` settings to disk without corrupting your config.
+- `NotificationService.qml`: native freedesktop `org.freedesktop.Notifications` dbus implementation. catches alerts before they get lost in void space.
+- `NetworkService.qml`: listens to networkmanager dbus signals to report real-time wifi ssids, ethernet connectivity, and signal strength.
+- `BrightnessService.qml`: talks directly to `/sys/class/backlight` so your display brightness slider actually slides.
+- `IdleService.qml`: hooks into hypridle and idle-inhibition protocols so your monitor doesn't shut down during code compilation or movies.
+- `WallpaperService.qml`: monitors active wallpapers and drives the background generation pipelines.

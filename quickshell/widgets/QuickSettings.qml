@@ -1167,17 +1167,29 @@ Rectangle {
                             columns: 3
                             buttonHeight: 32
                             model: [
-                                { label: "material", value: "material" },
+                                { label: "material symbols", value: "material" },
                                 { label: "windows segoe", value: "windows" },
                                 { label: "font awesome", value: "awesome" },
                                 { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", value: "kaomoji" },
-                                { label: "󰦨 plain text", value: "text" }
+                                { label: "plain text", value: "text" }
                             ]
                             currentValue: Settings.iconSet
                             onSelected: val => {
                                 Settings.iconSet = val;
                                 Settings.vibeStyle = (val === "kaomoji" || val === "text") ? val : "nerd";
                             }
+                        }
+
+                        ChoiceRow {
+                            visible: Settings.iconSet === "material"
+                            title: "material symbols style"
+                            model: [
+                                { label: "rounded", value: "Material Symbols Rounded" },
+                                { label: "outlined", value: "Material Symbols Outlined" },
+                                { label: "sharp", value: "Material Symbols Sharp" }
+                            ]
+                            currentValue: Settings.fontMaterial
+                            onSelected: val => Settings.fontMaterial = val
                         }
                     }
                 }
