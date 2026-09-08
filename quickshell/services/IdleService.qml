@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
@@ -9,17 +10,32 @@ QtObject {
 
     property bool enabled: true
 
+    // Must be assigned to a property inside QtObject!
+    property IpcHandler ipc: IpcHandler {
+        target: "idle"
+
+        function toggle(): bool {
+            root.enabled = !root.enabled;
+            return root.enabled;
+        }
+
+        function status(): bool {
+            return root.enabled;
+        }
+
+        function set(state: bool): bool {
+            root.enabled = state;
+            return root.enabled;
+        }
+    }
+
     // 150s: dim screen
     property IdleMonitor dimMonitor: IdleMonitor {
         timeout: 150
         respectInhibitors: true
         onIsIdleChanged: {
             if (!root.enabled) return;
-            if (isIdle) {
-                Quickshell.execDetached(["brightnessctl", "-s", "set", "10%"]);
-            } else {
-                Quickshell.execDetached(["brightnessctl", "-r"]);
-            }
+            Quickshell.execDetached(isIdle ? ["brightnessctl", "-s", "set", "10%"] : ["brightnessctl", "-r"]);
         }
     }
 
@@ -28,12 +44,8 @@ QtObject {
         timeout: 300
         respectInhibitors: true
         onIsIdleChanged: {
-            if (!root.enabled) return;
-            if (isIdle) {
-                // Trigger native quickshell session lock
-                let lockObj = Quickshell.env("QUICKSHELL_LOCK") || null;
-                Quickshell.execDetached(["bash", "-c", "loginctl lock-session 2>/dev/null || true"]);
-            }
+            if (!root.enabled || !isIdle) return;
+            Quickshell.execDetached(["qs", "ipc", "call", "lock", "lock"]);
         }
     }
 
@@ -43,18 +55,14 @@ QtObject {
         respectInhibitors: true
         onIsIdleChanged: {
             if (!root.enabled) return;
-            if (isIdle) {
-                if (Hyprland.usingLua) {
-                    Hyprland.dispatch("hl.dsp.dpms({ action = 'disable' })");
-                } else {
-                    Hyprland.dispatch("dpms off");
-                }
+
+            let action = isIdle ? "disable" : "enable";
+            let cmd = isIdle ? "dpms off" : "dpms on";
+
+            if (Hyprland.usingLua) {
+                Hyprland.dispatch(`hl.dsp.dpms({ action = '${action}' })`);
             } else {
-                if (Hyprland.usingLua) {
-                    Hyprland.dispatch("hl.dsp.dpms({ action = 'enable' })");
-                } else {
-                    Hyprland.dispatch("dpms on");
-                }
+                Hyprland.dispatch(cmd);
             }
         }
     }
@@ -64,10 +72,8 @@ QtObject {
         timeout: 600
         respectInhibitors: true
         onIsIdleChanged: {
-            if (!root.enabled) return;
-            if (isIdle) {
-                Quickshell.execDetached(["systemctl", "suspend"]);
-            }
+            if (!root.enabled || !isIdle) return;
+            Quickshell.execDetached(["systemctl", "suspend"]);
         }
     }
 }

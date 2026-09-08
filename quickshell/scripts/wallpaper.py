@@ -1,19 +1,43 @@
 #!/usr/bin/env python3
-import sys
 import os
+import sys
 import json
+import time
+import shutil
 import random
 import hashlib
+import argparse
 import subprocess
 import urllib.request
 import urllib.parse
-import concurrent.futures
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
-CUR_WP_FILE = Path("/tmp/qs_current_wallpaper.txt")
-WALLPAPERS_JSON = Path("/tmp/qs_wallpapers.json")
-LIVE_JSON = Path("/tmp/qs_live_wallpapers.json")
-VIDEO_THUMB = Path("/tmp/qs_video_thumb.jpg")
+# --- XDG Base Directory Setup ---
+XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+XDG_RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+XDG_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+
+APP_CACHE_DIR = XDG_CACHE_HOME / "quickshell"
+THUMB_DIR = APP_CACHE_DIR / "thumbnails"
+WALLPAPERS_DIR = Path.home() / ".wallpapers"
+
+APP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+THUMB_DIR.mkdir(parents=True, exist_ok=True)
+WALLPAPERS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Runtime state (session-only)
+CUR_WP_FILE = XDG_RUNTIME_DIR / "qs_current_wallpaper.txt"
+VIDEO_THUMB = XDG_RUNTIME_DIR / "qs_video_thumb.jpg"
+
+# Persistent cached databases
+WALLPAPERS_JSON = APP_CACHE_DIR / "wallpapers.json"
+LIVE_JSON = APP_CACHE_DIR / "live_wallpapers.json"
+
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif", ".svg", ".bmp", ".tiff", ".tga", ".pnm"}
+ANIM_EXTS = {".gif"}
+VIDEO_EXTS = {".mp4", ".webm", ".mkv", ".mov"}
+ALL_EXTS = IMAGE_EXTS | ANIM_EXTS | VIDEO_EXTS
 
 CURATED_LIVE = [
     {
@@ -60,25 +84,83 @@ CURATED_LIVE = [
     }
 ]
 
+# --- Helpers ---
+
+def atomic_write_json(file_path: Path, data):
+    """Write JSON atomically to prevent corrupt files on abrupt kills."""
+    tmp_path = file_path.with_suffix(".tmp")
+    try:
+        tmp_path.write_text(json.dumps(data, indent=2))
+        tmp_path.replace(file_path)
+    except Exception as e:
+        if tmp_path.exists():
+            tmp_path.unlink()
+        sys.stderr.write(f"Failed to write JSON {file_path}: {e}\n")
+
+def make_video_thumb(video_path: str, target_thumb: Path) -> bool:
+    """Generate a single-frame thumbnail from a video file."""
+    if target_thumb.exists() and target_thumb.stat().st_size > 0:
+        return True
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-ss", "00:00:01", "-i", video_path, "-vframes", "1", "-q:v", "2", str(target_thumb)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+            check=True
+        )
+        return target_thumb.exists()
+    except Exception:
+        return False
+
+def is_live_url(url: str) -> bool:
+    clean = url.lower().split("?")[0]
+    return any(clean.endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or \
+           "giphy.com" in clean or "tenor.com" in clean
+
+def extract_filename(url: str, is_live: bool) -> str:
+    parsed_path = urllib.parse.urlsplit(url).path
+    filename = Path(parsed_path).name
+    if not filename or "." not in filename:
+        h = hashlib.md5(url.encode()).hexdigest()[:12]
+        filename = f"live_{h}.mp4" if is_live else f"wp_{h}.jpg"
+    return filename
+
+def stream_download(url: str, dest_path: Path, timeout: int = 30) -> bool:
+    """Stream download directly to a temporary file, then move to destination."""
+    temp_dest = dest_path.with_name(f".part_{dest_path.name}")
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 quickshell/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp, open(temp_dest, "wb") as out_file:
+            shutil.copyfileobj(resp, out_file)
+        temp_dest.replace(dest_path)
+        return True
+    except Exception as e:
+        if temp_dest.exists():
+            temp_dest.unlink()
+        sys.stderr.write(f"Download failed for {url}: {e}\n")
+        return False
+
+def reload_quickshell():
+    shell_qml = XDG_CONFIG_HOME / "quickshell" / "shell.qml"
+    if shell_qml.exists():
+        try:
+            shell_qml.touch()
+        except Exception:
+            pass
+
+# --- Core Commands ---
+
 def scan():
-    base_dir = Path.home() / ".wallpapers"
-    base_dir.mkdir(parents=True, exist_ok=True)
-    thumb_dir = Path.home() / ".cache" / "quickshell" / "thumbnails"
-    thumb_dir.mkdir(parents=True, exist_ok=True)
-
-    img_exts = {".png", ".jpg", ".jpeg", ".webp", ".avif", ".svg", ".bmp", ".tiff", ".tga", ".pnm"}
-    anim_exts = {".gif"}
-    video_exts = {".mp4", ".webm", ".mkv", ".mov"}
-    all_exts = img_exts | anim_exts | video_exts
-
     wallpapers = []
     seen_paths = set()
+    videos_to_thumb = []
 
-    for p in base_dir.rglob("*"):
+    for p in WALLPAPERS_DIR.rglob("*"):
         if not p.is_file():
             continue
         ext = p.suffix.lower()
-        if ext not in all_exts:
+        if ext not in ALL_EXTS:
             continue
 
         resolved = str(p.resolve())
@@ -87,7 +169,7 @@ def scan():
         seen_paths.add(resolved)
 
         try:
-            rel_dir = p.parent.relative_to(base_dir)
+            rel_dir = p.parent.relative_to(WALLPAPERS_DIR)
             rel_parts = rel_dir.parts
             category = str(rel_dir) if str(rel_dir) != "." else "root"
             parent_category = rel_parts[0] if len(rel_parts) > 0 and rel_parts[0] != "." else "root"
@@ -97,25 +179,16 @@ def scan():
             parent_category = "general"
             sub_category = ""
 
-        is_video = ext in video_exts
-        is_gif = ext in anim_exts
+        is_video = ext in VIDEO_EXTS
+        is_gif = ext in ANIM_EXTS
         thumb_path = resolved
 
         if is_video:
             h = hashlib.md5(resolved.encode()).hexdigest()
-            t_file = thumb_dir / f"{h}.jpg"
+            t_file = THUMB_DIR / f"{h}.jpg"
+            thumb_path = str(t_file.resolve())
             if not t_file.exists():
-                try:
-                    subprocess.run(
-                        ["ffmpeg", "-y", "-ss", "00:00:01", "-i", resolved, "-vframes", "1", "-q:v", "2", str(t_file)],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        timeout=5
-                    )
-                except Exception:
-                    pass
-            if t_file.exists():
-                thumb_path = str(t_file.resolve())
+                videos_to_thumb.append((resolved, t_file))
 
         wallpapers.append({
             "path": resolved,
@@ -130,102 +203,140 @@ def scan():
             "subCategory": sub_category,
         })
 
+    # Parallel thumbnail generation for new videos
+    if videos_to_thumb:
+        with ThreadPoolExecutor(max_workers=min(4, os.cpu_count() or 1)) as executor:
+            executor.map(lambda item: make_video_thumb(item[0], item[1]), videos_to_thumb)
+
     wallpapers.sort(key=lambda w: (w["parentCategory"], w["subCategory"], w["name"].lower()))
-    WALLPAPERS_JSON.write_text(json.dumps(wallpapers, indent=2))
+    atomic_write_json(WALLPAPERS_JSON, wallpapers)
     return wallpapers
 
-def set_wallpaper(args):
-    if not args:
+def set_wallpaper(raw_args):
+    """
+    Sets the wallpaper. Supports named args or positional parameters
+    for backwards-compatibility with quickshell QML scripts.
+    """
+    if not raw_args:
         return
-    img_path = str(Path(args[0]).expanduser().resolve())
+
+    # Defaults
+    defaults = {
+        "img_path": "",
+        "transition": "wipe",
+        "angle": "30",
+        "step": "90",
+        "duration": "3",
+        "fps": "60",
+        "filt": "Lanczos3",
+        "mode": "dark",
+        "scheme": "scheme-tonal-spot",
+        "target_mon": "all",
+        "panscan": "1.0",
+        "mpv_audio": "false"
+    }
+
+    # Map positional values for backward compatibility
+    pos_keys = [
+        "img_path", "transition", "angle", "step", "duration",
+        "fps", "filt", "mode", "scheme", "target_mon", "panscan", "mpv_audio"
+    ]
+    for idx, val in enumerate(raw_args):
+        if idx < len(pos_keys):
+            defaults[pos_keys[idx]] = val
+
+    img_path = str(Path(defaults["img_path"]).expanduser().resolve())
     if not os.path.isfile(img_path):
+        sys.stderr.write(f"Error: Wallpaper file does not exist: {img_path}\n")
         return
 
-    transition = args[1] if len(args) > 1 else "wipe"
     valid_transitions = {"simple", "fade", "left", "right", "top", "bottom", "wipe", "wave", "grow", "center", "any", "outer", "random", "none"}
-    if transition not in valid_transitions:
-        transition = "wipe"
-
-    angle = args[2] if len(args) > 2 else "30"
-    step = args[3] if len(args) > 3 else "90"
-    duration = args[4] if len(args) > 4 else "3"
-    fps = args[5] if len(args) > 5 else "60"
-    filt = args[6] if len(args) > 6 else "Lanczos3"
-    mode = args[7] if len(args) > 7 else "dark"
-    scheme = args[8] if len(args) > 8 else "scheme-tonal-spot"
-    target_mon = args[9] if len(args) > 9 else "all"
-    panscan = args[10] if len(args) > 10 else "1.0"
-    mpv_audio = args[11] if len(args) > 11 else "false"
+    transition = defaults["transition"] if defaults["transition"] in valid_transitions else "wipe"
 
     CUR_WP_FILE.write_text(img_path + "\n")
     ext_lower = Path(img_path).suffix.lower()
 
-    if ext_lower in {".mp4", ".webm", ".mkv", ".mov"}:
+    if ext_lower in VIDEO_EXTS:
+        # Video wallpapers handled by mpvpaper
         subprocess.run(["awww", "kill"], stderr=subprocess.DEVNULL)
         subprocess.run(["pkill", "-x", "awww-daemon"], stderr=subprocess.DEVNULL)
         subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
-        try:
-            subprocess.run(
-                ["ffmpeg", "-y", "-ss", "00:00:01", "-i", img_path, "-vframes", "1", "-q:v", "2", str(VIDEO_THUMB)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=5
-            )
-            if VIDEO_THUMB.exists():
-                subprocess.run(["matugen", "image", str(VIDEO_THUMB), "-m", mode, "-t", scheme, "--source-color-index", "0"], stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
 
-        audio_flag = "volume=70" if mpv_audio.lower() == "true" else "no-audio"
-        mpv_out = "*" if target_mon in {"all", "*", ""} else target_mon
-        mpv_opts = f"loop-file=inf loop-playlist=inf panscan={panscan} {audio_flag} --hwdec=auto-safe --keep-open=yes"
-        subprocess.Popen(["mpvpaper", "-f", "-o", mpv_opts, mpv_out, img_path], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if make_video_thumb(img_path, VIDEO_THUMB):
+            subprocess.run([
+                "matugen", "image", str(VIDEO_THUMB),
+                "-m", defaults["mode"],
+                "-t", defaults["scheme"],
+                "--source-color-index", "0"
+            ], stderr=subprocess.DEVNULL)
+
+        audio_flag = "volume=70" if defaults["mpv_audio"].lower() == "true" else "no-audio"
+        mpv_out = "*" if defaults["target_mon"] in {"all", "*", ""} else defaults["target_mon"]
+        mpv_opts = f"loop-file=inf loop-playlist=inf panscan={defaults['panscan']} {audio_flag} --hwdec=auto-safe --keep-open=yes"
+        
+        subprocess.Popen(
+            ["mpvpaper", "-f", "-o", mpv_opts, mpv_out, img_path],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        reload_quickshell()
     else:
+        # Static and GIF wallpapers handled by awww
         subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
         try:
             res = subprocess.run(["awww", "query"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode != 0:
-                for p in Path(f"/run/user/{os.getuid()}").glob("*awww-daemon*"):
-                    try:
-                        p.unlink()
-                    except Exception:
-                        pass
+                if XDG_RUNTIME_DIR.exists():
+                    for p in XDG_RUNTIME_DIR.glob("*awww-daemon*"):
+                        try:
+                            p.unlink()
+                        except Exception:
+                            pass
                 subprocess.Popen(["awww-daemon", "--format", "argb"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                import time
-                time.sleep(0.4)
+                time.sleep(0.3)
         except Exception:
             pass
 
         awww_cmd = ["awww", "img"]
-        if target_mon not in {"all", "*", ""}:
-            awww_cmd.extend(["-o", target_mon])
+        if defaults["target_mon"] not in {"all", "*", ""}:
+            awww_cmd.extend(["-o", defaults["target_mon"]])
 
         awww_cmd.extend([
             img_path,
             "--transition-type", transition,
-            "--transition-angle", str(angle),
-            "--transition-step", str(step),
-            "--transition-duration", str(duration),
-            "--transition-fps", str(fps),
-            "--filter", filt
+            "--transition-angle", str(defaults["angle"]),
+            "--transition-step", str(defaults["step"]),
+            "--transition-duration", str(defaults["duration"]),
+            "--transition-fps", str(defaults["fps"]),
+            "--filter", defaults["filt"]
         ])
         subprocess.run(awww_cmd, stderr=subprocess.DEVNULL)
-        subprocess.run(["matugen", "image", img_path, "-m", mode, "-t", scheme, "--source-color-index", "0"], stderr=subprocess.DEVNULL)
+        subprocess.run([
+            "matugen", "image", img_path,
+            "-m", defaults["mode"],
+            "-t", defaults["scheme"],
+            "--source-color-index", "0"
+        ], stderr=subprocess.DEVNULL)
         reload_quickshell()
 
-def reload_quickshell():
-    shell_qml = Path.home() / ".config" / "quickshell" / "shell.qml"
-    if shell_qml.exists():
-        try:
-            shell_qml.touch()
-        except Exception:
-            pass
-
 def random_wallpaper(args):
-    filter_cat = args[0].lower() if len(args) > 0 else "all"
-    wps = scan()
+    filter_cat = args[0].lower() if args else "all"
+
+    # Avoid rescanning entire disk on every random wallpaper toggle
+    wps = []
+    if WALLPAPERS_JSON.exists():
+        try:
+            wps = json.loads(WALLPAPERS_JSON.read_text())
+        except Exception:
+            wps = []
+    if not wps:
+        wps = scan()
     if not wps:
         return
+
+    # Don't pick the exact same wallpaper if alternatives exist
+    cur_wp = CUR_WP_FILE.read_text().strip() if CUR_WP_FILE.exists() else ""
 
     if filter_cat not in {"all", ""}:
         filtered = [
@@ -234,10 +345,14 @@ def random_wallpaper(args):
             or filter_cat in w["parentCategory"].lower()
             or filter_cat in w["subCategory"].lower()
         ]
-        chosen = random.choice(filtered) if filtered else random.choice(wps)["path"]
+        candidates = filtered if filtered else [w["path"] for w in wps]
     else:
-        chosen = random.choice(wps)["path"]
+        candidates = [w["path"] for w in wps]
 
+    if len(candidates) > 1 and cur_wp in candidates:
+        candidates.remove(cur_wp)
+
+    chosen = random.choice(candidates)
     rest = args[1:] if len(args) > 1 else []
     set_wallpaper([chosen] + rest)
 
@@ -247,37 +362,26 @@ def download(args):
     raw_url = args[0].strip()
     rest = args[1:]
 
-    if raw_url.startswith("/") or raw_url.startswith("~") or raw_url.startswith("file://"):
+    # Local file handle
+    if raw_url.startswith(("/", "~", "file://")):
         local_path = Path(raw_url.replace("file://", "")).expanduser()
         if local_path.is_file():
             set_wallpaper([str(local_path)] + rest)
             scan()
             return
 
-    is_live = any(raw_url.lower().endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or "giphy.com" in raw_url or "tenor.com" in raw_url
-    save_dir = Path.home() / ".wallpapers" / ("live" if is_live else "wallhaven")
+    is_live = is_live_url(raw_url)
+    save_dir = WALLPAPERS_DIR / ("live" if is_live else "wallhaven")
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = raw_url.split("?")[0].split("/")[-1]
-    if not filename or "." not in filename:
-        h = abs(hash(raw_url))
-        filename = f"live_{h}.mp4" if is_live else f"wp_{h}.jpg"
-
-    dest = save_dir / filename
+    dest = save_dir / extract_filename(raw_url, is_live)
     if dest.exists() and dest.stat().st_size > 0:
         set_wallpaper([str(dest)] + rest)
         return
 
-    req = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0 quickshell/1.0"})
-    try:
-        temp_dest = save_dir / f".part_{filename}"
-        with urllib.request.urlopen(req, timeout=30) as resp, open(temp_dest, "wb") as f:
-            f.write(resp.read())
-        temp_dest.replace(dest)
+    if stream_download(raw_url, dest):
         scan()
         set_wallpaper([str(dest)] + rest)
-    except Exception as e:
-        sys.stderr.write(f"download failed: {e}\n")
 
 def batch_download(args):
     if not args:
@@ -296,42 +400,26 @@ def batch_download(args):
     if not urls:
         return
 
-    save_dir_wh = Path.home() / ".wallpapers" / "wallhaven"
-    save_dir_live = Path.home() / ".wallpapers" / "live"
+    save_dir_wh = WALLPAPERS_DIR / "wallhaven"
+    save_dir_live = WALLPAPERS_DIR / "live"
     save_dir_wh.mkdir(parents=True, exist_ok=True)
     save_dir_live.mkdir(parents=True, exist_ok=True)
 
     def download_one(raw_url):
-        try:
-            is_live = any(raw_url.lower().endswith(ext) for ext in [".gif", ".mp4", ".webm", ".mkv", ".mov", ".webp"]) or "giphy.com" in raw_url or "tenor.com" in raw_url
-            target_dir = save_dir_live if is_live else save_dir_wh
-            clean_url = raw_url.split("?")[0]
-            filename = clean_url.split("/")[-1]
-            if not filename or "." not in filename:
-                h = hashlib.md5(raw_url.encode()).hexdigest()[:12]
-                filename = f"live_{h}.mp4" if is_live else f"wp_{h}.jpg"
+        is_live = is_live_url(raw_url)
+        target_dir = save_dir_live if is_live else save_dir_wh
+        dest = target_dir / extract_filename(raw_url, is_live)
 
-            dest = target_dir / filename
-            if dest.exists() and dest.stat().st_size > 0:
-                return True, dest
+        if dest.exists() and dest.stat().st_size > 0:
+            return True
+        return stream_download(raw_url, dest)
 
-            temp_dest = target_dir / f".part_{filename}"
-            req = urllib.request.Request(raw_url, headers={"User-Agent": "Mozilla/5.0 quickshell/1.0"})
-            with urllib.request.urlopen(req, timeout=30) as resp, open(temp_dest, "wb") as f:
-                f.write(resp.read())
-            temp_dest.replace(dest)
-            return True, dest
-        except Exception as e:
-            sys.stderr.write(f"batch download error for {raw_url}: {e}\n")
-            return False, None
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(download_one, urls))
 
-    success_count = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        for ok, _ in executor.map(download_one, urls):
-            if ok:
-                success_count += 1
-
+    success_count = sum(1 for r in results if r)
     scan()
+
     try:
         subprocess.run([
             "notify-send",
@@ -347,12 +435,14 @@ def set_color(args):
     hex_color = args[0] if len(args) > 0 else "#787756"
     mode = args[1] if len(args) > 1 else "dark"
     scheme = args[2] if len(args) > 2 else "scheme-tonal-spot"
+
     subprocess.run(["pkill", "-x", "mpvpaper"], stderr=subprocess.DEVNULL)
     try:
         clean_hex = hex_color.replace("#", "")
         subprocess.run(["awww", "clear", clean_hex], stderr=subprocess.DEVNULL)
     except Exception:
         pass
+
     subprocess.run(["matugen", "color", "hex", hex_color, "-m", mode, "-t", scheme], stderr=subprocess.DEVNULL)
     reload_quickshell()
 
@@ -360,8 +450,9 @@ def reapply(args):
     mode = args[0] if len(args) > 0 else "dark"
     scheme = args[1] if len(args) > 1 else "scheme-tonal-spot"
     cur_wp = CUR_WP_FILE.read_text().strip() if CUR_WP_FILE.exists() else ""
+
     if not cur_wp or not os.path.isfile(cur_wp):
-        settings_conf = Path.home() / ".config" / "quickshell" / "settings.conf"
+        settings_conf = XDG_CONFIG_HOME / "quickshell" / "settings.conf"
         if settings_conf.exists():
             for line in settings_conf.read_text().splitlines():
                 if line.startswith("currentWallpaper="):
@@ -369,8 +460,9 @@ def reapply(args):
                     if os.path.isfile(candidate):
                         cur_wp = candidate
                         break
+
     if not cur_wp or not os.path.isfile(cur_wp):
-        default_wp = Path.home() / ".wallpapers" / "hyprland" / "hypr.png"
+        default_wp = WALLPAPERS_DIR / "hyprland" / "hypr.png"
         if default_wp.is_file():
             cur_wp = str(default_wp)
 
@@ -382,11 +474,11 @@ def reapply(args):
 def fetch_live(args):
     query = args[0].strip() if args else ""
     if not query:
-        LIVE_JSON.write_text(json.dumps(CURATED_LIVE, indent=2))
+        atomic_write_json(LIVE_JSON, CURATED_LIVE)
         return
 
     try:
-        encoded_q = urllib.parse.quote(query + " 1080p wallpaper loop")
+        encoded_q = urllib.parse.quote(f"{query} 1080p wallpaper loop")
         api_url = f"https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q={encoded_q}&limit=16&rating=g"
         req = urllib.request.Request(api_url, headers={"User-Agent": "quickshell/1.0"})
         with urllib.request.urlopen(req, timeout=8) as resp:
@@ -406,13 +498,17 @@ def fetch_live(args):
                         "thumb": thumb
                     })
             if results:
-                LIVE_JSON.write_text(json.dumps(results, indent=2))
+                atomic_write_json(LIVE_JSON, results)
                 return
     except Exception:
         pass
 
-    filtered = [w for w in CURATED_LIVE if query.lower() in w["title"].lower() or query.lower() in w["category"].lower()]
-    LIVE_JSON.write_text(json.dumps(filtered if filtered else CURATED_LIVE, indent=2))
+    # Fallback to local curated list
+    filtered = [
+        w for w in CURATED_LIVE
+        if query.lower() in w["title"].lower() or query.lower() in w["category"].lower()
+    ]
+    atomic_write_json(LIVE_JSON, filtered if filtered else CURATED_LIVE)
 
 def main():
     if len(sys.argv) < 2:
@@ -420,22 +516,19 @@ def main():
     cmd = sys.argv[1].lower()
     args = sys.argv[2:]
 
-    if cmd == "scan":
-        scan()
-    elif cmd == "set":
-        set_wallpaper(args)
-    elif cmd == "random":
-        random_wallpaper(args)
-    elif cmd == "download":
-        download(args)
-    elif cmd == "batch-download":
-        batch_download(args)
-    elif cmd == "color":
-        set_color(args)
-    elif cmd == "reapply":
-        reapply(args)
-    elif cmd == "fetch-live":
-        fetch_live(args)
+    dispatch = {
+        "scan": lambda: scan(),
+        "set": lambda: set_wallpaper(args),
+        "random": lambda: random_wallpaper(args),
+        "download": lambda: download(args),
+        "batch-download": lambda: batch_download(args),
+        "color": lambda: set_color(args),
+        "reapply": lambda: reapply(args),
+        "fetch-live": lambda: fetch_live(args),
+    }
+
+    if cmd in dispatch:
+        dispatch[cmd]()
 
 if __name__ == "__main__":
     main()

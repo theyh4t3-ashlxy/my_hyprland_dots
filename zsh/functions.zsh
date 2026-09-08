@@ -64,3 +64,27 @@ fe() {
     file=$(fzf --preview 'bat --style=numbers --color=always --line-range :100 {} 2>/dev/null || head -n 100 {}' --header="[󰈙 open file]")
     [[ -n "$file" ]] && ${EDITOR:-micro} "$file"
 }
+
+# btrfs manual snapshot helper for root and home
+snap() {
+    local desc="${1:-manual backup $(date +'%Y-%m-%d %H:%M')}"
+    if sudo snapper -c root create --description "$desc" && \
+       sudo snapper -c home create --description "$desc"; then
+        print -P "%F{green}󰄲 snapshot created: %F{cyan}${desc}%f"
+    else
+        print -P "%F{red}󰅚 failed to create snapshots%f"
+        return 1
+    fi
+}
+alias snapshot="snap"
+alias bsnap="snap"
+
+# list btrfs snapshots
+snaps() {
+    print -P "%F{cyan}󰋊 [root snapshots]%f"
+    sudo snapper -c root list
+    print -P "\n%F{cyan}󰋊 [home snapshots]%f"
+    sudo snapper -c home list
+}
+alias snapshots="snaps"
+

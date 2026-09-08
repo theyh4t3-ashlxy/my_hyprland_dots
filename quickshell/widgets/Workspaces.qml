@@ -17,9 +17,31 @@ Rectangle {
 
     property var workspaceList: []
 
+    // universal dispatcher helper supporting both lua and legacy hyprlang
+    function dispatchWs(target) {
+        if (Hyprland.usingLua) {
+            let arg = typeof target === "number" ? target : `"${target}"`;
+            Hyprland.dispatch(`hl.dsp.focus({ workspace = ${arg} })`);
+        } else {
+            Hyprland.dispatch(`workspace ${target}`);
+        }
+    }
+
+    function toggleSpecialWs(name) {
+        if (Hyprland.usingLua) {
+            Hyprland.dispatch(`hl.dsp.workspace.toggle_special("${name}")`);
+        } else {
+            Hyprland.dispatch(`togglespecialworkspace ${name}`);
+        }
+    }
+
+    // filter out negative ids so scratchpads don't pollute bar dots
     function updateWorkspaceList() {
         let vals = Hyprland.workspaces?.values || [];
-        workspaceList = vals.slice().sort((a, b) => a.id - b.id);
+        workspaceList = vals
+            .filter(w => w.id > 0)
+            .slice()
+            .sort((a, b) => a.id - b.id);
     }
 
     Component.onCompleted: updateWorkspaceList()
@@ -38,6 +60,7 @@ Rectangle {
         onTriggered: wsContainer.updateWorkspaceList()
     }
 
+    // vertical bar layout
     Column {
         id: wsCol
         visible: Theme.isVertical
@@ -65,6 +88,7 @@ Rectangle {
         }
     }
 
+    // horizontal bar layout
     Row {
         id: wsRow
         visible: !Theme.isVertical
@@ -92,6 +116,7 @@ Rectangle {
         }
     }
 
+    // click to open popup, scroll to cycle workspaces
     MouseArea {
         id: wsMouse
         anchors.fill: parent
@@ -105,14 +130,18 @@ Rectangle {
             } else {
                 popup.targetRelativeX = wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2);
             }
-            popup.open = !popup.open
+            popup.open = !popup.open;
         }
 
         onWheel: (wheel) => {
-            if (wheel.angleDelta.y < 0) {
-                Hyprland.dispatch('hl.dsp.focus({ workspace = "m+1" })')
-            } else if (wheel.angleDelta.y > 0) {
-                Hyprland.dispatch('hl.dsp.focus({ workspace = "m-1" })')
+            wheel.accepted = true;
+            let delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.angleDelta.x;
+            if (delta < 0) {
+                // "r+1" scrolls forward relative on monitor with wrap
+                wsContainer.dispatchWs("r+1");
+            } else if (delta > 0) {
+                // "r-1" scrolls backward relative on monitor with wrap
+                wsContainer.dispatchWs("r-1");
             }
         }
     }
@@ -127,7 +156,7 @@ Rectangle {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 
-            // Header with the question
+            // header with title, active indicator, and scroll hint
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -145,11 +174,25 @@ Rectangle {
                         Layout.fillWidth: true
                     }
 
-                    Text {
-                        text: "active workspace: " + (Hyprland.focusedWorkspace?.id ?? 1)
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
-                        color: Theme.on_surface_variant
+                    RowLayout {
+                        spacing: 6
+                        Text {
+                            text: "active: workspace " + (Hyprland.focusedWorkspace?.id ?? 1)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            color: Theme.on_surface_variant
+                        }
+                        Text {
+                            text: "•"
+                            font.pixelSize: 8
+                            color: Theme.outline_variant
+                        }
+                        Text {
+                            text: "scroll bar to cycle"
+                            font.family: Theme.fontMono
+                            font.pixelSize: 9
+                            color: Theme.primary
+                        }
                     }
                 }
 
@@ -167,7 +210,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // Grid of 10 workspaces (2 columns x 5 rows)
+            // grid of workspaces
             GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -270,7 +313,7 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                Hyprland.dispatch('hl.dsp.focus({ workspace = "' + wsId + '" })');
+                                wsContainer.dispatchWs(wsId);
                                 popup.open = false;
                             }
                         }
@@ -284,53 +327,46 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // Footer shortcuts & actions
-            RowLayout {
+            // footer action: clean full-width scratchpad button
+            Rectangle {
+                Layout.preferredHeight: 32
                 Layout.fillWidth: true
-                spacing: 8
+                radius: Theme.radiusSm
+                color: specialMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_high
+                border.color: specialMouse.containsMouse ? Theme.primary : "transparent"
+                border.width: 1
 
-                Rectangle {
-                    Layout.preferredHeight: 28
-                    Layout.fillWidth: true
-                    radius: Theme.radiusSm
-                    color: specialMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_high
+                Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        Text {
-                            text: "󰒝"
-                            font.family: Theme.fontMono
-                            font.pixelSize: Theme.fontSizeXs
-                            color: Theme.primary
-                        }
-                        Text {
-                            text: "toggle scratchpad"
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontSizeXs
-                            font.weight: Font.Medium
-                            color: Theme.on_surface
-                        }
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    Text {
+                        text: "󰒝"
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.fontSizeSm
+                        color: Theme.primary
                     }
 
-                    MouseArea {
-                        id: specialMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            Hyprland.dispatch('hl.dsp.workspace.toggle_special("scratchpad")');
-                            popup.open = false;
-                        }
+                    Text {
+                        text: "toggle scratchpad"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        font.weight: Font.Medium
+                        color: Theme.on_surface
                     }
                 }
 
-                Text {
-                    text: "scroll to switch"
-                    font.family: Theme.fontMono
-                    font.pixelSize: 9
-                    color: Theme.on_surface_variant
-                    opacity: 0.8
+                MouseArea {
+                    id: specialMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        wsContainer.toggleSpecialWs("scratchpad");
+                        popup.open = false;
+                    }
                 }
             }
         }

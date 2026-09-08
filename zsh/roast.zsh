@@ -20,89 +20,83 @@ command_not_found_handler() {
         hour=$(strftime "%-H" "$EPOCHSECONDS" 2>/dev/null || echo 12)
     fi
     
-    # the grand existential trauma vault
+    # grounded developer humiliation
     local roasts=(
-        "command '$cmd' not found. just like the purpose of opening this terminal at 2am."
-        "'$cmd' is not recognized. you have been sitting in this exact chair for hours accomplishing nothing."
-        "zsh: cannot find '$cmd\. no matter how much you rice this desktop, the void inside remains unconfigured."
-        "failed to execute '$cmd\. another action with zero tangible outcome in your life."
-        "error: '$cmd' does not exist. much like your work-life balance."
-        "zsh: command '$cmd' not found. was this keystroke truly your own, or just muscle memory distracting you from your deadlines?"
-        "'$cmd' is undefined. you are customizing dotfiles for an audience that will never see them."
-        "command '$cmd' failed. a subtle reminder of every opportunity you hesitated on."
-        "zsh: '$cmd' was not found. even the shell is growing tired of watching you type aimlessly."
-        "'$cmd' does not exist in any PATH. much like the direction you are currently heading."
-        "command '$cmd' not found. you optimize milliseconds off your shell startup time while leaking entire years of your youth."
-        "'$cmd' is undefined. you use a cli because deterministic errors feel safer than unpredictable human relationships."
-        "zsh: cannot find '$cmd\. closing this terminal won't fix the quiet panic waiting for you when the screen goes dark."
-        "failed to execute '$cmd\. you're rearranging config files just to feel a fleeting sense of control over an uncontrollable life."
-        "error: '$cmd' does not exist. somewhere along the way you swapped genuine human warmth for keyboard switches and called it a hobby."
-        "zsh: command '$cmd' missing. you stare into this buffer hoping syntax errors distract you from how fast your 20s are evaporating."
-        "'$cmd' not found. the dopamine you promised yourself three hours ago is not in this directory."
-        "zsh: '$cmd' is not in PATH. you've automated everything except dealing with the person you become when you're left alone with your thoughts."
-        "command '$cmd' failed. your peers are out building lives and you are here mistyping keystrokes to an empty room."
-        "'$cmd' does not exist. it's crazy how much energy you spend escaping the people who genuinely used to check in on you."
-        "command '$cmd' not found. your 10-year-old self thought you'd be doing something profound by now, not misspelling commands in the dark."
-        "'$cmd' is undefined. you have 40+ browser tabs open of articles you will never read, hoarding knowledge you will never apply."
-        "zsh: cannot find '$cmd\. this isn't flow state. this is just dissociation with a mechanical keyboard."
-        "failed to execute '$cmd\. how many messages from real people are sitting unread while you pretend you're 'too locked in' right now?"
-        "error: '$cmd' does not exist. you fixate on keyboard shortcuts because confronting your actual life trajectory requires too much energy."
-        "zsh: '$cmd' missing. you're one minor inconvenience away from an unrecoverable mental breakdown and we both know it."
-        "'$cmd' not found. nobody is grading you on this. nobody is watching. you are exhausting yourself for a ghost."
-        "zsh: '$cmd' is not in PATH. you keep checking the terminal because checking your bank account requires emotional stability you don't have."
-        "command '$cmd' failed. another micro-failure in an unbroken streak of projects you started, hyperfixated on, and abandoned."
-        "'$cmd' does not exist. your posture is actively decaying your spine while you debug things that won't matter in six months."
-        "zsh: '$cmd' unresolvable. you optimize your workflow to save 3 seconds, then spend 4 hours doomscrolling in bed anyway."
-        "error: '$cmd' not found. you hide behind technical perfectionism because if you never finish anything, you can never be judged."
-        "command '$cmd' not found. you typed that with astonishing confidence for someone who has no idea what they're doing."
-        "'$cmd' is not recognized. your mechanical keyboard sounded loud and productive, but the result is literally nothing."
-        "zsh: cannot find '$cmd\. maybe try reading the documentation instead of treating the prompt like a slot machine."
-        "error: '$cmd' missing. you have 6 different font glyph packs configured and zero functional commands."
-        "command '$cmd' failed. was that an actual command or did your cat walk across the homerow?"
-        "zsh: '$cmd' undefined. your shell is silently judging you and honestly so is the rest of the kernel."
-        "failed to execute '$cmd\. you just mashed backspace like that was gonna un-embarrass you."
-        "'$cmd' not found. you're running on caffeine, adrenaline, and pure denial."
-        "zsh: command '$cmd' failed. you have 8 custom alias files and still managed to mistype that."
-        "command '$cmd' missing. even tab-completion threw its hands up and refused to participate in this."
-        "error: '$cmd' does not exist. you're fighting the terminal and the terminal is currently 10-0 against you."
-        "zsh: '$cmd' not found. your dopamine receptors are fried. take your hands off the keyboard."
-        "command '$cmd' failed. this is what happens when you code entirely via vibes and no documentation."
-        "'$cmd' is undefined. you're debugging your terminal while your real life problems compile in the background."
-        "zsh: command '$cmd' not found. your shell history is just a chronicle of someone desperately guessing syntax."
-        "'$cmd' does not exist. you spent 45 minutes finding the perfect blur shader just to typo 'ls'."
-        "error: '$cmd' unresolvable. closing this terminal tab won't undo what you just did."
-        "failed to execute '$cmd\. you're typing at 120 wpm directly into a brick wall."
-        "zsh: '$cmd' missing. maybe if you buy another mechanical keyboard with slightly heavier switches this command will work."
-        "command '$cmd' not found. you could have checked '--help', but you chose violence instead."
+        "command '$cmd' not found. you typed that with astonishing confidence for someone guessing syntax."
+        "'$cmd' is not recognized. your switches sounded crisp and loud, but the exit code is still 127."
+        "zsh: cannot find '$cmd'. no matter how rounded your window corners are, the binary still has to exist."
+        "failed to execute '$cmd'. another command typed solely to look busy when someone walks past your room."
+        "error: '$cmd' does not exist. you spent four hours on a blur shader just to typo a basic utility."
+        "zsh: command '$cmd' not found. your fingers slipped off the home row and you hit enter anyway."
+        "'$cmd' is undefined. you have six custom alias files and still managed to invent a nonexistent command."
+        "command '$cmd' failed. maybe try reading the man page instead of treating the shell like a slot machine."
+        "zsh: '$cmd' was not found. even tab completion refused to participate in whatever that was."
+        "'$cmd' does not exist in any PATH. much like your actual documentation."
+        "command '$cmd' not found. you optimize milliseconds off shell startup just to sit here staring at stdout."
+        "'$cmd' is undefined. you use a tiling window manager so you can fail commands in four equal quadrants."
+        "zsh: cannot find '$cmd'. closing this terminal tab won't un-embarrass that typo."
+        "failed to execute '$cmd'. your dotfiles repo has 400 commits and your actual project has an empty readme."
+        "error: '$cmd' does not exist. you remapped capslock to escape and still couldn't exit this failure cleanly."
+        "zsh: command '$cmd' missing. you're entering commands via pure muscle memory and zero cognitive oversight."
+        "'$cmd' not found. the script you promised yourself you'd write three months ago is still a todo comment."
+        "zsh: '$cmd' is not in PATH. you configured catppuccin mocha across twelve configs just to misspell 'cat'."
+        "command '$cmd' failed. you mashed backspace three times and still managed to hit the wrong key."
+        "'$cmd' does not exist. you have 40 tabs of arch wiki open and none of them taught you how to spell '$cmd'."
+        "command '$cmd' not found. you're running on cold brew, dry eyes, and raw syntax denial."
+        "'$cmd' is undefined. you're debugging your prompt theme while your actual project fails to build."
+        "zsh: cannot find '$cmd'. this isn't flow state, you're just typing fast into an empty buffer."
+        "failed to execute '$cmd'. you have eight nerd font glyph packs installed and zero working binaries for this."
+        "error: '$cmd' does not exist. you could have checked '--help' or used tab completion, but you chose violence."
+        "zsh: '$cmd' missing. your shell history is just an archive of desperate typos and 'cd ..'."
+        "'$cmd' not found. you're typing at 110 wpm straight into a brick wall."
+        "zsh: '$cmd' is not in PATH. you spent forty minutes picking a mono font to read error messages in italic."
+        "command '$cmd' failed. your keyboard has lubed switches but your commands are completely unhinged."
+        "'$cmd' does not exist. you hit up arrow 35 times hoping past-you ran something useful instead of this."
+        "zsh: '$cmd' unresolvable. pipe that to /dev/null and pretend it never happened."
+        "error: '$cmd' not found. you ran this command entirely on vibes and the shell rejected the vibes."
+        "command '$cmd' not found. you wrote a custom command-not-found script instead of finishing your real work."
+        "'$cmd' is not recognized. the terminal is currently 12-0 against your typing accuracy."
+        "zsh: cannot find '$cmd'. you alias 'ls' to 'eza' and 'cat' to 'bat' and still can't find files."
+        "error: '$cmd' missing. the cursor is blinking at you like it wants an explanation."
+        "command '$cmd' failed. did you mean to run an actual command, or did your sleeve brush the enter key?"
+        "zsh: '$cmd' undefined. you spend more time fixing indentation than actually running code."
+        "failed to execute '$cmd'. you just hit ctrl+c after running a nonexistent binary out of pure panic."
+        "'$cmd' not found. your neck is bent at a 90-degree angle and your shell is returning 127."
+        "zsh: command '$cmd' failed. you are one typo away from aliasing your mistakes to real commands."
+        "command '$cmd' missing. you configured custom prompt icons just to fail in full rgb."
+        "error: '$cmd' does not exist. you're fighting zsh and zsh hasn't even broken a sweat."
+        "zsh: '$cmd' not found. your dopamine receptors are fried. take your hands off the keyboard for five seconds."
+        "command '$cmd' failed. you're piping random flags into a tool you haven't touched since last october."
+        "'$cmd' is undefined. your git status has 22 unstaged changes and you're over here inventing shell syntax."
+        "zsh: command '$cmd' not found. maybe if you buy a heavier keycap set you'll hit the right letter."
+        "'$cmd' does not exist. you migrated from bash to zsh just to make typos with slightly better completion."
+        "error: '$cmd' unresolvable. you're two misfires away from running 'chmod 777' on your home directory."
+        "failed to execute '$cmd'. you have three terminal splits open and not a single one has a clean exit code."
     )
 
-    # 3am sanity check modifiers
+    # late night fatigue modifiers
     if (( hour >= 0 && hour < 5 )); then
         roasts+=(
-            "command '$cmd' not found. it's ${hour}am. you aren't being productive, you're just too afraid of your own thoughts to go to sleep."
-            "'$cmd' missing. tomorrow is going to hurt, and you're actively choosing to make it worse right now."
-            "zsh: '$cmd' not found. the sun will rise in a few hours and you have nothing to show for tonight except blue-light eye strain."
-            "command '$cmd' not found. it's ${hour}am. nobody is watching. nobody is impressed. go the fuck to sleep."
-            "'$cmd' missing. this late night productivity is just insomnia disguised as ambition."
-            "zsh: '$cmd' not found. typing into the dark won't make tomorrow hurt any less."
-            "command '$cmd' failed at ${hour}am. you're entering commands with the cognitive function of a sleepy toddler."
-            "'$cmd' does not exist. close the laptop. the terminal will survive without you until morning."
+            "command '$cmd' not found. it's ${hour}am. your eyes are burning and you're mistyping three-letter words."
+            "'$cmd' missing. it's ${hour}am. tomorrow's alarm is four hours away and you're arguing with a prompt."
+            "zsh: '$cmd' not found. you've reread this same line three times without processing a single character."
+            "command '$cmd' failed at ${hour}am. your monitor is the only light in the room and you're missing keys."
+            "'$cmd' does not exist. close the lid. the bug isn't going to fix itself while your brain is offline."
+            "zsh: '$cmd' not found at ${hour}am. you aren't in the zone, your motor control is just dropping to zero."
         )
     fi
 
     # consecutive failure escalation
     if (( _EXISTENTIAL_FAILS >= 3 )); then
         roasts+=(
-            "command '$cmd' failed. that's ${_EXISTENTIAL_FAILS} typos in a row. your hands are shaking and your brain is fried. walk away."
-            "'$cmd' not found. ${_EXISTENTIAL_FAILS} consecutive failures. you're rage-typing into an unfeeling terminal emulator."
-            "zsh: '$cmd' missing. you are losing motor control. drink some fucking water."
-            "error: '$cmd' not found. ${_EXISTENTIAL_FAILS} misfires back-to-back. the keyboard isn't broken, you are just spiraling."
-            "zsh: '${cmd}' failed. streak of ${_EXISTENTIAL_FAILS} errors. you are basically playing dark souls in a terminal right now."
-            "command '$cmd' not found. ${_EXISTENTIAL_FAILS} typos in a row. your ancestors survived ice ages for you to miss the enter key."
+            "command '$cmd' failed. that's ${_EXISTENTIAL_FAILS} typos in a row. your hands aren't even on the home row."
+            "'$cmd' not found. ${_EXISTENTIAL_FAILS} consecutive misses. step away from the keyboard and drink some water."
+            "zsh: '$cmd' missing. ${_EXISTENTIAL_FAILS} failed commands in 30 seconds. you're just button-mashing now."
+            "error: '$cmd' not found. streak of ${_EXISTENTIAL_FAILS}. clear the buffer, sit up straight, try again."
+            "command '$cmd' failed. ${_EXISTENTIAL_FAILS} errors back to back. your backspace key is doing all the work."
         )
     fi
     
-    # picking the specific knife to twist
     if [[ "${ENABLE_PSYCHO_ROASTS:-true}" == "true" ]]; then
         local random_roast="${roasts[$(( RANDOM % ${#roasts[@]} + 1 ))]}"
         print -P "\n%F{red}󰅚%f %F{244}${random_roast}%f"
@@ -110,7 +104,7 @@ command_not_found_handler() {
         print -P "\n%F{red}󰅚%f %F{244}command not found: %F{white}${cmd}%f"
     fi
     
-    # figure out how to feed your binary hoarding addiction
+    # package lookup
     local pkg=""
     local helper="sudo pacman -S"
     
@@ -126,16 +120,14 @@ command_not_found_handler() {
         helper="sudo apt install"
     fi
 
-    # dig through the repos safely without subshell failure
     if (( $+commands[pkgfile] )); then
-        pkg=$(pkgfile -b -v "$cmd" 2>/dev/null | head -n 1 | awk '{print $1}')
+        pkg=$(pkgfile -b -q "$cmd" 2>/dev/null | head -n 1)
     elif (( $+commands[pacman] )); then
-        pkg=$(pacman -Fq "bin/$cmd" 2>/dev/null | head -n 1)
+        pkg=$(pacman -Fq "usr/bin/$cmd" 2>/dev/null | head -n 1)
     fi
 
     if [[ -n "$pkg" ]]; then
-        print -P "  %F{cyan}󰄛 copium:%f you can download more distraction via %F{green}%B${pkg}%b%f (run: %F{magenta}${helper} ${pkg}%f)
-"
+        print -P "  %F{cyan}󰄛 copium:%f you can download more distraction via %F{green}%B${pkg}%b%f (run: %F{magenta}${helper} ${pkg}%f)\n"
     else
         print ""
     fi
@@ -144,12 +136,10 @@ command_not_found_handler() {
     return 127
 }
 
-# wipes your failure streak clean when you actually manage to type a valid command
 preexec() {
     _EXISTENTIAL_FAILS=0
 }
 
-# existential greeting ritual moved from sources.zsh with fresh flavor
 greeting_roast() {
     zmodload -i zsh/datetime 2>/dev/null
     local hour=12 dow="Thu"
@@ -159,103 +149,71 @@ greeting_roast() {
     fi
 
     local greetings=(
-        "welcome back. whatever you opened this window to do, you'll be doomscrolling in under three minutes."
-        "session spawned. the facade of productivity begins now."
-        "another terminal allocated. another 4 hours of staring at pixels pretending you're solving fundamental problems."
-        "back again? the world moved forward while you were tuning your opacity settings."
-        "session initialized. you have 14 abandoned side projects and zero shipped products."
-        "your window manager is perfectly tiled, but your actual life is completely fragmented."
-        "welcome back. your posture is atrocious, your eyes are dry, and nobody is checking your commit history."
-        "spawning shell. you use vim keybindings to avoid moving your hands toward anything that matters."
-        "another buffer opened between you and the terrifying silence of your own thoughts."
-        "welcome. you have automated everything except finding peace of mind."
-        "fresh shell allocated. you are going to type 'ls', clear the screen, and wonder why you feel empty."
-        "the dopamine spike from this blur effect and font choice will wear off in approximately 12 seconds."
-        "welcome back. you've been optimizing your environment for 4 years to prepare for work you still haven't started."
-        "session alive. your childhood heroes were changing the world at your age, but hey, nice prompt icon."
-        "the machine is ready. your executive function, however, is nowhere to be found."
-        "session spawned. you bought a high refresh rate monitor just to watch monospace text scroll."
-        "welcome back. you have 17 terminal tabs open and not a single one has an uncommitted file that actually works."
-        "allocated shell. somewhere out there, people are having conversations not mediated by stdout."
-        "welcome. you spent 3 hours writing a shell script to automate a task that takes 4 seconds."
-        "new session. your coffee is cold, your neck is strained, and your terminal theme is immaculate."
-        "spawning buffer. you are one broken config line away from re-installing arch for the 9th time."
-        "welcome back. you could be touching grass, but instead you are touching mechanical linear switches."
-        "session online. another day of confusing hyperfocus with emotional stability."
-        "welcome. your git history looks like a crime scene and your commit messages are cries for help."
-        "fresh shell. you opened this window with intense purpose and immediately forgot what it was."
-        "welcome back. your dotfiles have more commits than your actual degree."
-        "session initialized. the void between who you want to be and who you are is currently filled by quickshell blur."
-        "welcome back. your ram usage is at 82%% and most of it is electron apps you swore you'd rewrite in rust."
-        "spawning shell. you have 200 tabs open in your browser and 4 terminal splits all running fzf on nothing."
-        "welcome back. you've spent more time benchmarking shell startup than talking to real human beings this week."
-        "terminal spawned. your inner child is watching you right now, wondering why you're arguing with a package manager."
-        "welcome. your commit messages are 'wip', 'fix', 'pls work', and 'final final real this time'."
-        "session online. you could be solving real problems, but today we tune container padding by 2 pixels."
-        "welcome back. your spine is shaped like a boiled shrimp. sit up straight."
-        "session spawned. you use tiling window managers because you can't tile your own life."
-        "welcome back. your todo list has dust on it, but hey, nice hyprpicker hex value."
-        "spawning shell. you recompiled your bytecode just to shave 3ms off an existential crisis."
-        "welcome back. you are one 'rm -rf' away from absolute serenity."
-        "session ready. you've perfected your prompt layout so everyone knows how efficiently you procrastinate."
-        "welcome back. you and gemini vibecoded 400 lines of quickshell qml just to look at the same 3 widgets."
-        "session online. your bar studio has liquid concave scoops, but your life is still jagged and unfilleted."
-        "welcome back. you migrated from wallpaper.sh to wallpaper.py just to feel something."
-        "new shell spawned. pure black is finally pitch black, unlike your sleep schedule."
-        "welcome back. typing 'wp' every 45 seconds is not a personality trait."
-        "allocated terminal. you've rewritten this prompt 12 times today instead of finishing your work."
-        "session alive. you configured 3 icon font packs so you can fail commands in aesthetic material glyphs."
-        "welcome. you're using uwsm because the wiki told you not to. absolute rebel."
-        "terminal spawned. your lua config has 70 lines and 65 of them are you arguing with hyprland keybindings."
+        "new tab opened. you're going to run 'ls', clear the screen, and wonder what you were doing."
+        "another terminal tab allocated to sit idle while you check your phone."
+        "welcome back. your window borders have liquid corner radii and your code still doesn't run."
+        "opened another buffer. you have three terminal windows hidden behind your browser right now."
+        "welcome back. your dotfiles have twelve commits today and your actual project has none."
+        "nice font choice. your syntax errors look very aesthetic in italic ligatures."
+        "you opened this window with a specific plan and completely forgot it during the 4ms shell startup."
+        "welcome back. your posture is shaped like a desk lamp. sit up."
+        "another shell running. you bought a high refresh rate monitor just to watch monospace text scroll past."
+        "welcome back. you spent two hours tweaking bar padding to avoid writing one function."
+        "ready to run. you're going to hit up arrow fourteen times instead of using fzf."
+        "welcome. your git log is four commits of 'wip' followed by 'revert everything please work'."
+        "new terminal. your ram usage is 85% and most of it is electron wrappers."
+        "welcome back. typing 'clear' every thirty seconds is not a personality trait."
+        "welcome back. you migrated your config to a new tool just to import the exact same problems."
+        "ready. you configured three icon packs just to fail commands in aesthetic material glyphs."
+        "welcome back. your coffee is cold and you're about to run 'gti status' by mistake."
+        "new shell. you could be testing your code, but instead we're looking at fastfetch output."
+        "welcome back. you're one broken config syntax error away from an unexpected reinstall."
+        "terminal ready. you have 18 unstaged changes you're planning to 'git stash' and never look at again."
     )
 
     if (( hour >= 0 && hour < 5 )); then
         greetings+=(
-            "it is ${hour}am. you just opened a new terminal. you are actively running away from tomorrow."
-            "new shell at ${hour}am. you aren't grinding, you are dissociating under blue light."
-            "it is ${hour}am. you aren't an engineer right now, you are a cryptid staring into a luminescent rectangle."
-            "terminal opened at ${hour}am. the sleep debt you're accumulating will collect interest tomorrow morning."
-            "it is ${hour}am. go to bed. the bugs will still be here waiting for you in the morning."
+            "it's ${hour}am. you aren't debugging, you're just staring at a glowing rectangle in a dark room."
+            "new shell at ${hour}am. your eyes are bloodshot and your sleep schedule is completely wrecked."
+            "it is ${hour}am. go to sleep. the bug will still be there in the morning."
         )
     elif (( hour >= 13 && hour <= 16 )); then
         greetings+=(
-            "afternoon slump detected. your eyelids weigh 40 pounds and you're staring blankly at stdout."
-            "it is ${hour}:00. you are on your third coffee pretending it's fixing your lack of sleep."
-            "afternoon session. you are 10 minutes away from taking a 3-hour 'nap'."
+            "afternoon slump. you're staring blankly at the prompt hoping the code writes itself."
+            "it is ${hour}:00. on your third lukewarm coffee pretending it's fixing your lack of sleep."
         )
     fi
 
-    if [[ "$dow" == "Fri" && hour -ge 18 ]]; then
+    if [[ "$dow" == "Fri" ]] && (( hour >= 18 )); then
         greetings+=(
-            "it is Friday night. normal people are out having fun. you are ricing your zsh configuration."
-            "Friday night shell spawned. this is peak introversion and we both know it."
+            "it's Friday night. you're spending it testing zsh command-not-found handlers."
+            "Friday night shell opened. peak introversion confirmed."
         )
-    elif [[ "$dow" == "Sun" && hour -ge 20 ]]; then
+    elif [[ "$dow" == "Sun" ]] && (( hour >= 20 )); then
         greetings+=(
-            "Sunday night panic creeping in. tomorrow morning is coming whether this code compiles or not."
-            "Sunday evening. preparing dotfiles for another week of doing the bare minimum."
+            "Sunday night panic. tomorrow morning is coming whether this builds or not."
+            "Sunday evening dotfile tweaks to delay thinking about Monday morning."
         )
     fi
 
     local greet="${greetings[$(( RANDOM % ${#greetings[@]} + 1 ))]}"
-    print -P "%F{38;5;141}󰄛%f %F{244}${greet}%f\n"
+    print -P "%F{141}󰄛%f %F{244}${greet}%f\n"
 }
 
-# on-demand existential reality check
 roast() {
     local pool=(
-        "your bar studio has liquid concave scoops, but your life is still jagged and unfilleted."
-        "you and gemini vibecoded 400 lines of quickshell qml just to stare at the same 3 widgets."
-        "pure black is finally #000000 pitch black, unlike your sleep schedule."
-        "you use tiling window managers because you can't tile your own life."
-        "typing 'wp' every 45 seconds is not a personality trait."
-        "your spine is currently shaped like a boiled shrimp. sit up straight."
-        "you've spent more time benchmarking shell startup than talking to real human beings this week."
-        "you configured 3 icon packs so you can fail commands in aesthetic material glyphs."
-        "you are one 'rm -rf' away from absolute serenity."
-        "your dopamine receptors are fried. take your hands off the keyboard."
+        "your window borders have liquid corner radii, but your code is still jagged and broken."
         "you spent 45 minutes finding the perfect blur shader just to typo 'ls'."
+        "your posture is currently shaped like a boiled shrimp. sit up straight."
+        "you've spent more time benchmarking shell startup than writing actual software this week."
+        "you configured three icon packs so you can fail commands in aesthetic glyphs."
+        "you are one careless 'rm -rf' away from absolute panic."
+        "your dopamine receptors are fried. take your hands off the mechanical keyboard."
+        "you alias 'ls' to 'eza' and 'cat' to 'bat' and still can't find your files."
         "you're entering commands with the cognitive function of a sleepy toddler."
+        "your git history looks like a crime scene and your commit messages are cries for help."
+        "you hit up arrow 40 times to find a command you ran five minutes ago."
+        "you wrote 400 lines of zsh roasts to insult yourself instead of finishing your project."
     )
     local r="${pool[$(( RANDOM % ${#pool[@]} + 1 ))]}"
     print -P "%F{red}󰅚%f %F{244}${r}%f"
