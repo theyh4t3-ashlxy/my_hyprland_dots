@@ -26,13 +26,12 @@ APP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 THUMB_DIR.mkdir(parents=True, exist_ok=True)
 WALLPAPERS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Runtime state (session-only)
-CUR_WP_FILE = XDG_RUNTIME_DIR / "qs_current_wallpaper.txt"
-VIDEO_THUMB = XDG_RUNTIME_DIR / "qs_video_thumb.jpg"
+# Runtime state (session-only) & persistent cached databases
+CUR_WP_FILE = Path("/tmp/qs_current_wallpaper.txt")
+VIDEO_THUMB = Path("/tmp/qs_video_thumb.jpg")
+WALLPAPERS_JSON = Path("/tmp/qs_wallpapers.json")
+LIVE_JSON = Path("/tmp/qs_live_wallpapers.json")
 
-# Persistent cached databases
-WALLPAPERS_JSON = APP_CACHE_DIR / "wallpapers.json"
-LIVE_JSON = APP_CACHE_DIR / "live_wallpapers.json"
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".avif", ".svg", ".bmp", ".tiff", ".tga", ".pnm"}
 ANIM_EXTS = {".gif"}
@@ -92,10 +91,26 @@ def atomic_write_json(file_path: Path, data):
     try:
         tmp_path.write_text(json.dumps(data, indent=2))
         tmp_path.replace(file_path)
+        # Mirror to cache directory if different
+        if file_path == WALLPAPERS_JSON:
+            cache_target = APP_CACHE_DIR / "wallpapers.json"
+            if cache_target != file_path:
+                try:
+                    cache_target.write_text(json.dumps(data, indent=2))
+                except Exception:
+                    pass
+        elif file_path == LIVE_JSON:
+            cache_target = APP_CACHE_DIR / "live_wallpapers.json"
+            if cache_target != file_path:
+                try:
+                    cache_target.write_text(json.dumps(data, indent=2))
+                except Exception:
+                    pass
     except Exception as e:
         if tmp_path.exists():
             tmp_path.unlink()
         sys.stderr.write(f"Failed to write JSON {file_path}: {e}\n")
+
 
 def make_video_thumb(video_path: str, target_thumb: Path) -> bool:
     """Generate a single-frame thumbnail from a video file."""
@@ -254,7 +269,12 @@ def set_wallpaper(raw_args):
     transition = defaults["transition"] if defaults["transition"] in valid_transitions else "wipe"
 
     CUR_WP_FILE.write_text(img_path + "\n")
+    try:
+        (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").write_text(img_path + "\n")
+    except Exception:
+        pass
     ext_lower = Path(img_path).suffix.lower()
+
 
     if ext_lower in VIDEO_EXTS:
         # Video wallpapers handled by mpvpaper

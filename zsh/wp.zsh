@@ -32,7 +32,10 @@ try:
         wps = json.load(f)
     live = [w for w in wps if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]]
     for w in live:
-        print(f"  󰄛 \033[38;5;141m{w[\"name\"]}\033[0m (\033[38;5;120m{w[\"ext\"]}\033[0m) -> {w[\"path\"]}")
+        n = w.get("name", "")
+        e = w.get("ext", "")
+        p = w.get("path", "")
+        print(f"  󰄛 \033[38;5;141m{n}\033[0m (\033[38;5;120m{e}\033[0m) -> {p}")
 except Exception:
     print("no live wallpaper cache found. run wp scan first.")
 '
@@ -119,7 +122,10 @@ try:
     with open("/tmp/qs_wallpapers.json") as f:
         wps = json.load(f)
     for w in wps:
-        print(f"{w[\"path\"]}\t{w[\"category\"]}\t{w[\"name\"]}")
+        p = w.get("path", "")
+        c = w.get("category", "")
+        n = w.get("name", "")
+        print(f"{p}\t{c}\t{n}")
 except Exception:
     pass
 ' | fzf --with-nth=2,3 --delimiter="\t" --header="[󰋩 select wallpaper]" | awk -F"\t" '{print $1}')
@@ -136,7 +142,10 @@ try:
         wps = json.load(f)
     for w in wps:
         if w.get("isLive") or w.get("ext") in ["mp4", "webm", "gif"]:
-            print(f"{w[\"path\"]}\t[live {w[\"ext\"]}]\t{w[\"name\"]}")
+            p = w.get("path", "")
+            e = w.get("ext", "")
+            n = w.get("name", "")
+            print(f"{p}\t[live {e}]\t{n}")
 except Exception:
     pass
 ' | fzf --with-nth=2,3 --delimiter="\t" --header="[󰍹 select live wallpaper]" | awk -F"\t" '{print $1}')
