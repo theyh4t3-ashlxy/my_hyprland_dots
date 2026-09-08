@@ -1,3 +1,4 @@
+// ScreenCorners.qml
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -104,9 +105,6 @@ Scope {
         return false;
     }
 
-    // ==========================================
-    // 1. HORIZONTAL OPPOSITE STRIP (bar is top or bottom)
-    // ==========================================
     PanelWindow {
         id: horizontalOppositeWindow
         screen: root.modelData
@@ -132,10 +130,7 @@ Scope {
         WlrLayershell.namespace: "quickshell:corners"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-
         mask: Region {
-            Region { item: leftBorderCornerCap.visible ? leftBorderCornerCap : null }
-            Region { item: rightBorderCornerCap.visible ? rightBorderCornerCap : null }
             Region { item: horizontalBorderRect.visible ? horizontalBorderRect : null }
             Region { item: cornerL.visible ? cornerL : null }
             Region { item: cornerR.visible ? cornerR : null }
@@ -152,26 +147,6 @@ Scope {
                 height: root.borderWidth
                 color: root.cornerColor
                 visible: root.borderWidth > 0 && (root.barPos === "top" ? root.borderBottomAllowed : root.borderTopAllowed)
-            }
-
-            Rectangle {
-                id: leftBorderCornerCap
-                x: 0
-                y: 0
-                width: root.borderWidth
-                height: parent.height
-                color: root.cornerColor
-                visible: root.borderWidth > 0 && leftBorder.visible
-            }
-
-            Rectangle {
-                id: rightBorderCornerCap
-                x: Math.round(parent.width - root.borderWidth)
-                y: 0
-                width: root.borderWidth
-                height: parent.height
-                color: root.cornerColor
-                visible: root.borderWidth > 0 && rightBorder.visible
             }
 
             ConcaveCorner {
@@ -200,7 +175,6 @@ Scope {
         }
     }
 
-    // left edge screen frame border (for horizontal bars)
     PanelWindow {
         id: leftBorder
         screen: root.modelData
@@ -222,7 +196,6 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     }
 
-    // right edge screen frame border (for horizontal bars)
     PanelWindow {
         id: rightBorder
         screen: root.modelData
@@ -244,9 +217,6 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     }
 
-    // ==========================================
-    // 2. VERTICAL OPPOSITE STRIP (bar is left or right)
-    // ==========================================
     PanelWindow {
         id: verticalOppositeWindow
         screen: root.modelData
@@ -272,10 +242,7 @@ Scope {
         WlrLayershell.namespace: "quickshell:corners-vertical"
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-
         mask: Region {
-            Region { item: topBorderCornerCap.visible ? topBorderCornerCap : null }
-            Region { item: bottomBorderCornerCap.visible ? bottomBorderCornerCap : null }
             Region { item: verticalBorderRect.visible ? verticalBorderRect : null }
             Region { item: cornerT.visible ? cornerT : null }
             Region { item: cornerB.visible ? cornerB : null }
@@ -292,26 +259,6 @@ Scope {
                 height: parent.height
                 color: root.cornerColor
                 visible: root.borderWidth > 0 && (root.barPos === "left" ? root.borderRightAllowed : root.borderLeftAllowed)
-            }
-
-            Rectangle {
-                id: topBorderCornerCap
-                x: 0
-                y: 0
-                width: parent.width
-                height: root.borderWidth
-                color: root.cornerColor
-                visible: root.borderWidth > 0 && topBorder.visible
-            }
-
-            Rectangle {
-                id: bottomBorderCornerCap
-                x: 0
-                y: Math.round(parent.height - root.borderWidth)
-                width: parent.width
-                height: root.borderWidth
-                color: root.cornerColor
-                visible: root.borderWidth > 0 && bottomBorder.visible
             }
 
             ConcaveCorner {
@@ -340,7 +287,6 @@ Scope {
         }
     }
 
-    // top edge screen frame border (for vertical bars)
     PanelWindow {
         id: topBorder
         screen: root.modelData
@@ -362,7 +308,6 @@ Scope {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     }
 
-    // bottom edge screen frame border (for vertical bars)
     PanelWindow {
         id: bottomBorder
         screen: root.modelData

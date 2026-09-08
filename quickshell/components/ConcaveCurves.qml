@@ -5,9 +5,9 @@ import ".."
 Shape {
     id: root
 
-    property int radius: 16
-    property alias radiusX: root.radius
-    property alias radiusY: root.radius
+    property real radius: 16
+    property real radiusX: radius
+    property real radiusY: radius
     property color color: "#1e1e2d"
     property alias fillColor: root.color
 
@@ -15,15 +15,14 @@ Shape {
     property bool mirrored: false
     property bool flipX: mirrored
     property bool flipY: !isTop
-    property string cornerStyle: Settings?.cornerStyle ?? "cubic"
+    property string cornerStyle: (typeof Settings !== "undefined" ? Settings?.cornerStyle : null) ?? "cubic"
 
-    visible: radius > 0
-    width: Math.max(0, radius)
-    height: Math.max(0, radius)
-    implicitWidth: width
-    implicitHeight: height
+    visible: width > 0 && height > 0
+    implicitWidth: Math.max(0, radiusX)
+    implicitHeight: Math.max(0, radiusY)
+    width: implicitWidth
+    height: implicitHeight
 
-    // run the curve math in the fragment shader instead of chopping it into triangles
     preferredRendererType: Shape.CurveRenderer
 
     readonly property real w: width
@@ -32,10 +31,14 @@ Shape {
     readonly property real tension: {
         if (cornerStyle === "squircle") return 0.65;
         if (cornerStyle === "flared") return 0.44;
-        return Settings?.scoopTension ?? 0.55228475;
+        return (typeof Settings !== "undefined" ? Settings?.scoopTension : null) ?? 0.55228475;
     }
 
-    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on color {
+        ColorAnimation {
+            duration: (typeof Theme !== "undefined" ? Theme.animFast : null) ?? 150
+        }
+    }
 
     ShapePath {
         id: curvedPath

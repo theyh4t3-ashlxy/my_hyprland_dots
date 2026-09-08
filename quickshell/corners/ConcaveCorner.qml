@@ -1,42 +1,43 @@
+// ConcaveCorner.qml (Canvas version with initial paint & hidpi fix)
 import QtQuick
 import ".."
 
 Item {
     id: root
 
-    property real radiusX: Theme.scoopRadiusX ?? 16
-    property real radiusY: Theme.scoopRadiusY ?? 16
-    property color fillColor: Theme.cornerFill ?? Theme.barBg ?? Theme.surface_container_low ?? "#14140c"
+    property real radius: 16
+    property real radiusX: Theme?.scoopRadiusX ?? radius
+    property real radiusY: Theme?.scoopRadiusY ?? radius
+    property color fillColor: Theme?.cornerFill ?? Theme?.barBg ?? "#14140c"
     property bool flipX: false
     property bool flipY: false
-    property string cornerStyle: Settings?.cornerStyle ?? "cubic"
+    property string cornerStyle: (typeof Settings !== "undefined" ? Settings?.cornerStyle : null) ?? "cubic"
 
-    property alias radius: root.radiusX
     property alias color: root.fillColor
     property alias mirrored: root.flipX
     readonly property bool isTop: !flipY
 
-    width: Math.max(1, radiusX)
-    height: Math.max(1, radiusY)
-    implicitWidth: width
-    implicitHeight: height
+    implicitWidth: Math.max(1, radiusX)
+    implicitHeight: Math.max(1, radiusY)
+    width: implicitWidth
+    height: implicitHeight
 
     readonly property real w: width
     readonly property real h: height
     readonly property real tension: {
-        if (cornerStyle === "squircle") return 0.58;
-        if (cornerStyle === "flared") return 0.38;
-        return Settings?.scoopTension ?? 0.55228475;
+        if (cornerStyle === "squircle") return 0.68;
+        if (cornerStyle === "flared") return 0.42;
+        return (typeof Settings !== "undefined" ? Settings?.scoopTension : null) ?? 0.55228475;
     }
 
-    Behavior on fillColor { ColorAnimation { duration: Theme.animFast } }
+    Behavior on fillColor { ColorAnimation { duration: (typeof Theme !== "undefined" ? Theme?.animFast : null) ?? 150 } }
 
     Canvas {
         id: canvas
         anchors.fill: parent
         antialiasing: true
         smooth: true
-        renderTarget: Canvas.Image
+        renderTarget: Canvas.FramebufferObject
         renderStrategy: Canvas.Immediate
 
         onPaint: {
@@ -69,9 +70,9 @@ Item {
             } else if (root.cornerStyle === "stepped") {
                 var midX = w * 0.5;
                 var midY = h * 0.5;
-                ctx.lineTo(midX, p2y);
+                ctx.lineTo(p2x, midY);
                 ctx.lineTo(midX, midY);
-                ctx.lineTo(sx, midY);
+                ctx.lineTo(midX, sy);
                 ctx.lineTo(sx, sy);
             } else {
                 var c1x = fx ? w : 0;
@@ -84,6 +85,10 @@ Item {
             ctx.closePath();
             ctx.fill();
         }
+
+        // wake up canvas on initial load so it doesnt sit there transparent
+        Component.onCompleted: requestPaint()
+        onAvailableChanged: if (available) requestPaint()
 
         Connections {
             target: root

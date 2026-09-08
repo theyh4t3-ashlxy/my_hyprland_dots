@@ -1,3 +1,4 @@
+// StatusBar.qml
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -44,77 +45,18 @@ PanelWindow {
     readonly property bool isRight: pos === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    readonly property int scoopRadius: Math.round(Settings?.scoopRadius ?? 16)
+    readonly property int scoopRadius: Math.round(Settings?.scoopRadius ?? Settings?.screenCornerRadius ?? 16)
     readonly property string cornerMode: Settings?.screenCornerMode ?? "all"
 
-    readonly property bool showTopLeft: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("top") && !hasAdjacentMonitor("left");
-        if (cornerMode === "all") return true;
-        if (cornerMode === "opposite") return !root.isTop && !root.isLeft;
-        if (cornerMode === "top" || cornerMode === "left") return true;
-        return false;
-    }
-    readonly property bool showTopRight: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("top") && !hasAdjacentMonitor("right");
-        if (cornerMode === "all") return true;
-        if (cornerMode === "opposite") return !root.isTop && !root.isRight;
-        if (cornerMode === "top" || cornerMode === "right") return true;
-        return false;
-    }
-    readonly property bool showBottomLeft: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("bottom") && !hasAdjacentMonitor("left");
-        if (cornerMode === "all") return true;
-        if (cornerMode === "opposite") return !root.isBottom && !root.isLeft;
-        if (cornerMode === "bottom" || cornerMode === "left") return true;
-        return false;
-    }
-    readonly property bool showBottomRight: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("bottom") && !hasAdjacentMonitor("right");
-        if (cornerMode === "all") return true;
-        if (cornerMode === "opposite") return !root.isBottom && !root.isRight;
-        if (cornerMode === "bottom" || cornerMode === "right") return true;
-        return false;
-    }
-
-    readonly property bool borderTopAllowed: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("top");
-        if (cornerMode === "all" || cornerMode === "top") return true;
-        if (cornerMode === "opposite") return root.isBottom;
-        return false;
-    }
-    readonly property bool borderBottomAllowed: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("bottom");
-        if (cornerMode === "all" || cornerMode === "bottom") return true;
-        if (cornerMode === "opposite") return root.isTop;
-        return false;
-    }
-    readonly property bool borderLeftAllowed: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("left");
-        if (cornerMode === "all" || cornerMode === "left") return true;
-        if (cornerMode === "opposite") return root.isRight;
-        return false;
-    }
-    readonly property bool borderRightAllowed: {
-        if (cornerMode === "none") return false;
-        if (cornerMode === "monitor") return !hasAdjacentMonitor("right");
-        if (cornerMode === "all" || cornerMode === "right") return true;
-        if (cornerMode === "opposite") return root.isLeft;
-        return false;
-    }
+    // bar scoops belong to the bar, dont let "opposite" kill them
+    readonly property bool scoopAllowedLeft: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("left"))
+    readonly property bool scoopAllowedRight: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("right"))
+    readonly property bool scoopAllowedTop: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("top"))
+    readonly property bool scoopAllowedBottom: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("bottom"))
 
     readonly property int borderWidth: Math.round((Settings?.screenFrameDocked ?? true) ? (Settings?.screenBorderWidth ?? 0) : 0)
     readonly property bool hasBarScoops: !(Settings?.barFloating ?? false) && (Settings?.screenFrameDocked ?? true) && (
-        root.isTop ? (showTopLeft || showTopRight) :
-        root.isBottom ? (showBottomLeft || showBottomRight) :
-        root.isLeft ? (showTopLeft || showBottomLeft) :
-        (showTopRight || showBottomRight)
+        root.isVertical ? (scoopAllowedTop || scoopAllowedBottom) : (scoopAllowedLeft || scoopAllowedRight)
     )
 
     anchors {
@@ -134,10 +76,10 @@ PanelWindow {
 
     mask: Region {
         Region { item: barBg }
-        Region { item: leftBorderScoopCap.visible ? leftBorderScoopCap : null }
-        Region { item: rightBorderScoopCap.visible ? rightBorderScoopCap : null }
-        Region { item: topBorderScoopCap.visible ? topBorderScoopCap : null }
-        Region { item: bottomBorderScoopCap.visible ? bottomBorderScoopCap : null }
+        Region { item: scoopLeftH.visible ? scoopLeftH : null }
+        Region { item: scoopRightH.visible ? scoopRightH : null }
+        Region { item: scoopTopV.visible ? scoopTopV : null }
+        Region { item: scoopBottomV.visible ? scoopBottomV : null }
     }
 
     property alias launcherPopup: launcherPopup
@@ -176,7 +118,7 @@ PanelWindow {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 let pt = launcherPill.mapToItem(null, 0, 0);
-                if (Theme.isVertical) {
+                if (root.isVertical) {
                     root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
                 } else {
                     root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
@@ -278,50 +220,10 @@ PanelWindow {
             }
         }
 
-        Rectangle {
-            id: leftBorderScoopCap
-            x: 0
-            y: root.isTop ? Theme.barHeight : 0
-            width: root.borderWidth
-            height: root.scoopRadius
-            color: Theme.cornerFill ?? Theme.barBg
-            visible: root.hasBarScoops && !root.isVertical && root.borderWidth > 0 && root.scoopRadius > 0 && root.borderLeftAllowed
-        }
-
-        Rectangle {
-            id: rightBorderScoopCap
-            x: parent.width - root.borderWidth
-            y: root.isTop ? Theme.barHeight : 0
-            width: root.borderWidth
-            height: root.scoopRadius
-            color: Theme.cornerFill ?? Theme.barBg
-            visible: root.hasBarScoops && !root.isVertical && root.borderWidth > 0 && root.scoopRadius > 0 && root.borderRightAllowed
-        }
-
-        Rectangle {
-            id: topBorderScoopCap
-            x: root.isLeft ? Theme.barHeight : 0
-            y: 0
-            width: root.scoopRadius
-            height: root.borderWidth
-            color: Theme.cornerFill ?? Theme.barBg
-            visible: root.hasBarScoops && root.isVertical && root.borderWidth > 0 && root.scoopRadius > 0 && root.borderTopAllowed
-        }
-
-        Rectangle {
-            id: bottomBorderScoopCap
-            x: root.isLeft ? Theme.barHeight : 0
-            y: parent.height - root.borderWidth
-            width: root.scoopRadius
-            height: root.borderWidth
-            color: Theme.cornerFill ?? Theme.barBg
-            visible: root.hasBarScoops && root.isVertical && root.borderWidth > 0 && root.scoopRadius > 0 && root.borderBottomAllowed
-        }
-
         ConcaveCorner {
             id: scoopLeftH
-            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && (root.isTop ? root.showTopLeft : root.showBottomLeft)
-            x: Math.round(root.borderWidth > 0 && root.borderLeftAllowed ? root.borderWidth : 0)
+            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && root.scoopAllowedLeft
+            x: Math.round(root.borderWidth > 0 && root.scoopAllowedLeft ? root.borderWidth : 0)
             y: Math.round(root.isTop ? Theme.barHeight : 0)
             radiusX: root.scoopRadius
             radiusY: root.scoopRadius
@@ -332,8 +234,8 @@ PanelWindow {
 
         ConcaveCorner {
             id: scoopRightH
-            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && (root.isTop ? root.showTopRight : root.showBottomRight)
-            x: Math.round(parent.width - (root.borderWidth > 0 && root.borderRightAllowed ? root.borderWidth : 0) - root.scoopRadius)
+            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && root.scoopAllowedRight
+            x: Math.round(parent.width - (root.borderWidth > 0 && root.scoopAllowedRight ? root.borderWidth : 0) - root.scoopRadius)
             y: Math.round(root.isTop ? Theme.barHeight : 0)
             radiusX: root.scoopRadius
             radiusY: root.scoopRadius
@@ -344,9 +246,9 @@ PanelWindow {
 
         ConcaveCorner {
             id: scoopTopV
-            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && (root.isLeft ? root.showTopLeft : root.showTopRight)
+            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && root.scoopAllowedTop
             x: Math.round(root.isLeft ? Theme.barHeight : 0)
-            y: Math.round(root.borderWidth > 0 && root.borderTopAllowed ? root.borderWidth : 0)
+            y: Math.round(root.borderWidth > 0 && root.scoopAllowedTop ? root.borderWidth : 0)
             radiusX: root.scoopRadius
             radiusY: root.scoopRadius
             fillColor: Theme.barBg
@@ -356,9 +258,9 @@ PanelWindow {
 
         ConcaveCorner {
             id: scoopBottomV
-            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && (root.isLeft ? root.showBottomLeft : root.showBottomRight)
+            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && root.scoopAllowedBottom
             x: Math.round(root.isLeft ? Theme.barHeight : 0)
-            y: Math.round(parent.height - (root.borderWidth > 0 && root.borderBottomAllowed ? root.borderWidth : 0) - root.scoopRadius)
+            y: Math.round(parent.height - (root.borderWidth > 0 && root.scoopAllowedBottom ? root.borderWidth : 0) - root.scoopRadius)
             radiusX: root.scoopRadius
             radiusY: root.scoopRadius
             fillColor: Theme.barBg
