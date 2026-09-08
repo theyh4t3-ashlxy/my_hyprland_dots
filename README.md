@@ -1,6 +1,7 @@
 # hyprland dots: the hallucination edition
 
-> biohazard warning: this repository is 90% ai slop, 9% sleep deprivation, and 1% quickshell fighting for its life. enter at your own risk.
+>[!WARNING]
+> this repository is 90% ai slop, 9% sleep deprivation, and 1% quickshell fighting for its life. enter at your own risk.
 
 this is my hyprland setup. gemini, antigravity, and ai studio vibecoded this entire monstrosity because writing layer-shell qml and wayland protocol glue by hand is an insult to whatever sanity i have left. sometimes the model hallucinates an imaginary display server and everything breaks. it runs on my machine. if it doesn't run on yours, skill issue.
 
