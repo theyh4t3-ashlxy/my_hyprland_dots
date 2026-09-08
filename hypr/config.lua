@@ -19,7 +19,7 @@ if ok and type(user_colors) == "table" then
 end
 
 -- cursor environment merged from hyprmod
-hl.env("XCURSOR_THEME", "breeze_cursors")
+hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")
 hl.env("XCURSOR_SIZE", "24")
 
 hl.config({
