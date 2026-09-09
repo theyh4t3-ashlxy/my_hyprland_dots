@@ -39,7 +39,12 @@ command_not_found_handler() {
         "error: '$cmd' does not exist. you remapped capslock to escape and still couldn't exit this failure cleanly."
         "zsh: command '$cmd' missing. you're entering commands via pure muscle memory and zero cognitive oversight."
         "'$cmd' not found. the script you promised yourself you'd write three months ago is still a todo comment."
-        "zsh: '$cmd' is not in PATH. you configured catppuccin mocha across twelve configs just to misspell 'cat'."
+        "zsh: '$cmd' is not in PATH. you have matugen extracting dynamic material palettes from wallpaper juice just to misspell 'cat'."
+        "command '$cmd' not found. you calculate cubic bezier scoops in quickshell but your syntax accuracy is a flat line."
+        "'$cmd' is undefined. you purged grim, slurp, and hyprshot to build native scene-graph grabs just to screenshot an exit code 127."
+        "zsh: '$cmd' missing. you migrated your entire hyprland setup to lua just to make typos with slightly lower latency."
+        "error: '$cmd' does not exist. matugen injected fresh wallpaper palette tokens and you're still typing like your keyboard is sticky."
+        "failed to execute '$cmd'. your quicksettings has volume steps down to 1% and you're still deaf to your own typing errors."
         "command '$cmd' failed. you mashed backspace three times and still managed to hit the wrong key."
         "'$cmd' does not exist. you have 40 tabs of arch wiki open and none of them taught you how to spell '$cmd'."
         "command '$cmd' not found. you're running on cold brew, dry eyes, and raw syntax denial."
@@ -169,6 +174,9 @@ greeting_roast() {
         "new shell. you could be testing your code, but instead we're looking at fastfetch output."
         "welcome back. you're one broken config syntax error away from an unexpected reinstall."
         "terminal ready. you have 18 unstaged changes you're planning to 'git stash' and never look at again."
+        "welcome back. matugen just extracted thirty tonal tokens from your wallpaper so your terminal looks pretty while you do nothing."
+        "new shell. you purged hyprshot, built a native quickshell grabber, and you're still sitting here running 'ls'."
+        "welcome back. your hyprland runs on lua, your bar has mathematical scoops, and your project readme is still empty."
     )
 
     if (( hour >= 0 && hour < 5 )); then
@@ -214,6 +222,10 @@ roast() {
         "your git history looks like a crime scene and your commit messages are cries for help."
         "you hit up arrow 40 times to find a command you ran five minutes ago."
         "you wrote 400 lines of zsh roasts to insult yourself instead of finishing your project."
+        "you have matugen retheming your entire desktop on wallpaper change, but no dynamic palette can fix that syntax."
+        "you purged grim and slurp to build a native quickshell grabber just to screenshot your own failed builds."
+        "you migrated your binds to lua because 'declarative config is bloat' and then failed a three-letter command."
+        "your quickshell bar has bezier tension math down to eight decimals and you're still mistyping shell commands."
     )
     local r="${pool[$(( RANDOM % ${#pool[@]} + 1 ))]}"
     print -P "%F{red}󰅚%f %F{244}${r}%f"

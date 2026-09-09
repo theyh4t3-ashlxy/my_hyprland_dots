@@ -54,6 +54,41 @@ QtObject {
     // --- Utility Functions ---
     function alpha(c: color, a: real): color { return Qt.rgba(c.r, c.g, c.b, a) }
 
+    function blend(c1: color, c2: color, t: real): color {
+        let f = Math.max(0.0, Math.min(1.0, t));
+        return Qt.rgba(
+            c1.r + (c2.r - c1.r) * f,
+            c1.g + (c2.g - c1.g) * f,
+            c1.b + (c2.b - c1.b) * f,
+            c1.a + (c2.a - c1.a) * f
+        );
+    }
+
+    function formatBytes(bytes: real): string {
+        if (!bytes || bytes <= 0) return "0 B";
+        const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+        let i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+        let val = bytes / Math.pow(1024, i);
+        return (val >= 100 || i === 0 ? Math.round(val) : val.toFixed(1)) + " " + units[i];
+    }
+
+    function formatUptime(sec: int): string {
+        if (!sec || sec <= 0) return "0m";
+        let d = Math.floor(sec / 86400);
+        let h = Math.floor((sec % 86400) / 3600);
+        let m = Math.floor((sec % 3600) / 60);
+        if (d > 0) return d + "d " + h + "h";
+        if (h > 0) return h + "h " + m + "m";
+        return m + "m";
+    }
+
+    function getBatteryColor(pct: int, isCharging: bool): color {
+        if (isCharging) return primary;
+        if (pct <= 15) return error;
+        if (pct <= 30) return warn;
+        return on_surface;
+    }
+
     // --- State Tints & Overlays ---
     readonly property color primary_overlay:        alpha(primary, 0.18)
     readonly property color secondary_overlay:      alpha(secondary, 0.18)
@@ -302,6 +337,9 @@ QtObject {
         "download": "(↓)",
         "folder": "[dir]",
         "globe": "(⊕)",
+        "camera": "[o]",
+        "crop": "[#]",
+        "screenshot": "[o]",
         "volMute": "(-_-)",
         "volLow": "(・ω・)",
         "volMid": "(ᵔᴥᵔ)",
@@ -316,6 +354,7 @@ QtObject {
         "batQuarter": "(>_<)",
         "batEmpty": "(×_×)",
         "batCharge": "(↯^↯)",
+        "batCharging": "(↯^↯)",
         "sun": "(☼)",
         "moon": "(☾)",
         "brightness": "(☼)",
@@ -399,6 +438,9 @@ QtObject {
         "download": "down",
         "folder": "dir",
         "globe": "web",
+        "camera": "cam",
+        "crop": "crop",
+        "screenshot": "shot",
         "volMute": "mute",
         "volLow": "vol-",
         "volMid": "vol",
@@ -413,6 +455,7 @@ QtObject {
         "batQuarter": "25%",
         "batEmpty": "0%",
         "batCharge": "chg",
+        "batCharging": "chg",
         "sun": "day",
         "moon": "night",
         "brightness": "bright",
@@ -562,7 +605,8 @@ QtObject {
             return "\uE995";               // Volume3
         }
         if (iconSet === "awesome") {
-            if (pct <= 50) return "";
+            if (pct <= 33) return "";
+            if (pct <= 66) return "";
             return "";
         }
         if (pct <= 33) return "\uE04D";
@@ -585,8 +629,9 @@ QtObject {
             return "high";
         }
         if (iconSet === "windows") {
-            if (sig < 35) return "\uE872"; // Wifi2
-            if (sig < 70) return "\uE873"; // Wifi3
+            if (sig < 25) return "\uE871"; // Wifi1
+            if (sig < 50) return "\uE872"; // Wifi2
+            if (sig < 75) return "\uE873"; // Wifi3
             return "\uE874";               // Wifi4
         }
         if (iconSet === "awesome") {
@@ -598,9 +643,9 @@ QtObject {
     }
 
     // --- Static Glyph Index (Material Symbols, Segoe Fluent, FontAwesome) ---
-    readonly property string iconArch:              getIcon("\uE88A", "\uE71D", "", "arch")
+    readonly property string iconArch:              getIcon("\uEB8E", "\uE71D", "", "arch")
     readonly property string iconAppLauncher:       getIcon("\uE5C3", "\uE71D", "", "appLauncher")
-    readonly property string iconWorkspaces:        getIcon("\uE871", "\uE7C4", "", "workspaces") // Win: TaskView
+    readonly property string iconWorkspaces:        getIcon("\uE871", "\uE7C4", "", "workspaces")
     readonly property string iconSearch:            getIcon("\uE8B6", "\uE721", "", "search")
     readonly property string iconClose:             getIcon("\uE5CD", "\uE711", "", "close")
     readonly property string iconCheck:             getIcon("\uE5CA", "\uE73E", "", "check")
@@ -608,19 +653,19 @@ QtObject {
     readonly property string iconSettings:          getIcon("\uE8B8", "\uE713", "", "settings")
     readonly property string iconGear:              iconSettings
     readonly property string iconSave:              getIcon("\uE161", "\uE74E", "", "save")
-    readonly property string iconRefresh:           getIcon("\uE5D5", "\uE895", "", "refresh")
+    readonly property string iconRefresh:           getIcon("\uE5D5", "\uE72C", "", "refresh")
     readonly property string iconTrash:             getIcon("\uE92E", "\uE74D", "", "trash")
-    readonly property string iconClipboard:         getIcon("\uE14D", "\uF0E3", "", "clipboard")
-    readonly property string iconTray:              getIcon("\uE5CE", "\uE70E", "", "tray")      // Win: ChevronUp
+    readonly property string iconClipboard:         getIcon("\uE14F", "\uF0E3", "", "clipboard")
+    readonly property string iconTray:              getIcon("\uE5CE", "\uE971", "", "tray")
     readonly property string iconGrid:              getIcon("\uE9B0", "\uE74C", "", "grid")
     readonly property string iconNote:              getIcon("\uF097", "\uE70F", "", "note")
     readonly property string iconEdit:              iconNote
-    readonly property string iconCoffee:            getIcon("\uEFEF", "\uEC32", "", "coffee")    // Win: Cafe
-    readonly property string iconClock:             getIcon("\uEFD6", "\uE917", "", "clock")     // Win: Clock
-    readonly property string iconCpu:               getIcon("\uE322", "\uE9F5", "", "cpu")
-    readonly property string iconMem:               getIcon("\uE322", "\uE772", "", "mem")
+    readonly property string iconCoffee:            getIcon("\uEFEF", "\uEC32", "", "coffee")
+    readonly property string iconClock:             getIcon("\uEFD6", "\uE823", "", "clock")
+    readonly property string iconCpu:               getIcon("\uE322", "\uEEA1", "", "cpu")
+    readonly property string iconMem:               getIcon("\uE322", "\uEEA0", "", "mem")
     readonly property string iconThermo:            getIcon("\uF076", "\uE9CA", "", "thermo")
-    readonly property string iconEye:               getIcon("\uE8F4", "\uE890", "", "eye")
+    readonly property string iconEye:               getIcon("\uE8F4", "\uE7B3", "", "eye")
     readonly property string iconEyeOff:            getIcon("\uE8F5", "\uED1A", "", "eyeOff")
     readonly property string iconHeart:             getIcon("\uE87E", "\uEB51", "", "heart")
     readonly property string iconDownload:          getIcon("\uF090", "\uE896", "", "download")
@@ -631,7 +676,7 @@ QtObject {
     readonly property string iconScreenshot:        iconCamera
 
     readonly property string iconVolMute:           getIcon("\uE04F", "\uE74F", "", "volMute")
-    readonly property string iconVolLow:            getIcon("\uE04D", "\uE992", "", "volLow")
+    readonly property string iconVolLow:            getIcon("\uE04D", "\uE993", "", "volLow")
     readonly property string iconVolMid:            getIcon("\uE04D", "\uE994", "", "volMid")
     readonly property string iconVolHigh:           getIcon("\uE050", "\uE995", "", "volHigh")
     readonly property string iconMic:               getIcon("\uE31D", "\uE720", "", "mic")
@@ -662,44 +707,44 @@ QtObject {
 
     readonly property string iconWallhaven:         getIcon("\uE1BC", "\uE91B", "", "wallhaven")
     readonly property string iconWallpaper:         getIcon("\uE1BC", "\uE91B", "", "wallpaper")
-    readonly property string iconBell:              getIcon("\uE7F5", "\uE7E7", "", "bell")
+    readonly property string iconBell:              getIcon("\uE7F5", "\uEA8F", "", "bell")
     readonly property string iconBellOutline:       getIcon("\uE7F5", "\uEA8F", "", "bellOutline")
     readonly property string iconBellOff:           getIcon("\uE7F6", "\uEE79", "", "bellOff")
 
-    readonly property string iconEthernet:          getIcon("\uEB2F", "\uE839", "", "ethernet")
+    readonly property string iconEthernet:          getIcon("\uEB2F", "\uE839", "", "ethernet")
     readonly property string iconWifi:              getIcon("\uE63E", "\uE701", "", "wifi")
     readonly property string iconWifiHigh:          getIcon("\uE63E", "\uE874", "", "wifiHigh")
     readonly property string iconWifiMed:           getIcon("\uE4D9", "\uE873", "", "wifiMed")
     readonly property string iconWifiLow:           getIcon("\uE4CA", "\uE872", "", "wifiLow")
-    readonly property string iconWifiOff:           getIcon("\uE648", "\uE998", "", "wifiOff")
+    readonly property string iconWifiOff:           getIcon("\uE648", "\uE998", "", "wifiOff")
     readonly property string iconBluetooth:         getIcon("\uE1A7", "\uE702", "", "bluetooth")
-    readonly property string iconBluetoothConnected:getIcon("\uE1A8", "\uF5B8", "", "bluetoothConnected") // Win: Paired
-    readonly property string iconBluetoothOff:      getIcon("\uE1A9", "\uE8B8", "", "bluetoothOff")       // Win: Disconnected
+    readonly property string iconBluetoothConnected:getIcon("\uE1A8", "\uF5B8", "", "bluetoothConnected")
+    readonly property string iconBluetoothOff:      getIcon("\uE1A9", "\uF5B7", "", "bluetoothOff")
 
     readonly property string iconPower:             getIcon("\uF8C7", "\uE7E8", "", "power")
     readonly property string iconShutdown:          iconPower
     readonly property string iconLock:              getIcon("\uE899", "\uE72E", "", "lock")
     readonly property string iconLogout:            getIcon("\uE9BA", "\uF3B1", "", "logout")
-    readonly property string iconReboot:            getIcon("\uF053", "\uE895", "", "reboot")
+    readonly property string iconReboot:            getIcon("\uF053", "\uE777", "", "reboot")
     readonly property string iconSuspend:           getIcon("\uF159", "\uE708", "", "suspend")
     readonly property string iconHibernate:         getIcon("\uEB3B", "\uEC55", "", "hibernate")
 
     readonly property string iconChevronRight:      getIcon("\uE5CC", "\uE974", "", "chevronRight")
     readonly property string iconChevronLeft:       getIcon("\uE5CB", "\uE973", "", "chevronLeft")
     readonly property string iconChevronDown:       getIcon("\uE5CF", "\uE972", "", "chevronDown")
-    readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE70E", "", "chevronUp")
-    readonly property string iconFlame:             getIcon("\uEF55", "\uE814", "", "flame")      // Win: HeartPulse/Energy
+    readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE971", "", "chevronUp")
+    readonly property string iconFlame:             getIcon("\uEF55", "\uE814", "", "flame")
     readonly property string iconSparkles:          getIcon("\uE65F", "\uE7C5", "", "sparkles")
-    readonly property string iconRadio:             getIcon("\uE03E", "\uEC18", "", "radio")      // Win: Boombox
+    readonly property string iconRadio:             getIcon("\uE03E", "\uEC18", "📻", "radio")
     readonly property string iconSliders:           getIcon("\uE429", "\uE9E9", "", "sliders")
     readonly property string iconTerminal:          getIcon("\uEB8E", "\uE756", "", "terminal")
-    readonly property string iconCalendar:          getIcon("\uE935", "\uE787", "", "calendar")   // MDI: Calendar Fixed!
+    readonly property string iconCalendar:          getIcon("\uE935", "\uE787", "", "calendar")
     readonly property string iconHistory:           getIcon("\uE8B3", "\uE81C", "", "history")
     readonly property string iconCopy:              getIcon("\uE14D", "\uE8C8", "", "copy")
     readonly property string iconExternalLink:      getIcon("\uE89E", "\uE8A7", "", "externalLink")
-    readonly property string iconSignal:            getIcon("\uE202", "\uEC3A", "", "signal")     // MDI & Win Fixed!
+    readonly property string iconSignal:            getIcon("\uE202", "\uEC3A", "", "signal")
     readonly property string iconFilter:            getIcon("\uE152", "\uE71C", "", "filter")
-    readonly property string iconUser:              getIcon("\uF0D3", "\uE77B", "", "user")       // MDI: Account Fixed!
+    readonly property string iconUser:              getIcon("\uF0D3", "\uE77B", "", "user")
     readonly property string iconShield:            getIcon("\uE9E0", "\uEA18", "", "shield")
     readonly property string iconExpand:            getIcon("\uE5D0", "\uE740", "", "expand")
     readonly property string iconCollapse:          getIcon("\uE5D1", "\uE73F", "", "collapse")
@@ -761,7 +806,15 @@ QtObject {
                 "hardwired straight to the cyber matrix",
                 "packet sniffing every zero and one",
                 "handshake verified: hello darkness my old friend",
-                "latency lower than my attention span"
+                "latency lower than my attention span",
+                "exchanging raw tcp handshake pleasantries with nowhere",
+                "ethernet cable radiating pure existential dread",
+                "sniffing broadcast packets out of morbid curiosity",
+                "negotiating 10gbe link speed purely out of spite",
+                "pinging 1.1.1.1 just to make sure the earth is still here",
+                "sucking down raw telemetry straight into the void",
+                "wi-fi antennae desperately grasping for dirty radio waves",
+                "packet loss: 0% / mental stability loss: 100%"
             ],
             "network_off": [
                 "airgapped paranoia protocol activated",
@@ -775,7 +828,14 @@ QtObject {
                 "cut the fiber cord, escaped the simulation",
                 "unreachable, untracked, unbothered",
                 "zero ping because zero network exists",
-                "transmitting exclusively via telepathy"
+                "transmitting exclusively via telepathy",
+                "rf environment as quiet as a server room after a power failure",
+                "hardware killswitch toggled with unnecessary aggression",
+                "if the packet does not travel, the bug cannot spread",
+                "living inside a faraday cage made of bad life choices",
+                "ping timeout forever and ever amen",
+                "dns lookups failing successfully",
+                "unplugged the world to compile code in pitch darkness"
             ],
             "battery_charging": [
                 "mainlining raw high-voltage current",
@@ -787,7 +847,13 @@ QtObject {
                 "recharging anger cells at maximum amperage",
                 "wired life support running at capacity",
                 "absorbing wall juice directly into copper traces",
-                "dangerously energized and unstable"
+                "dangerously energized and unstable",
+                "charger brick hot enough to brown a bagel",
+                "lithium pouch swelling with righteous indignation",
+                "converting 120v ac into raw digital arrogance",
+                "drawing enough watts to flicker the kitchen lights",
+                "fast-charging this workstation like a stolen sports car",
+                "grid juice flowing like liquid adrenaline"
             ],
             "battery_low": [
                 "running purely on stubbornness and spite",
@@ -799,7 +865,13 @@ QtObject {
                 "emergency battery hospice care engaged",
                 "initiating fade-to-black speedrun",
                 "screen dims as my will to live evaporates",
-                "battery gasping its final microscopic breath"
+                "battery gasping its final microscopic breath",
+                "voltage curve dropping faster than my grades",
+                "two percent remaining and twenty buffers unsaved",
+                "display backlight dimming into the shadow realm",
+                "the pmux controller is actively praying for its life",
+                "running on the battery equivalent of vapor and static",
+                "plug it in right now or watch the kernel weep"
             ],
             "battery_full": [
                 "brimming with unbridled electrical violence",
@@ -809,7 +881,11 @@ QtObject {
                 "bursting with clean chemical anger",
                 "certified mobile threat to local coffee shops",
                 "ready to execute infinite loops indefinitely",
-                "power reserve peaked: untouchable machine god"
+                "power reserve peaked: untouchable machine god",
+                "lithium cells stacked to the legal limit",
+                "completely detached from wall power and god's guidance",
+                "maximum wattage achieved, universe trembles",
+                "zero dependency on the electrical socket hegemony"
             ],
             "media_playing": [
                 "ears currently receiving celestial blessings",
@@ -821,7 +897,13 @@ QtObject {
                 "acoustic therapy driving away all coherent thoughts",
                 "cranial resonance synchronized to the bassline",
                 "delivering raw serotonin via audio pipeline",
-                "head oscillating in rhythmic compliance"
+                "head oscillating in rhythmic compliance",
+                "blasting compressed 320kbps audio straight into skull",
+                "pipewire buffer holding on for dear life under 96khz",
+                "soundtrack to another 3am terminal dissociation",
+                "the DAC is working harder than our politicians",
+                "injecting rhythm directly into the central nervous system",
+                "vibrating the ear canals into higher dimensions"
             ],
             "media_quiet": [
                 "dead silence in the auditory corridor",
@@ -832,7 +914,11 @@ QtObject {
                 "waiting for the bass to drop... forever",
                 "exact zero decibels detected by audio server",
                 "letting the DAC enjoy an unpaid lunch break",
-                "the silence is practically vibrating"
+                "the silence is practically vibrating",
+                "nothing playing except the fan coil whining in g-flat",
+                "ambient silence broken only by the sound of typing tears",
+                "soundcard slumbering in complete acoustic deprivation",
+                "audio ring buffer drained bone-dry"
             ],
             "notes_empty": [
                 "head totally empty, smooth like polished marble",
@@ -842,7 +928,11 @@ QtObject {
                 "whiteboard bleached clean by temporal amnesia",
                 "zero schemes, zero notes, absolute zen emptiness",
                 "all thoughts dismissed without prejudice",
-                "mental notepad awaiting catastrophic epiphany"
+                "mental notepad awaiting catastrophic epiphany",
+                "zero thoughts, head is just a hollow shell with bash",
+                "no todos, no reminders, no accountability whatsoever",
+                "braincache totally flushed to /dev/null",
+                "not even a single grocery item rattling in the void"
             ],
             "notifs_empty": [
                 "matrix is quiet: nobody is demanding anything",
@@ -852,7 +942,11 @@ QtObject {
                 "peace and quiet at levels never thought possible",
                 "zero pings rattling the digital perimeter",
                 "ghost town inbox paradise achieved",
-                "the bliss of being completely ignored"
+                "the bliss of being completely ignored",
+                "nobody has pinged me and the world is temporarily healed",
+                "zero `@everyone` tags ruining my sleep cycle",
+                "inbox zero achieved through total antisocial velocity",
+                "no pings, no screams, no Jira tickets kicking the door down"
             ],
             "dnd_on": [
                 "anti-social defense perimeter active",
@@ -862,7 +956,11 @@ QtObject {
                 "touch grass protocol enforced by martial law",
                 "talking to me is currently a felony offense",
                 "introvert bunker buried under ten miles of concrete",
-                "all incoming pings redirected straight to /dev/null"
+                "all incoming pings redirected straight to /dev/null",
+                "notification daemon bound and gagged in the basement",
+                "if you ping me right now i will compile gentoo on your smart fridge",
+                "silent mode: active hostile disinterest engaged",
+                "zero disturbances permitted within my gravitational pull"
             ],
             "volume_muted": [
                 "silence dialed to eleven",
@@ -870,7 +968,10 @@ QtObject {
                 "absolute sound vacuum inside speakers",
                 "ears on fully subsidized vacation",
                 "ALSA/Pipewire snoozing peacefully",
-                "stealth operations: not even a click escapes"
+                "stealth operations: not even a click escapes",
+                "wireplumber ordered to execute total radio silence",
+                "not a single decibel sneaking out of this sound server",
+                "zero audio allowed before first sip of morning tar"
             ],
             "volume_high": [
                 "permanent hearing loss tutorial (any%)",
@@ -878,35 +979,50 @@ QtObject {
                 "neighbors drafting a strongly worded cease & desist",
                 "acoustic air cannon active on your desk",
                 "skull reverberating with maximum gain chaos",
-                "decibels exceeding OSHA recommendations"
+                "decibels exceeding OSHA recommendations",
+                "driving the headphone preamp into pure analog clipping",
+                "if the desk isn't vibrating you aren't doing it right",
+                "treating the tympanic membrane with total disrespect"
             ],
             "brightness_high": [
                 "deploying tactical flashbang straight into corneas",
                 "retinal incinerator operating at nominal output",
                 "illuminating entire apartment with raw screen glow",
                 "competing directly against the noon sun",
-                "corneal crisping level: well-done"
+                "corneal crisping level: well-done",
+                "oled panel functioning as a portable sunburn machine",
+                "blinding the nocturnal creatures within a five-mile radius",
+                "using the monitor to warm my frozen hands"
             ],
             "brightness_low": [
                 "vampire cave ambience successfully calibrated",
                 "undercover goblin operation under the blankets",
                 "saving optical nerves from certain destruction",
                 "photon conservation mode strictly observed",
-                "barely visible even to creatures of the night"
+                "barely visible even to creatures of the night",
+                "three photons escaping the display per lunar cycle",
+                "stealth hacking mode: corneas spared for tomorrow",
+                "screen dim enough to hide my shame"
             ],
             "idle_inhibited": [
                 "machine pumped full of intravenous espresso",
                 "display eyelids taped permanently open",
                 "no sleeping allowed on this workstation",
                 "caffeine drip wide open inside ACPI driver",
-                "screensaver execution privileges revoked"
+                "screensaver execution privileges revoked",
+                "inhibit lock engaged: stay awake or face destruction",
+                "systemdpd holding a megaphone to the display manager's ear",
+                "we do not sleep until the build finishes"
             ],
             "idle_normal": [
                 "ready to take an afternoon nap at any second",
                 "screensaver countdown quietly ticking down",
                 "circuits cooling down into peaceful slumber",
                 "sleep timers running on schedule",
-                "machine dreaming of electric sheep"
+                "machine dreaming of electric sheep",
+                "acpi power management waiting patiently in the wings",
+                "display panel preparing its peaceful descent into darkness",
+                "ready to enter low-power coma"
             ],
             "system": [
                 "held together by duct tape, prayer, and swap memory",
@@ -918,7 +1034,12 @@ QtObject {
                 "kernel is vibing within reckless thermal limits",
                 "functioning purely because the bug hasn't noticed us",
                 "hardware screaming, software chilling",
-                "operating on optimism and unmerged pull requests"
+                "operating on optimism and unmerged pull requests",
+                "btop shows everything is fine so do not question it",
+                "swap space carrying the entire weight of my sins",
+                "four hundred uncommitted git changes staring back into the abyss",
+                "if you touch this process table the entire universe unbinds",
+                "running 40 days of uptime out of pure cowardice to reboot"
             ]
         };
         let list = quotes[category];
