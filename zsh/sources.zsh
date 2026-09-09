@@ -14,13 +14,7 @@ local -a _mods=(
 local mod f
 for mod in "${_mods[@]}"; do
     f="$zdir/$mod.zsh"
-    if [[ -f "$f" ]]; then
-        source "$f"
-        # compile bytecode in background so next launch is instant
-        if [[ ! -f "$f.zwc" || "$f" -nt "$f.zwc" ]]; then
-            { zcompile -R "$f" } >/dev/null 2>&1 &!
-        fi
-    fi
+    [[ -f "$f" ]] && source "$f"
 done
 unset _mods mod f
 

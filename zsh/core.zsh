@@ -86,6 +86,10 @@ zclean() {
     print -P "%F{yellow}󰀦 purged all .zwc bytecode caches%f"
 }
 
+alias zwc="zrecompile"
+alias unzwc="zclean"
+alias recompile="zrecompile"
+
 # keys that actually work when i press them
 bindkey -e
 
