@@ -7,6 +7,7 @@ singleton NetworkService   services/NetworkService.qml
 singleton NotificationService services/NotificationService.qml
 singleton IdleService       services/IdleService.qml
 singleton BrightnessService services/BrightnessService.qml
+singleton ScreenshotService services/ScreenshotService.qml
 
 # bar, corners & overlays
 StatusBar                bar/StatusBar.qml
@@ -23,6 +24,7 @@ ToggleSwitch             controls/ToggleSwitch.qml
 PopupPanel               controls/PopupPanel.qml
 FlickList                controls/FlickList.qml
 BarPreview               controls/BarPreview.qml
+ScreenshotActions        controls/ScreenshotActions.qml
 
 # widgets
 Workspaces               widgets/Workspaces.qml
@@ -43,3 +45,4 @@ Clipboard                widgets/Clipboard.qml
 QuickSettings            widgets/QuickSettings.qml
 QuickNotes               widgets/QuickNotes.qml
 LockScreen               lockscreen/LockScreen.qml
+ScreenshotOverlay        widgets/ScreenshotOverlay.qml

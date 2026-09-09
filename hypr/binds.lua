@@ -52,9 +52,7 @@ hl.bind("XF86HangupPhone", hl.dsp.exec_cmd("playerctl play-pause"), { locked = t
 
 hl.bind(mainMod .. " + END", hl.dsp.exec_cmd("qs ipc call lock lock"))
 
-hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region"))
-hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd("hyprshot -m window"))
-hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output"))
+hl.bind("Print", hl.dsp.exec_cmd("qs ipc call screenshot open"))
 
 hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd("python3 " .. home .. "/.config/quickshell/scripts/wallpaper.py random all"))
 

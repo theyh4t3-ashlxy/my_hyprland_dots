@@ -98,12 +98,14 @@ QtObject {
     readonly property int    radiusPill:            9999
 
     readonly property int    barHeight:             Settings?.barHeight ?? 32
-    readonly property int    barRadius:             0
-    readonly property int    widgetRadius:          radiusSm
-    readonly property int    popupRadius:           radiusMd
-    readonly property int    widgetSpacing:         4
-    readonly property int    widgetPaddingH:        8
+    readonly property int    barRadius:             Settings?.barRadius ?? 0
+    readonly property int    widgetRadius:          Settings?.widgetRadius ?? radiusSm
+    readonly property int    popupRadius:           Settings?.popupRadius ?? radiusMd
+    readonly property int    widgetSpacing:         Settings?.widgetSpacing ?? 4
+    readonly property int    widgetPaddingH:        Settings?.widgetPaddingH ?? 8
     readonly property int    widgetPaddingV:        0
+    readonly property real   barOpacity:            Settings?.barOpacity ?? 1.0
+    readonly property real   popupOpacity:          Settings?.popupOpacity ?? 1.0
 
     readonly property int    scoopRadiusX:          Settings?.scoopRadius ?? 16
     readonly property int    scoopRadiusY:          Settings?.scoopRadius ?? 16
@@ -214,7 +216,7 @@ QtObject {
         }
     }
 
-    readonly property color barBg:            getStyleColor("barBg", barStyle)
+    readonly property color barBg:            alpha(getStyleColor("barBg", barStyle), barOpacity)
     readonly property color barBorderColor:   getStyleColor("barBorderColor", barStyle)
     readonly property color cornerFill: {
         let cm = Settings?.cornerColorMode ?? "bar";
@@ -227,7 +229,7 @@ QtObject {
     readonly property color widgetHover:      getStyleColor("widgetHover", barStyle)
     readonly property color widgetActive:     getStyleColor("widgetActive", barStyle)
     readonly property color widgetBorder:     getStyleColor("widgetBorder", barStyle)
-    readonly property color popupBg:          getStyleColor("popupBg", barStyle)
+    readonly property color popupBg:          alpha(getStyleColor("popupBg", barStyle), popupOpacity)
     readonly property color popupBorderColor: getStyleColor("popupBorderColor", barStyle)
     readonly property color cardBg:           getStyleColor("cardBg", barStyle)
     readonly property color cardBorder:       getStyleColor("cardBorder", barStyle)
@@ -624,6 +626,9 @@ QtObject {
     readonly property string iconDownload:          getIcon("\uF090", "\uE896", "", "download")
     readonly property string iconFolder:            getIcon("\uE2C7", "\uE838", "", "folder")
     readonly property string iconGlobe:             getIcon("\uE80B", "\uE774", "", "globe")
+    readonly property string iconCamera:            getIcon("\uE3AF", "\uE722", "", "camera")
+    readonly property string iconCrop:              getIcon("\uE3BE", "\uE7A8", "", "crop")
+    readonly property string iconScreenshot:        iconCamera
 
     readonly property string iconVolMute:           getIcon("\uE04F", "\uE74F", "", "volMute")
     readonly property string iconVolLow:            getIcon("\uE04D", "\uE992", "", "volLow")

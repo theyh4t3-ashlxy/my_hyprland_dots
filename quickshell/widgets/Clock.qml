@@ -83,7 +83,10 @@ Rectangle {
                 if (Theme?.isVertical ?? false) {
                     return Qt.formatDateTime(clockRoot.now, "HH\nmm");
                 }
-                let timeFmt = Settings?.clockFormat || "HH:mm";
+                let military = Settings?.clockMilitary ?? true;
+                let showSec = Settings?.clockShowSeconds ?? false;
+                let defaultFmt = military ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "hh:mm:ss ap" : "hh:mm ap");
+                let timeFmt = Settings?.clockFormat || defaultFmt;
                 let timeStr = Qt.formatDateTime(clockRoot.now, timeFmt);
                 let dateFmt = (Settings?.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
                 let showDate = (Settings?.showBarDate ?? false) && dateFmt !== "";

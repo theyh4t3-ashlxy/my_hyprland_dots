@@ -16,7 +16,7 @@ Rectangle {
         if (!notif) return 5000;
         if (notif.expireTimeout > 0) return notif.expireTimeout;
         if (notif.expireTimeout === 0) return 0;
-        return notif.urgency === 2 ? 10000 : 5000;
+        return notif.urgency === 2 ? 10000 : (Settings?.notificationTimeout ?? 5000);
     }
 
     property bool dockTop: false

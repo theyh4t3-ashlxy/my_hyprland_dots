@@ -451,7 +451,8 @@ Rectangle {
                             { id: "modules", label: "modules", icon: Theme.iconEye },
                             { id: "fonts", label: "fonts", icon: Theme.iconNote },
                             { id: "animations", label: "animations", icon: Theme.iconFlame },
-                            { id: "vibe", label: "vibe", icon: Theme.iconCoffee }
+                            { id: "vibe", label: "vibe", icon: Theme.iconCoffee },
+                            { id: "screenshot", label: "screenshot", icon: Theme.iconCamera }
                         ]
 
                         delegate: Rectangle {
@@ -670,6 +671,89 @@ Rectangle {
                             model: [0, 8, 12, 16, 20, 24, 32]
                             currentValue: Settings.screenCornerRadius
                             onSelected: val => Settings.screenCornerRadius = val
+                        }
+
+                        CategoryHeader {
+                            title: "granular density & metrics"
+                            icon: Theme.iconSliders
+                        }
+
+                        ChoiceRow {
+                            title: "widget spacing: " + Settings.widgetSpacing + "px"
+                            model: [2, 4, 6, 8, 12]
+                            currentValue: Settings.widgetSpacing
+                            onSelected: val => Settings.widgetSpacing = val
+                        }
+
+                        ChoiceRow {
+                            title: "widget padding: " + Settings.widgetPaddingH + "px"
+                            model: [4, 6, 8, 10, 14]
+                            currentValue: Settings.widgetPaddingH
+                            onSelected: val => Settings.widgetPaddingH = val
+                        }
+
+                        ChoiceRow {
+                            title: "widget corner radius"
+                            model: [
+                                { label: "sharp (0px)", value: 0 },
+                                { label: "2px", value: 2 },
+                                { label: "4px", value: 4 },
+                                { label: "8px", value: 8 },
+                                { label: "pill", value: 9999 }
+                            ]
+                            currentValue: Settings.widgetRadius
+                            onSelected: val => Settings.widgetRadius = val
+                        }
+
+                        ChoiceRow {
+                            title: "popup corner radius: " + Settings.popupRadius + "px"
+                            model: [4, 8, 12, 16, 24]
+                            currentValue: Settings.popupRadius
+                            onSelected: val => Settings.popupRadius = val
+                        }
+
+                        ChoiceRow {
+                            title: "bar background opacity"
+                            model: [
+                                { label: "50%", value: 0.50 },
+                                { label: "70%", value: 0.70 },
+                                { label: "85%", value: 0.85 },
+                                { label: "100%", value: 1.0 }
+                            ]
+                            currentValue: Settings.barOpacity
+                            onSelected: val => Settings.barOpacity = val
+                        }
+
+                        ChoiceRow {
+                            title: "popup background opacity"
+                            model: [
+                                { label: "75%", value: 0.75 },
+                                { label: "85%", value: 0.85 },
+                                { label: "95%", value: 0.95 },
+                                { label: "100%", value: 1.0 }
+                            ]
+                            currentValue: Settings.popupOpacity
+                            onSelected: val => Settings.popupOpacity = val
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconGrid
+                                title: "floating bar"
+                                subtitle: "detach status bar from screen edge"
+                                checked: Settings.barFloating
+                                onToggled: Settings.barFloating = !Settings.barFloating
+                            }
+
+                            RowDivider { visible: Settings.barFloating }
+
+                            ChoiceRow {
+                                visible: Settings.barFloating
+                                title: "floating bar corner radius: " + Settings.barRadius + "px"
+                                model: [0, 4, 8, 12, 16, 20]
+                                currentValue: Settings.barRadius
+                                onSelected: val => Settings.barRadius = val
+                            }
                         }
                     }
                 }
@@ -1407,9 +1491,10 @@ Rectangle {
                         ChoiceRow {
                             title: "clock time format"
                             model: [
-                                { label: "24-hour (16:45)", value: "HH:mm" },
-                                { label: "12-hour (4:45 pm)", value: "h:mm ap" },
-                                { label: "seconds (16:45:00)", value: "HH:mm:ss" }
+                                { label: "24h (16:45)", value: "HH:mm" },
+                                { label: "12h (4:45 pm)", value: "h:mm ap" },
+                                { label: "24h + sec", value: "HH:mm:ss" },
+                                { label: "12h + sec", value: "h:mm:ss ap" }
                             ]
                             currentValue: Settings.clockFormat
                             onSelected: val => Settings.clockFormat = val
@@ -1446,6 +1531,62 @@ Rectangle {
                             ]
                             currentValue: Settings.workspaceCount
                             onSelected: val => Settings.workspaceCount = val
+                        }
+
+                        CategoryHeader {
+                            title: "audio & output volume"
+                            icon: Theme.iconVolHigh
+                        }
+
+                        ChoiceRow {
+                            title: "volume scroll step"
+                            model: [
+                                { label: "1% (fine)", value: 1 },
+                                { label: "2%", value: 2 },
+                                { label: "5% (default)", value: 5 },
+                                { label: "10% (coarse)", value: 10 }
+                            ]
+                            currentValue: Settings.volumeStep
+                            onSelected: val => Settings.volumeStep = val
+                        }
+
+                        ChoiceRow {
+                            title: "max volume ceiling"
+                            model: [
+                                { label: "100% (safe)", value: 100 },
+                                { label: "125% (boost)", value: 125 },
+                                { label: "150% (overdrive)", value: 150 }
+                            ]
+                            currentValue: Settings.volumeMax
+                            onSelected: val => Settings.volumeMax = val
+                        }
+
+                        CategoryHeader {
+                            title: "notifications & alerts"
+                            icon: Theme.iconBell
+                        }
+
+                        ChoiceRow {
+                            title: "toast auto-dismiss duration"
+                            model: [
+                                { label: "3s (fast)", value: 3000 },
+                                { label: "5s (normal)", value: 5000 },
+                                { label: "8s (slow)", value: 8000 },
+                                { label: "12s (long)", value: 12000 },
+                                { label: "sticky", value: 0 }
+                            ]
+                            currentValue: Settings.notificationTimeout
+                            onSelected: val => Settings.notificationTimeout = val
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconBell
+                                title: "do not disturb"
+                                subtitle: "suppress on-screen notification popups"
+                                checked: Settings.dnd
+                                onToggled: Settings.dnd = !Settings.dnd
+                            }
                         }
 
                         CategoryHeader {
@@ -1634,6 +1775,322 @@ Rectangle {
                     }
                 }
                 TabScrollTrack { target: flickVibe; visible: root.activeTab === "vibe" && flickVibe.visibleArea.heightRatio < 1.0 }
+
+                Flickable {
+                    id: flickScreenshot
+                    anchors.fill: parent
+                    visible: root.activeTab === "screenshot"
+                    clip: true
+                    contentWidth: width
+                    contentHeight: screenshotCol.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ColumnLayout {
+                        id: screenshotCol
+                        width: parent.width - 6
+                        spacing: 10
+
+                        CategoryHeader {
+                            title: "quick capture triggers"
+                            icon: Theme.iconCamera
+                        }
+
+                        SettingCard {
+                            RowLayout {
+                                width: parent.width
+                                spacing: 8
+                                Layout.margins: 8
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 36
+                                    radius: Theme.widgetRadius
+                                    color: regMouse.pressed ? Theme.primary : (regMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
+                                    border.color: Theme.outline_variant
+                                    border.width: 1
+
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        Text {
+                                            text: Theme.iconCrop
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeSm
+                                            color: regMouse.pressed ? Theme.on_primary : Theme.primary
+                                        }
+                                        Text {
+                                            text: "region"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSm
+                                            font.weight: Font.Medium
+                                            color: regMouse.pressed ? Theme.on_primary : Theme.on_surface
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: regMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            popup.open = false;
+                                            ScreenshotService.open("region");
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 36
+                                    radius: Theme.widgetRadius
+                                    color: winMouse.pressed ? Theme.primary : (winMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
+                                    border.color: Theme.outline_variant
+                                    border.width: 1
+
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        Text {
+                                            text: Theme.iconWorkspaces
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeSm
+                                            color: winMouse.pressed ? Theme.on_primary : Theme.primary
+                                        }
+                                        Text {
+                                            text: "window"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSm
+                                            font.weight: Font.Medium
+                                            color: winMouse.pressed ? Theme.on_primary : Theme.on_surface
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: winMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            popup.open = false;
+                                            ScreenshotService.open("window");
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 36
+                                    radius: Theme.widgetRadius
+                                    color: fullMouse.pressed ? Theme.primary : (fullMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
+                                    border.color: Theme.outline_variant
+                                    border.width: 1
+
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        Text {
+                                            text: Theme.iconExpand
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeSm
+                                            color: fullMouse.pressed ? Theme.on_primary : Theme.primary
+                                        }
+                                        Text {
+                                            text: "fullscreen"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSm
+                                            font.weight: Font.Medium
+                                            color: fullMouse.pressed ? Theme.on_primary : Theme.on_surface
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: fullMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            popup.open = false;
+                                            ScreenshotService.captureFullscreen(Quickshell.screens[0], Settings.screenshotDefaultAction || "both");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "capture behavior & feedback"
+                            icon: Theme.iconSliders
+                        }
+
+                        ChoiceRow {
+                            title: "default action on confirmation"
+                            model: [
+                                { label: "save & copy", value: "both" },
+                                { label: "clipboard only", value: "copy" },
+                                { label: "save only", value: "save" },
+                                { label: "editor / markup", value: "edit" }
+                            ]
+                            currentValue: Settings.screenshotDefaultAction
+                            onSelected: val => Settings.screenshotDefaultAction = val
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconWorkspaces
+                                title: "window snapping"
+                                subtitle: "hover over any Hyprland client to auto-detect its geometry"
+                                checked: Settings.screenshotWindowSnapping
+                                onToggled: Settings.screenshotWindowSnapping = !Settings.screenshotWindowSnapping
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconEye
+                                title: "freeze frame on open"
+                                subtitle: "freeze display during selection so animated windows don't move"
+                                checked: Settings.screenshotFreeze
+                                onToggled: Settings.screenshotFreeze = !Settings.screenshotFreeze
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconFlame
+                                title: "shutter flash"
+                                subtitle: "visual flash animation when capture is completed"
+                                checked: Settings.screenshotFlash
+                                onToggled: Settings.screenshotFlash = !Settings.screenshotFlash
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconBell
+                                title: "desktop notification"
+                                subtitle: "dispatch notification with image thumbnail on capture"
+                                checked: Settings.screenshotNotify
+                                onToggled: Settings.screenshotNotify = !Settings.screenshotNotify
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "overlay visuals & geometry"
+                            icon: Theme.iconSliders
+                        }
+
+                        ChoiceRow {
+                            title: "backdrop dimming opacity"
+                            model: [
+                                { label: "20%", value: 0.20 },
+                                { label: "35%", value: 0.35 },
+                                { label: "45%", value: 0.45 },
+                                { label: "60%", value: 0.60 },
+                                { label: "75%", value: 0.75 }
+                            ]
+                            currentValue: Settings.screenshotDimOpacity
+                            onSelected: val => Settings.screenshotDimOpacity = val
+                        }
+
+                        ChoiceRow {
+                            title: "selection border width"
+                            model: [
+                                { label: "1px", value: 1 },
+                                { label: "2px", value: 2 },
+                                { label: "3px", value: 3 },
+                                { label: "4px", value: 4 }
+                            ]
+                            currentValue: Settings.screenshotBorderWidth
+                            onSelected: val => Settings.screenshotBorderWidth = val
+                        }
+
+                        ChoiceRow {
+                            title: "selection corner radius"
+                            model: [
+                                { label: "sharp (0)", value: 0 },
+                                { label: "subtle (4)", value: 4 },
+                                { label: "rounded (8)", value: 8 },
+                                { label: "soft (12)", value: 12 },
+                                { label: "pill (16)", value: 16 }
+                            ]
+                            currentValue: Settings.screenshotBorderRadius
+                            onSelected: val => Settings.screenshotBorderRadius = val
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconGrid
+                                title: "hairline crosshairs"
+                                subtitle: "show screen-spanning crosshair lines tracking cursor"
+                                checked: Settings.screenshotShowCrosshair
+                                onToggled: Settings.screenshotShowCrosshair = !Settings.screenshotShowCrosshair
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconNote
+                                title: "live dimension badge"
+                                subtitle: "show [W x H] badge and client name above selection"
+                                checked: Settings.screenshotShowBadge
+                                onToggled: Settings.screenshotShowBadge = !Settings.screenshotShowBadge
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconExpand
+                                title: "corner accent handles"
+                                subtitle: "render accent markers on selection corners"
+                                checked: Settings.screenshotShowHandles
+                                onToggled: Settings.screenshotShowHandles = !Settings.screenshotShowHandles
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "storage directory"
+                            icon: Theme.iconFolder
+                        }
+
+                        SettingCard {
+                            Rectangle {
+                                width: parent.width
+                                implicitHeight: 44
+                                color: "transparent"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.widgetPaddingH
+                                    anchors.rightMargin: Theme.widgetPaddingH
+                                    spacing: 8
+
+                                    Text {
+                                        text: Theme.iconFolder
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeSm
+                                        color: Theme.primary
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: Settings.screenshotDir
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_surface
+                                        elide: Text.ElideMiddle
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                TabScrollTrack { target: flickScreenshot; visible: root.activeTab === "screenshot" && flickScreenshot.visibleArea.heightRatio < 1.0 }
             }
         }
 

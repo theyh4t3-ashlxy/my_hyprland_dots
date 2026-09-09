@@ -103,4 +103,33 @@ ShellRoot {
             Settings.showBarStudio = false;
         }
     }
+
+    Variants {
+        model: Quickshell.screens
+        ScreenshotOverlay {}
+    }
+
+    IpcHandler {
+        target: "screenshot"
+
+        function open(): void {
+            ScreenshotService.open("region");
+        }
+
+        function close(): void {
+            ScreenshotService.close();
+        }
+
+        function toggle(): void {
+            ScreenshotService.toggle("region");
+        }
+
+        function full(): void {
+            ScreenshotService.captureFullscreen(Quickshell.screens[0], "both");
+        }
+
+        function window(): void {
+            ScreenshotService.open("window");
+        }
+    }
 }

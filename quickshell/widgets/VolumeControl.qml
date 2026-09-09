@@ -88,8 +88,10 @@ Rectangle {
 
         onWheel: (wheel) => {
             if (ready && sink.audio) {
-                sink.audio.volume = Math.max(0, Math.min(1.5,
-                    sink.audio.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05)));
+                let step = (Settings?.volumeStep ?? 5) / 100.0;
+                let maxLimit = (Settings?.volumeMax ?? 100) / 100.0;
+                sink.audio.volume = Math.max(0, Math.min(maxLimit,
+                    sink.audio.volume + (wheel.angleDelta.y > 0 ? step : -step)));
                 sink.audio.muted = false;
             }
         }

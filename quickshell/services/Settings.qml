@@ -83,6 +83,40 @@ QtObject {
     property string fontWeight: "regular"
     property var networkAliases: ({})
 
+    // screenshot granular settings
+    property string screenshotDir: "~/Pictures/Screenshots"
+    property string screenshotDefaultAction: "both" // "both", "copy", "save", "edit"
+    property bool screenshotWindowSnapping: true
+    property bool screenshotNotify: true
+    property bool screenshotFreeze: true
+    property real screenshotDimOpacity: 0.45
+    property int screenshotBorderWidth: 2
+    property int screenshotBorderRadius: 4
+    property bool screenshotShowCrosshair: true
+    property bool screenshotShowBadge: true
+    property bool screenshotShowHandles: true
+    property bool screenshotFlash: true
+
+    // granular layout & density
+    property int barRadius: 0
+    property real barOpacity: 1.0
+    property int widgetRadius: 2
+    property int popupRadius: 8
+    property int widgetSpacing: 4
+    property int widgetPaddingH: 8
+    property real popupOpacity: 1.0
+
+    // granular audio & media
+    property int volumeStep: 5
+    property int volumeMax: 100
+
+    // granular clock & date
+    property bool clockShowSeconds: false
+    property bool clockMilitary: true
+
+    // granular notifications
+    property int notificationTimeout: 5000
+
     property bool _initialized: false
     property bool _loading: false
 
@@ -165,6 +199,18 @@ QtObject {
     onDndChanged: queueSave()
     onVibeStyleChanged: queueSave()
     onNetworkAliasesChanged: queueSave()
+    onBarRadiusChanged: queueSave()
+    onBarOpacityChanged: queueSave()
+    onWidgetRadiusChanged: queueSave()
+    onPopupRadiusChanged: queueSave()
+    onWidgetSpacingChanged: queueSave()
+    onWidgetPaddingHChanged: queueSave()
+    onPopupOpacityChanged: queueSave()
+    onVolumeStepChanged: queueSave()
+    onVolumeMaxChanged: queueSave()
+    onClockShowSecondsChanged: queueSave()
+    onClockMilitaryChanged: queueSave()
+    onNotificationTimeoutChanged: queueSave()
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -229,7 +275,31 @@ QtObject {
         { key: "fontMaterial", type: "string", def: "Material Symbols Rounded" },
         { key: "fontScale", type: "float", def: 1.0 },
         { key: "fontWeight", type: "string", def: "regular" },
-        { key: "networkAliases", type: "json", def: ({}) }
+        { key: "networkAliases", type: "json", def: ({}) },
+        { key: "screenshotDir", type: "string", def: "~/Pictures/Screenshots" },
+        { key: "screenshotDefaultAction", type: "string", def: "both" },
+        { key: "screenshotWindowSnapping", type: "bool", def: true },
+        { key: "screenshotNotify", type: "bool", def: true },
+        { key: "screenshotFreeze", type: "bool", def: true },
+        { key: "screenshotDimOpacity", type: "float", def: 0.45 },
+        { key: "screenshotBorderWidth", type: "int", def: 2 },
+        { key: "screenshotBorderRadius", type: "int", def: 4 },
+        { key: "screenshotShowCrosshair", type: "bool", def: true },
+        { key: "screenshotShowBadge", type: "bool", def: true },
+        { key: "screenshotShowHandles", type: "bool", def: true },
+        { key: "screenshotFlash", type: "bool", def: true },
+        { key: "barRadius", type: "int", def: 0 },
+        { key: "barOpacity", type: "float", def: 1.0 },
+        { key: "widgetRadius", type: "int", def: 2 },
+        { key: "popupRadius", type: "int", def: 8 },
+        { key: "widgetSpacing", type: "int", def: 4 },
+        { key: "widgetPaddingH", type: "int", def: 8 },
+        { key: "popupOpacity", type: "float", def: 1.0 },
+        { key: "volumeStep", type: "int", def: 5 },
+        { key: "volumeMax", type: "int", def: 100 },
+        { key: "clockShowSeconds", type: "bool", def: false },
+        { key: "clockMilitary", type: "bool", def: true },
+        { key: "notificationTimeout", type: "int", def: 5000 }
     ]
 
     function loadObject(data) {
