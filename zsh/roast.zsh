@@ -162,7 +162,7 @@ greeting_roast() {
         "nice font choice. your syntax errors look very aesthetic in italic ligatures."
         "you opened this window with a specific plan and completely forgot it during the 4ms shell startup."
         "welcome back. your posture is shaped like a desk lamp. sit up."
-        "another shell running. you bought a high refresh rate monitor just to watch monospace text scroll past."
+        "another shell running. pushing 60 frames a second on a thinkpad t16 just to watch monospace text crawl past."
         "welcome back. you spent two hours tweaking bar padding to avoid writing one function."
         "ready to run. you're going to hit up arrow fourteen times instead of using fzf."
         "welcome. your git log is four commits of 'wip' followed by 'revert everything please work'."
