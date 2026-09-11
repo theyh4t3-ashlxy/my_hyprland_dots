@@ -2,10 +2,10 @@
 # your desktop is currently an unconfigured microwave. let us fix that.
 setopt ERR_EXIT NO_UNSET PIPE_FAIL EXTENDED_GLOB
 
-# prevent terminal terrorism
+# prevent terminal vandalism
 if (( EUID == 0 )); then
-    print -P "%F{203}󰅚 running a desktop rice installer as root? who hurt you? step away from the keyboard before you chmod your entire personality to 000.%f"
-    print -P "%F{244}run it as your regular user. sudo exists for a reason.%f"
+    print -P "%F{203}󰅚 running this as root? who hurt you? step away from the keyboard before you chmod your entire life into 000.%f"
+    print -P "%F{244}run it as your regular user. uwsm and wayland will not save you from self-sabotage.%f"
     exit 1
 fi
 
@@ -14,7 +14,7 @@ if [[ ! -d "$DOTS_DIR/quickshell" ]]; then
     if [[ -d "$HOME/my-hyprland-dots/quickshell" ]]; then
         DOTS_DIR="$HOME/my-hyprland-dots"
     else
-        print -P "%F{141}󰄛%f cloning repo because you apparently cannot clone it yourself..."
+        print -P "%F{141}󰄛%f cloning repo because you forgot to clone it yourself..."
         if ! (( $+commands[git] )); then
             print -P "%F{203}󰅚 git is not even installed. what were you doing on this machine before today, watching paint dry?%f"
             exit 1
@@ -75,8 +75,8 @@ install_aur_helper() {
     log_step "resolving aur deficiency..."
     log_warn "no aur helper detected. arch without the aur is just debian with anxiety."
 
-    if ! ask_yn "automatically compile and install paru-bin right now?" "Y"; then
-        log_warn "enjoy manually compiling pkgbuilds in nano like it is 2004."
+    if ! ask_yn "compile and install paru-bin automatically right now?" "Y"; then
+        log_warn "enjoy compiling PKGBUILD files by hand like it is 2004."
         return 1
     fi
 
@@ -91,7 +91,7 @@ install_aur_helper() {
     log_info "fetching paru-bin PKGBUILD into $tmp_aur..."
 
     if ! git clone "https://aur.archlinux.org/paru-bin.git" "$tmp_aur"; then
-        log_err "git failed to clone paru-bin. aur might be rate limiting you."
+        log_err "git failed to clone paru-bin. network or aur is down."
         rm -rf "$tmp_aur"
         return 1
     fi
@@ -105,10 +105,10 @@ install_aur_helper() {
     rm -rf "$tmp_aur"
 
     if (( status == 0 )); then
-        log_ok "paru installed. your machine is slightly less useless now."
+        log_ok "paru installed. your machine has marginally improved."
         return 0
     else
-        log_err "makepkg crashed. inspect the terminal carnage above."
+        log_err "makepkg crashed. inspect the compile logs above."
         return 1
     fi
 }
@@ -124,7 +124,6 @@ fetch_curated_wallpaper() {
     fi
 
     log_info "fetching a wallpaper that will not embarrass you during screen shares..."
-    # direct reliable uncompressed raw asset
     local wp_source="https://raw.githubusercontent.com/catppuccin/wallpapers/main/landscapes/evening-sky.png"
 
     if (( $+commands[curl] )); then
@@ -132,14 +131,14 @@ fetch_curated_wallpaper() {
     elif (( $+commands[wget] )); then
         wget -q -O "$target_file" "$wp_source" || true
     else
-        log_warn "neither curl nor wget exists. how did you even acquire this script?"
+        log_warn "neither curl nor wget exists. how did you even download this script?"
         return 1
     fi
 
     if [[ -f "$target_file" && -s "$target_file" ]]; then
         log_ok "saved curated wallpaper -> $target_file"
     else
-        log_warn "failed to download wallpaper. the black void remains your aesthetic."
+        log_warn "failed to download wallpaper. enjoy your default black void."
         return 1
     fi
 }
@@ -148,8 +147,10 @@ fetch_curated_wallpaper() {
 typeset -A PKG_GROUPS_OFFICIAL
 typeset -A PKG_GROUPS_AUR
 
-PKG_GROUPS_OFFICIAL[desktop]="hyprland xdg-desktop-portal-hyprland xdg-desktop-portal-gtk wl-clipboard"
-PKG_GROUPS_AUR[desktop]="quickshell-git matugen-bin awww"
+# nuked quickshell-git, matugen, and awww out of aur and moved into official.
+# uwsm inserted so session management stops acting like an unmonitored bash fork.
+PKG_GROUPS_OFFICIAL[desktop]="hyprland uwsm quickshell-git matugen awww xdg-desktop-portal-hyprland xdg-desktop-portal-gtk wl-clipboard"
+PKG_GROUPS_AUR[desktop]=""
 
 PKG_GROUPS_OFFICIAL[terminal]="kitty zsh fastfetch"
 PKG_GROUPS_AUR[terminal]=""
@@ -231,12 +232,11 @@ select_multi() {
 install_selected_dependencies() {
     local -a cats=( "$@" )
     if (( ${#cats} == 0 )); then
-        log_info "zero package groups picked. moving on without installing anything."
+        log_info "zero package groups selected. moving on."
         return 0
     fi
 
     local helper=$(detect_aur_helper)
-
     local -a to_install_official=()
     local -a to_install_aur=()
 
@@ -253,37 +253,36 @@ install_selected_dependencies() {
     to_install_aur=( ${(u)to_install_aur} )
 
     if [[ "$helper" == "pacman" && ${#to_install_aur} -gt 0 ]]; then
-        log_warn "you selected aur packages (${to_install_aur[*]}) but have no aur helper."
+        log_warn "aur packages queued (${to_install_aur[*]}) but no helper installed."
         if install_aur_helper; then
             helper=$(detect_aur_helper)
         fi
     fi
 
     log_step "commencing package installation for: ${cats[*]}"
-    log_info "using backend: %B$helper%b"
+    log_info "resolved package manager backend: %B$helper%b"
 
     case "$helper" in
         paru|yay)
             local -a all_target_pkgs=( "${to_install_official[@]}" "${to_install_aur[@]}" )
             if (( ${#all_target_pkgs} )); then
-                log_info "executing $helper -S --needed for ${#all_target_pkgs} targets..."
+                log_info "executing $helper -S --needed for ${#all_target_pkgs} packages..."
                 $helper -S --needed --noconfirm "${all_target_pkgs[@]}" || \
-                    log_warn "some packages broke during install. check aur compile logs."
+                    log_warn "some packages broke during install. check aur or network logs."
             fi
             ;;
         pacman)
             if (( ${#to_install_official} )); then
-                log_info "running sudo pacman -S --needed for official repos..."
+                log_info "running sudo pacman -S --needed for official packages..."
                 sudo pacman -S --needed --noconfirm "${to_install_official[@]}" || \
                     log_warn "pacman encountered errors."
             fi
             if (( ${#to_install_aur} )); then
-                log_err "skipped aur packages due to lack of helper: ${to_install_aur[*]}"
-                log_err "install quickshell-git, matugen-bin, awww manually or run with an aur helper."
+                log_err "skipped aur packages due to missing aur helper: ${to_install_aur[*]}"
             fi
             ;;
         *)
-            log_err "unknown packaging system. install these manually or switch to a real distro:"
+            log_err "unknown packaging backend. install these manually or switch to arch:"
             print "  official: ${to_install_official[*]}"
             print "  aur: ${to_install_aur[*]}"
             ;;
@@ -296,7 +295,7 @@ backup_selected() {
         targets=( "${ALL_DOTFILES[@]}" )
     fi
 
-    log_info "inspecting $CONFIG_DIR for files you probably did not mean to leave there..."
+    log_info "inspecting $CONFIG_DIR for files you probably broke earlier..."
     mkdir -p "$BACKUP_DIR"
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local target_archive="$BACKUP_DIR/backup_${timestamp}.tar.gz"
@@ -311,9 +310,9 @@ backup_selected() {
     if (( ${#existing_targets} )); then
         tar -czf "$target_archive" -C "$CONFIG_DIR" "${existing_targets[@]}" 2>/dev/null || true
         log_ok "archived ${#existing_targets} unlinked folder(s) -> $target_archive"
-        log_info "keep them so you can reminisce about your broken configs later."
+        log_info "keep them so you can reminisce about your previous failures."
     else
-        log_info "no physical unlinked configs found. nothing worth saving."
+        log_info "no physical unlinked configs found. nothing worth preserving."
     fi
 }
 
@@ -336,7 +335,7 @@ link_selected_configurations() {
             continue
         fi
 
-        # flatpak sandbox bwrap breaks on symlinked gtk themes
+        # flatpak sandbox bwrap panics on symlinked gtk theme roots
         if [[ "$folder" == "gtk-3.0" || "$folder" == "gtk-4.0" ]]; then
             [[ -L "$target" ]] && rm -f "$target"
             mkdir -p "$target"
@@ -377,7 +376,7 @@ link_selected_configurations() {
 }
 
 setup_directories_and_permissions() {
-    log_info "allocating runtime and cache paths..."
+    log_info "allocating runtime, cache, and uwsm paths..."
     mkdir -p "$WALLPAPER_DIR"/{live,downloaded}
     mkdir -p "$CACHE_DIR"/quickshell/{thumbnails,wallpapers}
     mkdir -p "$CACHE_DIR/zsh"
@@ -393,7 +392,7 @@ setup_directories_and_permissions() {
 
     if (( ${#script_targets} )); then
         chmod +x "${script_targets[@]}"
-        log_ok "chmod +x applied to ${#script_targets} helper binary/script targets."
+        log_ok "chmod +x applied to ${#script_targets} helper script targets."
     fi
 }
 
@@ -421,10 +420,10 @@ initial_theming() {
             matugen image "$first_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0 2>/dev/null || true
             log_ok "matugen dynamic scheme applied."
         else
-            log_warn "matugen binary missing. colors remain default and sad."
+            log_warn "matugen binary missing. your desktop colors remain sad."
         fi
     else
-        log_warn "no images located in $WALLPAPER_DIR. skipping theming step."
+        log_warn "no wallpapers located in $WALLPAPER_DIR. skipping palette step."
     fi
 }
 
@@ -435,27 +434,43 @@ reload_shell() {
         hyprctl reload >/dev/null 2>&1 || true
         log_ok "hyprland config reloaded."
     else
-        log_info "hyprland session not detected. skipping hyprctl."
+        log_info "hyprland session not active. skipping hyprctl."
+    fi
+
+    # check if uwsm is running the current compositor session
+    local use_uwsm=false
+    if (( $+commands[uwsm] )) && [[ -n "${UWSM_INSTANCE:-}" ]]; then
+        use_uwsm=true
+        log_info "active uwsm session detected. delegating quickshell to uwsm app..."
     fi
 
     if (( $+commands[qs] )); then
         qs kill >/dev/null 2>&1 || pkill -x qs 2>/dev/null || true
         sleep 0.3
-        qs -d >/dev/null 2>&1 &!
+        if [[ "$use_uwsm" == "true" ]]; then
+            uwsm app -- qs -d >/dev/null 2>&1 &!
+        else
+            qs -d >/dev/null 2>&1 &!
+        fi
         log_ok "quickshell daemon reloaded (qs -d)."
     elif (( $+commands[quickshell] )); then
         pkill -x quickshell 2>/dev/null || true
         sleep 0.3
-        quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 &!
-        log_ok "quickshell restarted."
+        if [[ "$use_uwsm" == "true" ]]; then
+            uwsm app -- quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 &!
+        else
+            quickshell -p "$CONFIG_DIR/quickshell/shell.qml" >/dev/null 2>&1 &!
+        fi
+        log_ok "quickshell background process restarted."
     fi
 }
 
 doctor_check() {
-    log_step "system diagnostics..."
+    log_step "system diagnostics & package verification..."
     local missing_bins=()
     local critical_bins=(
         "hyprland"
+        "uwsm"
         "matugen"
         "awww"
         "mpvpaper"
@@ -526,7 +541,7 @@ doctor_check() {
         log_warn "missing ${#missing_bins} binaries: ${missing_bins[*]}"
         print -P "  your desktop is currently held together by spit and duct tape."
     else
-        log_ok "all core tools and glyph packs are present. remarkable."
+        log_ok "core tools, uwsm session manager, and typography are clean."
     fi
 }
 
@@ -540,11 +555,11 @@ show_help() {
     print "  -l, --links                      symlink dotfiles only"
     print "  -d, --deps                       install package dependencies only"
     print "      --doctor                     run health check and list missing packages"
-    print "      --reload                     reload hyprland and quickshell"
+    print "      --reload                     reload hyprland and quickshell via uwsm"
     print "  -h, --help                       show this message"
     print ""
     print "granular flags:"
-    print "  --aur                            bootstrap paru-bin immediately if missing"
+    print "  --aur                            bootstrap paru-bin if missing"
     print "  --fetch-wp                       download clean wallpaper asset immediately"
     print "  --backup                         force backup of unlinked directories"
     print "  --no-backup                      skip backup entirely"
@@ -598,7 +613,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-print -P "%F{141}󰄛 dotfiles manager & setup harness%f"
+print -P "%F{141}󰄛 dotfiles manager & uwsm harness%f"
 
 if [[ "$opt_bootstrap_aur" == "true" ]]; then
     install_aur_helper
@@ -617,7 +632,7 @@ if [[ "$opt_mode" == "menu" ]]; then
     print "  4) 󰏖 install dependencies only"
     print "  5) 󰑐 update dotfiles (git pull + sync + reload)"
     print "  6) 󰄲 doctor diagnostic scan"
-    print "  7) 󰁕 reload compositors"
+    print "  7) 󰁕 reload compositors & quickshell"
     print "  8) 󰅚 quit"
     print -Pn "choice [1-8, default 1]: "
 
@@ -671,7 +686,7 @@ if [[ "$opt_mode" == "custom" ]]; then
     local do_pkgs=false
     if (( ${#opt_pkg_cats} > 0 )); then
         do_pkgs=true
-    elif ask_yn "install system/aur packages via detected helper?" "Y"; then
+    elif ask_yn "install system packages via pacman?" "Y"; then
         do_pkgs=true
         print ""
         local chosen_raw
@@ -754,4 +769,4 @@ elif [[ "$opt_mode" == "deps" ]]; then
 fi
 
 print ""
-log_ok "process complete. your machine looks less like an unrendered source engine map."
+log_ok "process complete. uwsm and official packages wired up."
