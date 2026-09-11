@@ -104,6 +104,18 @@ ShellRoot {
         }
     }
 
+    IpcHandler {
+        target: "launcher"
+
+        function toggle(): void {
+            Settings.requestLauncherToggle();
+        }
+
+        function open(): void {
+            Settings.requestLauncherToggle();
+        }
+    }
+
     Variants {
         model: Quickshell.screens
         ScreenshotOverlay {}
@@ -130,6 +142,54 @@ ShellRoot {
 
         function window(): void {
             ScreenshotService.open("window");
+        }
+    }
+
+    IpcHandler {
+        target: "quicksettings"
+
+        function toggle(): void {
+            Settings.requestQuickSettingsToggle();
+        }
+
+        function open(): void {
+            Settings.requestQuickSettingsToggle();
+        }
+    }
+
+    IpcHandler {
+        target: "battery"
+
+        function toggle(): void {
+            Settings.requestBatteryToggle();
+        }
+
+        function open(): void {
+            Settings.requestBatteryToggle();
+        }
+    }
+
+    IpcHandler {
+        target: "window"
+
+        function toggle(): void {
+            Settings.requestWindowTitleToggle();
+        }
+
+        function open(): void {
+            Settings.requestWindowTitleToggle();
+        }
+    }
+
+    IpcHandler {
+        target: "caffeine"
+
+        function toggle(): void {
+            Settings.requestIdleToggle();
+        }
+
+        function open(): void {
+            Settings.requestIdleToggle();
         }
     }
 }

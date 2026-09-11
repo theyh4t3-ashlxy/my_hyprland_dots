@@ -1,10 +1,14 @@
 import QtQuick
 import ".."
+import Quickshell
 import Quickshell.Services.UPower
+import Quickshell.Hyprland
 
 Rectangle {
     id: container
 
+    property var barScreen: null
+    property var barMonitor: null
     property var device: UPower.displayDevice
 
     readonly property bool isVertical: Theme?.isVertical ?? false
@@ -38,7 +42,7 @@ Rectangle {
         Text {
             id: batIcon
             anchors.verticalCenter: parent.verticalCenter
-            text: Theme?.getBatteryIcon ? Theme.getBatteryIcon(container.pct, container.isCharging, !(UPower?.onBattery ?? true), container.isVertical) : "󰁹"
+            text: Theme?.getBatteryIcon ? Theme.getBatteryIcon(container.pct, container.isCharging, !(UPower?.onBattery ?? true), container.isVertical) : (Theme?.iconBatFull ?? "\uE1A5")
             font.family: Theme?.fontIcon ?? "sans-serif"
             font.pixelSize: Theme?.fontSizeMd ?? 14
             color: container.isLow ? Theme.error : Theme.on_surface
@@ -75,10 +79,103 @@ Rectangle {
         }
     }
 
+    BatteryPopup {
+        id: batPopup
+        screen: container.barScreen
+        device: container.device
+    }
+
+    Timer {
+        id: hoverOpenTimer
+        interval: Settings?.hoverDelay ?? 220
+        repeat: false
+        onTriggered: {
+            if (bMouse.containsMouse && (Settings?.hoverToOpen ?? true)) {
+                let pt = container.mapToItem(null, 0, 0);
+                if (container.isVertical) {
+                    batPopup.targetRelativeY = pt.y + (container.height / 2);
+                } else {
+                    batPopup.targetRelativeX = pt.x + (container.width / 2);
+                }
+                batPopup.open = true;
+            }
+        }
+    }
+
+    readonly property bool isPillHovered: (bMouse.containsMouse || bHover.hovered)
+
+    Timer {
+        id: hoverCloseTimer
+        interval: 350
+        repeat: false
+        onTriggered: {
+            if (!container.isPillHovered && !batPopup.cardHovered && (Settings?.hoverAutoClose ?? true) && !batPopup.pinned) {
+                batPopup.open = false;
+            }
+        }
+    }
+
+    HoverHandler {
+        id: bHover
+        onHoveredChanged: {
+            if (hovered) {
+                hoverCloseTimer.stop();
+                hoverOpenTimer.restart();
+            } else {
+                hoverOpenTimer.stop();
+                hoverCloseTimer.restart();
+            }
+        }
+    }
+
     MouseArea {
         id: bMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onEntered: {
+            hoverCloseTimer.stop();
+            hoverOpenTimer.restart();
+        }
+        onExited: {
+            hoverOpenTimer.stop();
+            hoverCloseTimer.restart();
+        }
+        onClicked: {
+            let pt = container.mapToItem(null, 0, 0);
+            if (container.isVertical) {
+                batPopup.targetRelativeY = pt.y + (container.height / 2);
+            } else {
+                batPopup.targetRelativeX = pt.x + (container.width / 2);
+            }
+            batPopup.pinned = !batPopup.open;
+            batPopup.open = !batPopup.open;
+        }
+    }
+
+    Connections {
+        target: batPopup
+        function onCardHoveredChanged() {
+            if (batPopup.cardHovered) {
+                hoverCloseTimer.stop();
+            } else if (!container.isPillHovered) {
+                hoverCloseTimer.restart();
+            }
+        }
+    }
+
+    Connections {
+        target: Settings
+        function onRequestBatteryToggle() {
+            if (!container.barScreen || Quickshell.screens.length <= 1 || (container.barMonitor && Hyprland.focusedMonitor && container.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                let pt = container.mapToItem(null, 0, 0);
+                if (container.isVertical) {
+                    batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
+                } else {
+                    batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+                }
+                batPopup.open = !batPopup.open;
+            }
+        }
     }
 }

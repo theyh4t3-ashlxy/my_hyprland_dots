@@ -2,7 +2,7 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // --- Dynamic Palette Injection (Matugen / M3 tokens) ---
+    // matugen palette tokens
     readonly property color primary:               "{{colors.primary.default.hex}}"
     readonly property color on_primary:            "{{colors.on_primary.default.hex}}"
     readonly property color primary_container:     "{{colors.primary_container.default.hex}}"
@@ -51,7 +51,7 @@ QtObject {
     readonly property color inverse_primary:        "{{colors.inverse_primary.default.hex}}"
     readonly property color source_color:           "{{colors.source_color.default.hex}}"
 
-    // --- Utility Functions ---
+    // math & formatting utilities
     function alpha(c: color, a: real): color { return Qt.rgba(c.r, c.g, c.b, a) }
 
     function blend(c1: color, c2: color, t: real): color {
@@ -65,9 +65,9 @@ QtObject {
     }
 
     function formatBytes(bytes: real): string {
-        if (!bytes || bytes <= 0) return "0 B";
+        if (!bytes || bytes <= 0 || isNaN(bytes)) return "0 B";
         const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-        let i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+        let i = Math.max(0, Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024))));
         let val = bytes / Math.pow(1024, i);
         return (val >= 100 || i === 0 ? Math.round(val) : val.toFixed(1)) + " " + units[i];
     }
@@ -89,7 +89,7 @@ QtObject {
         return on_surface;
     }
 
-    // --- State Tints & Overlays ---
+    // state tints and overlays
     readonly property color primary_overlay:        alpha(primary, 0.18)
     readonly property color secondary_overlay:      alpha(secondary, 0.18)
     readonly property color tertiary_overlay:       alpha(tertiary, 0.18)
@@ -105,7 +105,7 @@ QtObject {
     readonly property color textStroke:             "#000000"
     readonly property color textShadow:             "#000000"
 
-    // --- Typography & Metrics ---
+    // typography metrics
     readonly property string fontSans:              Settings?.fontSans ?? Settings?.fontFamily ?? "Noto Sans"
     readonly property string fontMono:              Settings?.fontMono ?? "JetBrainsMono Nerd Font"
     readonly property string fontDisplay:           Settings?.fontDisplay ?? fontSans
@@ -126,7 +126,7 @@ QtObject {
     readonly property int    fontSizeXl:            Math.round(18 * fontScale)
     readonly property int    fontSizeTitle:         Math.round(22 * fontScale)
 
-    // --- Geometric Curvature & Shell Measurements ---
+    // shell geometry and curvature
     readonly property int    radiusSm:              2
     readonly property int    radiusMd:              4
     readonly property int    radiusLg:              8
@@ -153,12 +153,15 @@ QtObject {
     readonly property string cornerColorMode:       Settings?.cornerColorMode ?? "bar"
     readonly property string barStyle:              Settings?.barStyle ?? "glass"
 
-    // --- Surface & Backplate Visual Resolvers ---
+    // surface resolvers
     function getStyleColor(role: string, bs: string): color {
         switch (role) {
             case "barBg":
                 if (bs === "pure-black") return "#000000";
                 if (bs === "glass") return alpha(surface_container_lowest, 0.40);
+                if (bs === "glass-frost") return alpha(surface_container_lowest, 0.55);
+                if (bs === "cyber-neon") return alpha("#050508", 0.94);
+                if (bs === "bento-floating") return alpha(surface_container_low, 0.88);
                 if (bs === "translucent") return alpha(surface_container_low, 0.70);
                 if (bs === "accent-glow") return alpha(surface_container_lowest, 0.90);
                 if (bs === "monochrome") return surface_container_highest;
@@ -166,12 +169,18 @@ QtObject {
             case "barBorderColor":
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.16);
+                if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.24);
+                if (bs === "cyber-neon") return primary;
+                if (bs === "bento-floating") return alpha(outline_variant, 0.45);
                 if (bs === "accent-glow") return primary;
                 if (bs === "translucent") return alpha(outline_variant, 0.35);
-                return widgetBorder;
+                return alpha(outline_variant, 0.50);
             case "widgetBg":
                 if (bs === "pure-black") return "#0a0a0a";
                 if (bs === "glass") return alpha(surface_container_high, 0.28);
+                if (bs === "glass-frost") return alpha(surface_container_high, 0.38);
+                if (bs === "cyber-neon") return alpha(surface_container_lowest, 0.85);
+                if (bs === "bento-floating") return alpha(surface_container_high, 0.50);
                 if (bs === "translucent") return alpha(surface_container_high, 0.40);
                 if (bs === "accent-glow") return alpha(primary_container, 0.65);
                 if (bs === "monochrome") return surface_container_high;
@@ -179,6 +188,9 @@ QtObject {
             case "widgetHover":
                 if (bs === "pure-black") return "#181818";
                 if (bs === "glass") return alpha(surface_container_highest, 0.48);
+                if (bs === "glass-frost") return alpha(surface_container_highest, 0.60);
+                if (bs === "cyber-neon") return alpha(primary_container, 0.50);
+                if (bs === "bento-floating") return alpha(surface_container_highest, 0.70);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.65);
                 if (bs === "accent-glow") return alpha(primary, 0.35);
                 if (bs === "monochrome") return surface_container_highest;
@@ -186,6 +198,9 @@ QtObject {
             case "widgetActive":
                 if (bs === "pure-black") return "#242424";
                 if (bs === "glass") return alpha(surface_container_highest, 0.65);
+                if (bs === "glass-frost") return alpha(surface_container_highest, 0.80);
+                if (bs === "cyber-neon") return alpha(primary, 0.45);
+                if (bs === "bento-floating") return alpha(surface_container_highest, 0.90);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.85);
                 if (bs === "accent-glow") return alpha(primary, 0.55);
                 if (bs === "monochrome") return alpha(on_surface, 0.20);
@@ -193,13 +208,19 @@ QtObject {
             case "widgetBorder":
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
+                if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.20);
+                if (bs === "cyber-neon") return alpha(primary, 0.60);
+                if (bs === "bento-floating") return alpha(outline_variant, 0.40);
                 if (bs === "translucent") return alpha(outline_variant, 0.35);
                 if (bs === "accent-glow") return alpha(primary, 0.70);
                 if (bs === "monochrome") return alpha(outline, 0.40);
-                return alpha(outline_variant, 0.5);
+                return alpha(outline_variant, 0.50);
             case "popupBg":
                 if (bs === "pure-black") return "#000000";
                 if (bs === "glass") return alpha(surface_container_lowest, 0.60);
+                if (bs === "glass-frost") return alpha(surface_container_lowest, 0.75);
+                if (bs === "cyber-neon") return alpha("#07070b", 0.96);
+                if (bs === "bento-floating") return alpha(surface_container_low, 0.92);
                 if (bs === "translucent") return alpha(surface_container_low, 0.80);
                 if (bs === "accent-glow") return alpha(surface_container_lowest, 0.95);
                 if (bs === "monochrome") return surface_container_low;
@@ -207,13 +228,19 @@ QtObject {
             case "popupBorderColor":
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.18);
-                if (bs === "translucent") return alpha(outline_variant, 0.40);
+                if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.26);
+                if (bs === "cyber-neon") return primary;
+                if (bs === "bento-floating") return alpha(outline_variant, 0.50);
                 if (bs === "accent-glow") return alpha(primary, 0.85);
+                if (bs === "translucent") return alpha(outline_variant, 0.40);
                 if (bs === "monochrome") return alpha(outline, 0.45);
-                return widgetBorder;
+                return alpha(outline_variant, 0.50);
             case "cardBg":
                 if (bs === "pure-black") return "#080808";
                 if (bs === "glass") return alpha(surface_container_high, 0.30);
+                if (bs === "glass-frost") return alpha(surface_container_high, 0.45);
+                if (bs === "cyber-neon") return alpha(surface_container_low, 0.75);
+                if (bs === "bento-floating") return alpha(surface_container_high, 0.60);
                 if (bs === "translucent") return alpha(surface_container_high, 0.50);
                 if (bs === "accent-glow") return alpha(primary_container, 0.45);
                 if (bs === "monochrome") return surface_container_high;
@@ -221,13 +248,19 @@ QtObject {
             case "cardBorder":
                 if (bs === "pure-black") return "#1c1c1c";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
+                if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.20);
+                if (bs === "cyber-neon") return alpha(primary, 0.50);
+                if (bs === "bento-floating") return alpha(outline_variant, 0.35);
                 if (bs === "translucent") return alpha(outline_variant, 0.30);
                 if (bs === "accent-glow") return alpha(primary, 0.60);
                 if (bs === "monochrome") return alpha(outline, 0.35);
-                return widgetBorder;
+                return alpha(outline_variant, 0.40);
             case "pillBg":
                 if (bs === "pure-black") return "#0a0a0a";
                 if (bs === "glass") return alpha(surface_container_high, 0.25);
+                if (bs === "glass-frost") return alpha(surface_container_high, 0.35);
+                if (bs === "cyber-neon") return alpha(surface_container_low, 0.60);
+                if (bs === "bento-floating") return alpha(surface_container_high, 0.50);
                 if (bs === "translucent") return alpha(surface_container_high, 0.45);
                 if (bs === "accent-glow") return alpha(primary, 0.22);
                 if (bs === "monochrome") return surface_container;
@@ -235,6 +268,9 @@ QtObject {
             case "pillHover":
                 if (bs === "pure-black") return "#181818";
                 if (bs === "glass") return alpha(surface_container_highest, 0.45);
+                if (bs === "glass-frost") return alpha(surface_container_highest, 0.55);
+                if (bs === "cyber-neon") return alpha(primary_container, 0.40);
+                if (bs === "bento-floating") return alpha(surface_container_highest, 0.65);
                 if (bs === "translucent") return alpha(surface_container_highest, 0.70);
                 if (bs === "accent-glow") return alpha(primary, 0.40);
                 if (bs === "monochrome") return surface_container_highest;
@@ -242,6 +278,9 @@ QtObject {
             case "pillBorder":
                 if (bs === "pure-black") return "#222222";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.14);
+                if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.22);
+                if (bs === "cyber-neon") return alpha(primary, 0.75);
+                if (bs === "bento-floating") return alpha(outline_variant, 0.30);
                 if (bs === "translucent") return alpha(outline_variant, 0.25);
                 if (bs === "accent-glow") return alpha(primary, 0.85);
                 if (bs === "monochrome") return alpha(outline, 0.35);
@@ -272,25 +311,54 @@ QtObject {
     readonly property color pillHover:        getStyleColor("pillHover", barStyle)
     readonly property color pillBorder:       getStyleColor("pillBorder", barStyle)
 
-    // --- Flyout Geometry ---
+    // border and depth tokens
+    readonly property color  glassHighlight:        Qt.rgba(1, 1, 1, 0.16)
+    readonly property color  glassBorder:           Qt.rgba(1, 1, 1, 0.12)
+    readonly property color  glassGlow:             alpha(primary, 0.25)
+    readonly property color  cardGlow:              alpha(primary, 0.15)
+    readonly property int    popupBorderWidth:      Settings?.popupBorderWidth ?? 1
+    readonly property bool   scoopBorderEnabled:    Settings?.scoopBorderEnabled ?? true
+    readonly property int    scoopBorderWidth:      Settings?.scoopBorderWidth ?? (screenBorderWidth > 0 ? screenBorderWidth : 2)
+    readonly property color  scoopBorderColor: {
+        let sc = Settings?.scoopBorderColor ?? "auto";
+        if (sc !== "auto" && sc !== "") return sc;
+        if (cornerColorMode === "accent") return primary;
+        return barBorderColor;
+    }
+
+    // popup geometry
     readonly property int    popupWidth:            460
     readonly property int    popupHeight:           580
     readonly property int    popupPadding:          16
     readonly property int    popupSpacing:          10
     readonly property int    thumbSize:             180
 
-    // --- Animation Timings & Curves ---
+    // animation specs and easing
     readonly property real   animSpeedMult:         Settings?.animSpeed === "instant" ? 0.01 : ((Settings?.animSpeed === "snappy" || Settings?.animSpeed === "superSnappy") ? 0.7 : (Settings?.animSpeed === "hyper" ? 0.4 : (Settings?.animSpeed === "chill" ? 1.6 : 1.0)))
     readonly property bool   isVertical:            Settings?.barPosition === "left" || Settings?.barPosition === "right"
     readonly property int    animFast:              Math.round(120 * animSpeedMult)
     readonly property int    animNormal:            Math.round(200 * animSpeedMult)
+    readonly property int    animDefault:           animNormal
     readonly property int    animSlow:              Math.round(350 * animSpeedMult)
+    readonly property int    expressiveFast:        Math.round(180 * animSpeedMult)
+    readonly property int    expressiveDefault:     Math.round(320 * animSpeedMult)
+    readonly property int    expressiveSlow:        Math.round(480 * animSpeedMult)
+    readonly property int    workspaceTrailDuration: Math.round(260 * animSpeedMult)
+    readonly property bool   workspaceActiveTrail:  Settings?.workspaceActiveTrail ?? true
     readonly property var    animEasing:            Easing.OutCubic
+    readonly property var    animExpressiveEasing:  Easing.OutBack
 
-    // --- Font Icon Font-Family Selection ---
+    // font family resolution
     readonly property string iconSet:               Settings?.iconSet ?? "material"
     readonly property string fontIcon: {
         if (iconSet === "kaomoji" || iconSet === "text") return fontFamily;
+        if (iconSet === "nerd") {
+            let families = Qt.fontFamilies();
+            let target = Settings?.fontNerd ?? "JetBrainsMono Nerd Font";
+            if (families.indexOf(target) >= 0) return target;
+            if (families.indexOf("JetBrainsMono NF") >= 0) return "JetBrainsMono NF";
+            return "JetBrainsMono Nerd Font";
+        }
         if (iconSet === "windows") return Settings?.fontWindows ?? "Segoe Fluent Icons";
         if (iconSet === "awesome") {
             let families = Qt.fontFamilies();
@@ -298,16 +366,17 @@ QtObject {
             if (families.indexOf(target) >= 0) return target;
             return fontMono;
         }
+
         let fams = Qt.fontFamilies();
         let chosen = Settings?.fontMaterial ?? "Material Symbols Rounded";
         if (fams.indexOf(chosen) >= 0) return chosen;
         if (fams.indexOf("Material Symbols Rounded") >= 0) return "Material Symbols Rounded";
         if (fams.indexOf("Material Symbols Outlined") >= 0) return "Material Symbols Outlined";
         if (fams.indexOf("Material Symbols Sharp") >= 0) return "Material Symbols Sharp";
-        return fontMono;
+        return iconSet === "material" ? "Material Symbols Rounded" : fontMono;
     }
 
-    // --- Kaomoji Mode Dictionary ---
+    // kaomoji dictionary
     readonly property var kaomojiMap: ({
         "arch": "(^_^)v",
         "appLauncher": "(^_^)v",
@@ -408,7 +477,7 @@ QtObject {
         "collapse": "[-]"
     })
 
-    // --- Minimal Text Mode Dictionary ---
+    // text mode dictionary
     readonly property var textMap: ({
         "arch": "apps",
         "appLauncher": "apps",
@@ -509,6 +578,107 @@ QtObject {
         "collapse": "min"
     })
 
+    // nerd font dictionary
+    readonly property var nerdMap: ({
+        "arch": "",
+        "appLauncher": "󰀻",
+        "workspaces": "󱂬",
+        "search": "",
+        "close": "",
+        "check": "",
+        "checkCircle": "",
+        "settings": "",
+        "gear": "",
+        "save": "",
+        "refresh": "",
+        "trash": "",
+        "clipboard": "󰅌",
+        "tray": "󱊖",
+        "grid": "󰕰",
+        "note": "󰏫",
+        "edit": "󰏫",
+        "coffee": "󰛊",
+        "clock": "󰥔",
+        "cpu": "󰍛",
+        "mem": "󰘚",
+        "thermo": "󰔏",
+        "eye": "󰈈",
+        "eyeOff": "󰈉",
+        "heart": "󰋑",
+        "download": "󰇚",
+        "folder": "󰉋",
+        "globe": "󰖟",
+        "camera": "󰄀",
+        "crop": "󰩨",
+        "screenshot": "󰹑",
+        "volMute": "󰝟",
+        "volLow": "󰕿",
+        "volMid": "󰖀",
+        "volHigh": "󰕾",
+        "mic": "󰍬",
+        "micMute": "󰍭",
+        "palette": "󰏘",
+        "headphones": "󰋋",
+        "equalizer": "󰓃",
+        "batFull": "󰁹",
+        "batHalf": "󰁿",
+        "batQuarter": "󰁼",
+        "batEmpty": "󰂃",
+        "batCharge": "󰢝",
+        "batCharging": "󰢝",
+        "sun": "󰖙",
+        "moon": "󰖔",
+        "brightness": "󰃠",
+        "music": "󰝚",
+        "play": "󰐊",
+        "pause": "󰏤",
+        "next": "󰒭",
+        "prev": "󰒮",
+        "shuffle": "󰒝",
+        "repeat": "󰑖",
+        "repeatOne": "󰑘",
+        "wallhaven": "󰋩",
+        "wallpaper": "󰋩",
+        "bell": "󰂚",
+        "bellOutline": "󰂚",
+        "bellOff": "󰂛",
+        "ethernet": "󰈀",
+        "wifi": "󰤨",
+        "wifiHigh": "󰤨",
+        "wifiMed": "󰤥",
+        "wifiLow": "󰤟",
+        "wifiOff": "󰤮",
+        "bluetooth": "󰂯",
+        "bluetoothConnected": "󰂱",
+        "bluetoothOff": "󰂲",
+        "power": "󰐥",
+        "shutdown": "󰐥",
+        "lock": "󰌾",
+        "logout": "󰍃",
+        "reboot": "󰑓",
+        "suspend": "󰤄",
+        "hibernate": "󰒲",
+        "chevronRight": "",
+        "chevronLeft": "",
+        "chevronDown": "",
+        "chevronUp": "",
+        "flame": "󰈸",
+        "sparkles": "󰛓",
+        "radio": "󰐹",
+        "sliders": "󰒓",
+        "terminal": "󰆍",
+        "calendar": "󰃭",
+        "history": "󰋚",
+        "copy": "󰆏",
+        "externalLink": "󰌹",
+        "signal": "󰖩",
+        "filter": "󰈲",
+        "user": "󰀉",
+        "shield": "󰞌",
+        "expand": "󰊓",
+        "collapse": "󰊔"
+    })
+
     function getIcon(mat: string, win: string, fa: string, key: var, kao: var, txt: var): string {
         if (iconSet === "kaomoji") {
             if (typeof kao === "string" && kao !== "" && kao !== "undefined") return kao;
@@ -520,17 +690,23 @@ QtObject {
             if (key && textMap && textMap[key]) return textMap[key];
             return mat;
         }
+        if (iconSet === "nerd") {
+            if (key && nerdMap && nerdMap[key]) return nerdMap[key];
+            if (typeof fa === "string" && fa !== "") return fa;
+            return mat;
+        }
         if (iconSet === "windows") return win;
         if (iconSet === "awesome") return fa;
         return mat;
     }
 
-    // --- Dynamic State Glyph Resolvers ---
+    // dynamic glyph resolvers
     function getBatteryIcon(pct: int, isCharging: bool, isSaver: bool, isVertical: bool): string {
         let p = (pct === undefined || pct === null || isNaN(pct)) ? -1 : Math.max(0, Math.min(100, Math.round(pct)));
         let lvl = p < 0 ? -1 : Math.min(10, Math.floor(p / 10));
 
         if (iconSet === "kaomoji") {
+            if (lvl < 0) return "(?)";
             if (isCharging) return "(↯^↯)";
             if (lvl >= 9) return "(◕‿◕)";
             if (lvl >= 5) return "(・_・)";
@@ -542,6 +718,16 @@ QtObject {
             if (isCharging) return "chg";
             if (lvl < 0) return "bat";
             return p + "%";
+        }
+
+        if (iconSet === "nerd") {
+            if (lvl < 0) return "󰁹";
+            if (isCharging) {
+                const nerdCharging = ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"];
+                return nerdCharging[lvl];
+            }
+            const nerdDischarging = ["󰂃", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"];
+            return nerdDischarging[lvl];
         }
 
         if (iconSet === "windows") {
@@ -588,7 +774,7 @@ QtObject {
 
     function getVolumeIcon(volRatio: real, isMuted: bool): string {
         if (isMuted || volRatio <= 0.001) {
-            return (iconSet === "kaomoji") ? "(-_-)" : (iconSet === "text") ? "mute" : iconVolMute;
+            return (iconSet === "kaomoji") ? "(-_-)" : (iconSet === "text") ? "mute" : (iconSet === "nerd") ? "󰝟" : iconVolMute;
         }
         let pct = Math.round(volRatio * 100);
         if (iconSet === "kaomoji") {
@@ -599,10 +785,15 @@ QtObject {
         if (iconSet === "text") {
             return pct + "%";
         }
+        if (iconSet === "nerd") {
+            if (pct <= 33) return "󰕿";
+            if (pct <= 66) return "󰖀";
+            return "󰕾";
+        }
         if (iconSet === "windows") {
-            if (pct <= 33) return "\uE993"; // Volume1
-            if (pct <= 66) return "\uE994"; // Volume2
-            return "\uE995";               // Volume3
+            if (pct <= 33) return "\uE993";
+            if (pct <= 66) return "\uE994";
+            return "\uE995";
         }
         if (iconSet === "awesome") {
             if (pct <= 33) return "";
@@ -615,8 +806,8 @@ QtObject {
     }
 
     function getWifiIcon(signalPct: int, isConnected: bool, isEthernet: bool): string {
-        if (isEthernet) return (iconSet === "kaomoji") ? "[eth]" : (iconSet === "text") ? "eth" : iconEthernet;
-        if (!isConnected) return (iconSet === "kaomoji") ? "(×_×)" : (iconSet === "text") ? "off" : iconWifiOff;
+        if (isEthernet) return (iconSet === "kaomoji") ? "[eth]" : (iconSet === "text") ? "eth" : (iconSet === "nerd") ? "󰈀" : iconEthernet;
+        if (!isConnected) return (iconSet === "kaomoji") ? "(×_×)" : (iconSet === "text") ? "off" : (iconSet === "nerd") ? "󰤮" : iconWifiOff;
         let sig = (signalPct === undefined || signalPct === null) ? 0 : signalPct;
         if (iconSet === "kaomoji") {
             if (sig < 35) return "( ;¬_¬)";
@@ -628,11 +819,16 @@ QtObject {
             if (sig < 70) return "med";
             return "high";
         }
+        if (iconSet === "nerd") {
+            if (sig < 35) return "󰤟";
+            if (sig < 70) return "󰤥";
+            return "󰤨";
+        }
         if (iconSet === "windows") {
-            if (sig < 25) return "\uE871"; // Wifi1
-            if (sig < 50) return "\uE872"; // Wifi2
-            if (sig < 75) return "\uE873"; // Wifi3
-            return "\uE874";               // Wifi4
+            if (sig < 25) return "\uE871";
+            if (sig < 50) return "\uE872";
+            if (sig < 75) return "\uE873";
+            return "\uE874";
         }
         if (iconSet === "awesome") {
             return "";
@@ -642,8 +838,8 @@ QtObject {
         return "\uE63E";
     }
 
-    // --- Static Glyph Index (Material Symbols, Segoe Fluent, FontAwesome) ---
-    readonly property string iconArch:              getIcon("\uEB8E", "\uE71D", "", "arch")
+    // static icon index
+    readonly property string iconArch:              getIcon("\uE5C3", "\uE71D", "", "arch")
     readonly property string iconAppLauncher:       getIcon("\uE5C3", "\uE71D", "", "appLauncher")
     readonly property string iconWorkspaces:        getIcon("\uE871", "\uE7C4", "", "workspaces")
     readonly property string iconSearch:            getIcon("\uE8B6", "\uE721", "", "search")
@@ -749,7 +945,7 @@ QtObject {
     readonly property string iconExpand:            getIcon("\uE5D0", "\uE740", "", "expand")
     readonly property string iconCollapse:          getIcon("\uE5D1", "\uE73F", "", "collapse")
 
-    // --- Emotive Kaomoji Presets ---
+    // emotive kaomoji presets
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"
     readonly property string kaoSad:                "(╥_╥)"
     readonly property string kaoCoffee:             "( ᐛ )و"
@@ -772,7 +968,7 @@ QtObject {
     readonly property string kaoCat:                "(=^･ω･^=)"
     readonly property string kaoPanic:              "(°Д°；)"
     readonly property string kaoVibe:               "( ˘ ³˘)♡"
-    readonly property string kaoJam:                "(~‾▿‾)~"
+    readonly property string kaoJam:                "(~‾‾)~"
     readonly property string kaoDJ:                 "(ノ^_^)ノ"
     readonly property string kaoSilent:             "( ˙-˙ )"
     readonly property string kaoCozy:               "(っ˘ω˘ς)"
@@ -790,7 +986,7 @@ QtObject {
         return text ?? "";
     }
 
-    // --- Subsystem Status / Flavor Texts Generator ---
+    // flavor text table
     function getFlavor(category: string, fallback: string): string {
         if (!Settings?.unhingedFlavor) return fallback ?? "";
         let quotes = {
@@ -892,7 +1088,7 @@ QtObject {
                 "vibing at criminally irresponsible volumes",
                 "playing the definitive soundtrack to bad life choices",
                 "acoustic compression waves rattling eardrums",
-                "certified certified auditory masterpiece identified",
+                "certified auditory masterpiece identified",
                 "aux cord privileges completely uncontested",
                 "acoustic therapy driving away all coherent thoughts",
                 "cranial resonance synchronized to the bassline",

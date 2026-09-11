@@ -1,4 +1,4 @@
-// ConcaveCorner.qml (Canvas version with initial paint & hidpi fix)
+// ConcaveCorner.qml (Canvas version with G2 continuity, border stroking & hidpi support)
 import QtQuick
 import ".."
 
@@ -13,6 +13,10 @@ Item {
     property bool flipY: false
     property string cornerStyle: (typeof Settings !== "undefined" ? Settings?.cornerStyle : null) ?? "cubic"
 
+    property bool showBorder: (typeof Theme !== "undefined" && Theme?.scoopBorderEnabled) ?? false
+    property real borderWidth: (typeof Theme !== "undefined" ? Theme?.scoopBorderWidth : 0) ?? 0
+    property color borderColor: (typeof Theme !== "undefined" ? Theme?.scoopBorderColor : "transparent") ?? "transparent"
+
     property alias color: root.fillColor
     property alias mirrored: root.flipX
     readonly property bool isTop: !flipY
@@ -25,12 +29,14 @@ Item {
     readonly property real w: width
     readonly property real h: height
     readonly property real tension: {
-        if (cornerStyle === "squircle") return 0.68;
-        if (cornerStyle === "flared") return 0.42;
+        if (cornerStyle === "squircle") return 0.72;
+        if (cornerStyle === "continuous-bezier" || cornerStyle === "g2") return 0.58;
+        if (cornerStyle === "flared") return 0.38;
         return (typeof Settings !== "undefined" ? Settings?.scoopTension : null) ?? 0.55228475;
     }
 
     Behavior on fillColor { ColorAnimation { duration: (typeof Theme !== "undefined" ? Theme?.animFast : null) ?? 150 } }
+    Behavior on borderColor { ColorAnimation { duration: (typeof Theme !== "undefined" ? Theme?.animFast : null) ?? 150 } }
 
     Canvas {
         id: canvas
@@ -65,6 +71,8 @@ Item {
             var p2y = fy ? 0 : h;
             ctx.lineTo(p2x, p2y);
 
+            var c1x, c1y, c2x, c2y;
+
             if (root.cornerStyle === "chamfer") {
                 ctx.lineTo(sx, sy);
             } else if (root.cornerStyle === "stepped") {
@@ -74,25 +82,64 @@ Item {
                 ctx.lineTo(midX, midY);
                 ctx.lineTo(midX, sy);
                 ctx.lineTo(sx, sy);
+            } else if (root.cornerStyle === "hyperbolic") {
+                var hx = fx ? (w * 0.2) : (w * 0.8);
+                var hy = fy ? (h * 0.8) : (h * 0.2);
+                ctx.quadraticCurveTo(hx, hy, sx, sy);
+            } else if (root.cornerStyle === "continuous-bezier" || root.cornerStyle === "g2") {
+                c1x = fx ? w : 0;
+                c1y = fy ? (h * 0.44) : (h * 0.56);
+                c2x = fx ? (w * 0.56) : (w * 0.44);
+                c2y = fy ? h : 0;
+                ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
             } else {
-                var c1x = fx ? w : 0;
-                var c1y = fy ? (h * t) : (h * (1.0 - t));
-                var c2x = fx ? (w * t) : (w * (1.0 - t));
-                var c2y = fy ? h : 0;
+                c1x = fx ? w : 0;
+                c1y = fy ? (h * t) : (h * (1.0 - t));
+                c2x = fx ? (w * t) : (w * (1.0 - t));
+                c2y = fy ? h : 0;
                 ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
             }
 
             ctx.closePath();
             ctx.fill();
+
+            // Optional high-definition continuous border stroke
+            if (root.showBorder && root.borderWidth > 0 && root.borderColor !== "transparent" && root.borderColor.a > 0.01) {
+                ctx.beginPath();
+                ctx.moveTo(p2x, p2y);
+                if (root.cornerStyle === "chamfer") {
+                    ctx.lineTo(sx, sy);
+                } else if (root.cornerStyle === "stepped") {
+                    var midX = w * 0.5;
+                    var midY = h * 0.5;
+                    ctx.lineTo(p2x, midY);
+                    ctx.lineTo(midX, midY);
+                    ctx.lineTo(midX, sy);
+                    ctx.lineTo(sx, sy);
+                } else if (root.cornerStyle === "hyperbolic") {
+                    var hx = fx ? (w * 0.2) : (w * 0.8);
+                    var hy = fy ? (h * 0.8) : (h * 0.2);
+                    ctx.quadraticCurveTo(hx, hy, sx, sy);
+                } else if (root.cornerStyle === "continuous-bezier" || root.cornerStyle === "g2") {
+                    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
+                } else {
+                    ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
+                }
+                ctx.lineWidth = root.borderWidth;
+                ctx.strokeStyle = root.borderColor;
+                ctx.stroke();
+            }
         }
 
-        // wake up canvas on initial load so it doesnt sit there transparent
         Component.onCompleted: requestPaint()
         onAvailableChanged: if (available) requestPaint()
 
         Connections {
             target: root
             function onFillColorChanged() { canvas.requestPaint(); }
+            function onBorderColorChanged() { canvas.requestPaint(); }
+            function onBorderWidthChanged() { canvas.requestPaint(); }
+            function onShowBorderChanged() { canvas.requestPaint(); }
             function onRadiusXChanged() { canvas.requestPaint(); }
             function onRadiusYChanged() { canvas.requestPaint(); }
             function onWidthChanged() { canvas.requestPaint(); }

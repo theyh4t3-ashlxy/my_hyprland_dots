@@ -70,6 +70,7 @@ def logout_session() -> bool:
     teardown_cmds = [
         ["uwsm", "stop"],
         ["hyprshutdown"],
+        ["hyprctl", "dispatch", "hl.dsp.exit()"],
         ["hyprctl", "dispatch", "exit"]
     ]
     for cmd in teardown_cmds:

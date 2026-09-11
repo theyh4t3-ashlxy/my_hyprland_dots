@@ -51,10 +51,12 @@ hl.bind("XF86PickupPhone", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE
 hl.bind("XF86HangupPhone", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 
 hl.bind(mainMod .. " + END", hl.dsp.exec_cmd("qs ipc call lock lock"))
+hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 
 hl.bind("Print", hl.dsp.exec_cmd("qs ipc call screenshot open"))
 
 hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd("python3 " .. home .. "/.config/quickshell/scripts/wallpaper.py random all"))
+hl.bind(mainMod .. " + ALT + S", hl.dsp.exec_cmd("/home/ashley/.local/bin/qs-switch toggle"))
 
 for i = 1, 9 do
 	local ws = tostring(i)

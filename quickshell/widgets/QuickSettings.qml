@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
 
 Rectangle {
     id: root
@@ -15,10 +17,30 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.animFast } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
+    property var barScreen: null
+    property var barMonitor: null
     property string activeTab: "layout"
     property string fontTarget: "sans"
     property string fontSearchQuery: ""
     property bool showResetConfirm: false
+    property string activeShell: "quickshell"
+
+    FileView {
+        path: "/home/ashley/.cache/current_shell"
+        watchChanges: true
+        onLoaded: {
+            let s = text().trim();
+            if (s === "oxytocin" || s === "quickshell") root.activeShell = s;
+        }
+    }
+
+    Process {
+        id: switchProc
+        function switchShell(target) {
+            command = ["/home/ashley/.local/bin/qs-switch", target];
+            running = true;
+        }
+    }
 
     readonly property var allFonts: {
         let f = Qt.fontFamilies();
@@ -341,8 +363,21 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestQuickSettingsToggle() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                const p = root.mapToItem(null, 0, 0);
+                popup.targetRelativeX = p ? (p.x + (root.width / 2)) : 0;
+                popup.targetRelativeY = p ? (p.y + (root.height / 2)) : 0;
+                popup.open = !popup.open;
+            }
+        }
+    }
+
     PopupPanel {
         id: popup
+        screen: root.barScreen
         cardWidth: 480
         cardHeight: 640
 
@@ -452,7 +487,8 @@ Rectangle {
                             { id: "fonts", label: "fonts", icon: Theme.iconNote },
                             { id: "animations", label: "animations", icon: Theme.iconFlame },
                             { id: "vibe", label: "vibe", icon: Theme.iconCoffee },
-                            { id: "screenshot", label: "screenshot", icon: Theme.iconCamera }
+                            { id: "screenshot", label: "screenshot", icon: Theme.iconCamera },
+                            { id: "shells", label: "shells", icon: Theme.iconTerminal }
                         ]
 
                         delegate: Rectangle {
@@ -551,7 +587,10 @@ Rectangle {
                             model: [
                                 { label: "regular (solid)", value: "regular" },
                                 { label: "frosted glass", value: "glass" },
+                                { label: "glass frost (blur)", value: "glass-frost" },
                                 { label: "pure black (oled)", value: "pure-black" },
+                                { label: "cyber neon (glow)", value: "cyber-neon" },
+                                { label: "bento floating", value: "bento-floating" },
                                 { label: "translucent (tint)", value: "translucent" },
                                 { label: "accent glow (cyber)", value: "accent-glow" },
                                 { label: "monochrome", value: "monochrome" }
@@ -585,14 +624,32 @@ Rectangle {
                         ChoiceRow {
                             title: "corner curvature style"
                             model: [
+                                { label: "G2 continuous", value: "continuous-bezier" },
                                 { label: "cubic", value: "cubic" },
                                 { label: "squircle", value: "squircle" },
+                                { label: "hyperbolic", value: "hyperbolic" },
                                 { label: "chamfer 45°", value: "chamfer" },
-                                { label: "flared", value: "flared" },
-                                { label: "stepped", value: "stepped" }
+                                { label: "flared", value: "flared" }
                             ]
                             currentValue: Settings.cornerStyle
                             onSelected: val => Settings.cornerStyle = val
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconSparkles
+                                title: "scoop border outlines"
+                                subtitle: "draw continuous stroke along concave curves"
+                                checked: Settings.scoopBorderEnabled
+                                onToggled: Settings.scoopBorderEnabled = !Settings.scoopBorderEnabled
+                            }
+                        }
+
+                        ChoiceRow {
+                            title: "scoop border width: " + Settings.scoopBorderWidth + "px"
+                            model: [1, 2, 3, 4]
+                            currentValue: Settings.scoopBorderWidth
+                            onSelected: val => Settings.scoopBorderWidth = val
                         }
 
                         ChoiceRow {
@@ -877,6 +934,24 @@ Rectangle {
                                 title: "window title"
                                 checked: Settings.showWindowTitle
                                 onToggled: Settings.showWindowTitle = !Settings.showWindowTitle
+                            }
+                            RowDivider {}
+                            ChoiceRow {
+                                title: "window title stretch"
+                                model: [
+                                    { label: "full title (auto)", value: "auto" },
+                                    { label: "fill bar", value: "fill" },
+                                    { label: "compact (260px)", value: "compact" }
+                                ]
+                                currentValue: Settings.windowTitleMode
+                                onSelected: val => Settings.windowTitleMode = val
+                            }
+                            RowDivider {}
+                            ToggleRow {
+                                icon: Theme.iconTerminal
+                                title: "app icon in window title"
+                                checked: Settings.windowTitleShowIcon
+                                onToggled: Settings.windowTitleShowIcon = !Settings.windowTitleShowIcon
                             }
                         }
 
@@ -1252,6 +1327,7 @@ Rectangle {
                             buttonHeight: 32
                             model: [
                                 { label: "material symbols", value: "material" },
+                                { label: "nerd fonts", value: "nerd" },
                                 { label: "windows segoe", value: "windows" },
                                 { label: "font awesome", value: "awesome" },
                                 { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", value: "kaomoji" },
@@ -1262,6 +1338,17 @@ Rectangle {
                                 Settings.iconSet = val;
                                 Settings.vibeStyle = (val === "kaomoji" || val === "text") ? val : "nerd";
                             }
+                        }
+
+                        ChoiceRow {
+                            visible: Settings.iconSet === "nerd"
+                            title: "nerd font family"
+                            model: [
+                                { label: "jetbrains mono nerd", value: "JetBrainsMono Nerd Font" },
+                                { label: "jetbrains mono nf", value: "JetBrainsMono NF" }
+                            ]
+                            currentValue: Settings.fontNerd
+                            onSelected: val => Settings.fontNerd = val
                         }
 
                         ChoiceRow {
@@ -1368,6 +1455,63 @@ Rectangle {
                                     }
                                 }
                             }
+                        }
+
+                        CategoryHeader {
+                            title: "workspace animation modes"
+                            icon: Theme.iconWorkspaces
+                        }
+
+                        ChoiceRow {
+                            title: "motion style"
+                            model: [
+                                { label: "smooth slide", value: "slide" },
+                                { label: "caelestia trail", value: "fluid-trail" },
+                                { label: "discrete pill", value: "discrete" }
+                            ]
+                            currentValue: Settings.workspaceMode
+                            onSelected: val => Settings.workspaceMode = val
+                        }
+
+                        ChoiceRow {
+                            visible: Settings.workspaceMode === "fluid-trail"
+                            title: "trail duration: " + Settings.workspaceTrailDuration + "ms"
+                            model: [160, 200, 240, 280, 340]
+                            currentValue: Settings.workspaceTrailDuration
+                            onSelected: val => Settings.workspaceTrailDuration = val
+                        }
+
+                        CategoryHeader {
+                            title: "hover gestures & auto-open"
+                            icon: Theme.iconEye
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconEye
+                                title: "hover to open flyouts"
+                                subtitle: "hover over bar pills (battery, volume, window) to open popups"
+                                checked: Settings.hoverToOpen
+                                onToggled: Settings.hoverToOpen = !Settings.hoverToOpen
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconEyeOff
+                                title: "hover auto-close"
+                                subtitle: "automatically dismiss popup when cursor leaves pill and card"
+                                checked: Settings.hoverAutoClose
+                                onToggled: Settings.hoverAutoClose = !Settings.hoverAutoClose
+                            }
+                        }
+
+                        ChoiceRow {
+                            visible: Settings.hoverToOpen
+                            title: "hover activation delay: " + Settings.hoverDelay + "ms"
+                            model: [120, 180, 220, 280, 350, 500]
+                            currentValue: Settings.hoverDelay
+                            onSelected: val => Settings.hoverDelay = val
                         }
 
                         CategoryHeader {
@@ -2091,6 +2235,80 @@ Rectangle {
                     }
                 }
                 TabScrollTrack { target: flickScreenshot; visible: root.activeTab === "screenshot" && flickScreenshot.visibleArea.heightRatio < 1.0 }
+
+                Flickable {
+                    id: flickShells
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    contentHeight: shellsCol.implicitHeight + 20
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    visible: root.activeTab === "shells"
+
+                    ColumnLayout {
+                        id: shellsCol
+                        width: parent.width - 6
+                        spacing: 10
+
+                        CategoryHeader {
+                            title: "shell switching"
+                            icon: Theme.iconTerminal
+                        }
+
+                        ChoiceRow {
+                            title: "active desktop shell"
+                            model: [
+                                { label: "quickshell (main)", value: "quickshell" },
+                                { label: "oxytocin (modular)", value: "oxytocin" }
+                            ]
+                            currentValue: root.activeShell
+                            onSelected: val => {
+                                root.activeShell = val;
+                                switchProc.switchShell(val);
+                            }
+                        }
+
+                        SettingCard {
+                            Item {
+                                width: parent.width
+                                implicitHeight: infoCol.implicitHeight + 24
+                                ColumnLayout {
+                                    id: infoCol
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 6
+
+                                    Text {
+                                        text: "hot-swap shortcuts & info"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Font.Bold
+                                        color: Theme.primary
+                                    }
+
+                                    Text {
+                                        text: "press super + alt + s anytime to instantly toggle between quickshell and oxytocin without opening settings."
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_surface_variant
+                                        wrapMode: Text.Wrap
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Text {
+                                        text: "active shell state is tracked in ~/.cache/current_shell and automatically restored on hyprland startup."
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_surface_variant
+                                        wrapMode: Text.Wrap
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                TabScrollTrack { target: flickShells; visible: root.activeTab === "shells" && flickShells.visibleArea.heightRatio < 1.0 }
             }
         }
 

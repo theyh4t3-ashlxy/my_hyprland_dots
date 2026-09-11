@@ -8,6 +8,8 @@ PanelWindow {
     id: root
 
     property bool open: false
+    property bool pinned: false
+    property bool cardHovered: open && ((cardHoverArea && cardHoverArea.containsMouse) || (cardHoverHandler && cardHoverHandler.hovered))
     property real targetRelativeX: 0
     property real targetRelativeY: 0
     property int panelWidth: Theme?.popupWidth ?? 420
@@ -27,8 +29,11 @@ PanelWindow {
     readonly property real marginX: scoopW + 8
     readonly property real marginY: scoopH + 8
 
-    readonly property real maxAllowedWidth: Math.max(260, root.width - (root.isVertical ? Theme.barHeight + 32 : 32))
-    readonly property real maxAllowedHeight: Math.max(200, root.height - (root.isVertical ? 32 : Theme.barHeight + 32))
+    readonly property real screenW: root.screen?.width ?? root.width
+    readonly property real screenH: root.screen?.height ?? root.height
+
+    readonly property real maxAllowedWidth: Math.max(260, screenW - 32)
+    readonly property real maxAllowedHeight: Math.max(200, screenH - 32)
     readonly property real effectiveWidth: Math.min(panelWidth, maxAllowedWidth)
     readonly property real effectiveHeight: Math.min(panelHeight, maxAllowedHeight)
 
@@ -39,23 +44,23 @@ PanelWindow {
 
     // clamped dock positioning
     readonly property real desiredBodyX: isVertical
-        ? (isLeft ? Theme.barHeight : (root.width - Theme.barHeight - effectiveWidth))
-        : (targetRelativeX - (effectiveWidth / 2))
+        ? (isLeft ? 0 : (screenW - effectiveWidth))
+        : (targetRelativeX > 0 ? (targetRelativeX - (effectiveWidth / 2)) : ((screenW / 2) - (effectiveWidth / 2)))
     readonly property real clampedBodyX: isVertical
         ? desiredBodyX
-        : Math.max(marginX, Math.min(root.width - marginX - effectiveWidth, desiredBodyX))
+        : Math.max(marginX, Math.min(screenW - marginX - effectiveWidth, desiredBodyX))
 
     readonly property real desiredBodyY: isVertical
-        ? (targetRelativeY > 0 ? targetRelativeY - (effectiveHeight / 2) : (root.height / 2) - (effectiveHeight / 2))
-        : (isTop ? Theme.barHeight : (root.height - Theme.barHeight - effectiveHeight))
+        ? (targetRelativeY > 0 ? targetRelativeY - (effectiveHeight / 2) : (screenH / 2) - (effectiveHeight / 2))
+        : (isTop ? 0 : (screenH - effectiveHeight))
     readonly property real clampedBodyY: isVertical
-        ? Math.max(marginY, Math.min(root.height - marginY - effectiveHeight, desiredBodyY))
+        ? Math.max(marginY, Math.min(screenH - marginY - effectiveHeight, desiredBodyY))
         : desiredBodyY
 
     default property alias content: contentItem.data
 
-    implicitWidth: root.screen?.width ?? 1920
-    implicitHeight: root.screen?.height ?? 1080
+    implicitWidth: screenW
+    implicitHeight: screenH
 
     visible: open || morphAnim.running
     color: "transparent"
@@ -67,12 +72,34 @@ PanelWindow {
         right: true
     }
 
+    // Keep popup panel window outside the bar so the bar never loses mouse hover
+    margins {
+        top: root.isTop ? (Theme.barHeight ?? 32) : 0
+        bottom: root.isBottom ? (Theme.barHeight ?? 32) : 0
+        left: root.isLeft ? (Theme.barHeight ?? 32) : 0
+        right: root.isRight ? (Theme.barHeight ?? 32) : 0
+    }
+
+    property bool wantsFocus: false
     exclusionMode: ExclusionMode.Ignore
-    focusable: true
+    focusable: wantsFocus
 
     WlrLayershell.namespace: "quickshell:popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (open && wantsFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+    mask: Region {
+        Region { item: popupBody }
+        Region { item: scoopTopL.visible ? scoopTopL : null }
+        Region { item: scoopTopR.visible ? scoopTopR : null }
+        Region { item: scoopBottomL.visible ? scoopBottomL : null }
+        Region { item: scoopBottomR.visible ? scoopBottomR : null }
+        Region { item: scoopLeftT.visible ? scoopLeftT : null }
+        Region { item: scoopLeftB.visible ? scoopLeftB : null }
+        Region { item: scoopRightT.visible ? scoopRightT : null }
+        Region { item: scoopRightB.visible ? scoopRightB : null }
+        Region { item: root.pinned ? dismissArea : null }
+    }
 
     property real morphProgress: 0.0
 
@@ -82,7 +109,7 @@ PanelWindow {
             id: numAnim
             target: root
             property: "morphProgress"
-            duration: root.open ? 220 : 160
+            duration: root.open ? (Theme.expressiveDefault ?? 260) : (Theme.expressiveFast ?? 160)
             easing.type: root.open ? Easing.OutCubic : Easing.InCubic
         }
     }
@@ -92,23 +119,14 @@ PanelWindow {
         morphAnim.restart();
     }
 
-    HyprlandFocusGrab {
-        id: focusGrab
-        active: root.open
-        windows: [root]
-        onCleared: {
-            if (root.open) {
-                root.open = false;
-            }
-        }
-    }
-
-    // click outside dismiss
+    // click outside dismiss (only active when pinned via input mask)
     MouseArea {
+        id: dismissArea
         anchors.fill: parent
         cursorShape: Qt.ArrowCursor
         enabled: root.open
         onClicked: {
+            root.pinned = false;
             root.open = false;
         }
     }
@@ -117,23 +135,44 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
+        // Ambient soft drop-shadow / elevation glow
+        Rectangle {
+            visible: root.morphProgress > 0.1 && (Theme.barStyle === "glass" || Theme.barStyle === "glass-frost" || Theme.barStyle === "bento-floating" || Theme.barStyle === "cyber-neon")
+            x: popupBody.x - 3
+            y: popupBody.y - 3
+            width: popupBody.width + 6
+            height: popupBody.height + 6
+            radius: (Theme.popupRadius ?? 16) + 3
+            color: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.40 * root.morphProgress)
+            z: 0
+            opacity: root.morphProgress * 0.85
+        }
+
         // top bar welding scoops
         ConcaveCorner {
+            id: scoopTopL
             x: popupBody.x - root.curScoopW
-            y: Theme.barHeight
+            y: 0
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: true
             flipY: false
             visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
+            id: scoopTopR
             x: popupBody.x + popupBody.width
-            y: Theme.barHeight
+            y: 0
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: false
             flipY: false
             visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
@@ -141,21 +180,29 @@ PanelWindow {
 
         // bottom bar welding scoops
         ConcaveCorner {
+            id: scoopBottomL
             x: popupBody.x - root.curScoopW
-            y: root.height - Theme.barHeight - root.curScoopH
+            y: root.height - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: true
             flipY: true
             visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
+            id: scoopBottomR
             x: popupBody.x + popupBody.width
-            y: root.height - Theme.barHeight - root.curScoopH
+            y: root.height - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: false
             flipY: true
             visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
@@ -163,21 +210,29 @@ PanelWindow {
 
         // left bar welding scoops
         ConcaveCorner {
-            x: Theme.barHeight
+            id: scoopLeftT
+            x: 0
             y: popupBody.y - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: false
             flipY: true
             visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
-            x: Theme.barHeight
+            id: scoopLeftB
+            x: 0
             y: popupBody.y + popupBody.height
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: false
             flipY: false
             visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
@@ -185,21 +240,29 @@ PanelWindow {
 
         // right bar welding scoops
         ConcaveCorner {
-            x: root.width - Theme.barHeight - root.curScoopW
+            id: scoopRightT
+            x: root.width - root.curScoopW
             y: popupBody.y - root.curScoopH
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: true
             flipY: true
             visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
         }
         ConcaveCorner {
-            x: root.width - Theme.barHeight - root.curScoopW
+            id: scoopRightB
+            x: root.width - root.curScoopW
             y: popupBody.y + popupBody.height
             radiusX: root.curScoopW
             radiusY: root.curScoopH
             fillColor: Theme.popupBg
+            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
+            borderWidth: Theme.popupBorderWidth
+            borderColor: Theme.popupBorderColor
             flipX: true
             flipY: false
             visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
@@ -208,23 +271,42 @@ PanelWindow {
         // physical expanding popup body
         Rectangle {
             id: popupBody
-            x: root.isRight ? (root.width - Theme.barHeight - popupBody.width) : root.clampedBodyX
-            y: root.isBottom ? (root.height - Theme.barHeight - popupBody.height) : root.clampedBodyY
+            x: root.isRight ? (root.width - popupBody.width) : (root.isLeft ? 0 : root.clampedBodyX)
+            y: root.isBottom ? (root.height - popupBody.height) : (root.isTop ? 0 : root.clampedBodyY)
             width: root.isVertical ? Math.max(1, root.morphProgress * root.effectiveWidth) : root.effectiveWidth
             height: root.isVertical ? root.effectiveHeight : Math.max(1, root.morphProgress * root.effectiveHeight)
             color: Theme.popupBg
-            border.width: 0
+            border.width: Theme.popupBorderWidth ?? 1
+            border.color: Theme.popupBorderColor
             clip: true
+            z: 1
 
             topLeftRadius: (root.isTop || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
             topRightRadius: (root.isTop || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
             bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
             bottomRightRadius: (root.isBottom || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
 
+            // Specular top highlight line for glass depth
+            Rectangle {
+                visible: (Settings?.popupGlassHighlight ?? true) && (Theme.barStyle === "glass" || Theme.barStyle === "glass-frost" || Theme.barStyle === "bento-floating")
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 1
+                color: Theme.glassHighlight
+                opacity: root.morphProgress
+            }
+
             MouseArea {
+                id: cardHoverArea
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.ArrowCursor
-                acceptedButtons: Qt.AllButtons
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+            }
+
+            HoverHandler {
+                id: cardHoverHandler
             }
 
             Item {

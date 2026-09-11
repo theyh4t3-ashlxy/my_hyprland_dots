@@ -3,6 +3,7 @@ import QtQuick
 import ".."
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 QtObject {
     id: root
@@ -22,6 +23,27 @@ QtObject {
     property string screenCornerMode: "all"
     property string cornerStyle: "cubic"
     property string cornerColorMode: "theme"
+    property bool scoopBorderEnabled: true
+    property int scoopBorderWidth: 2
+    property string scoopBorderColor: "auto"
+    property int popupBorderWidth: 1
+    property bool popupGlassHighlight: true
+    property bool workspaceActiveTrail: true
+    property int workspaceTrailDuration: 240
+    property bool launcherCalcEnabled: true
+    property bool launcherCommandEnabled: true
+    property bool mediaWaveVisualizer: true
+    property bool hoverToOpen: true
+    property int hoverDelay: 220
+    property bool hoverAutoClose: true
+    property string workspaceMode: "slide" // "slide", "fluid-trail", "discrete"
+    property string fontNerd: "JetBrainsMono Nerd Font"
+
+    signal requestLauncherToggle()
+    signal requestQuickSettingsToggle()
+    signal requestBatteryToggle()
+    signal requestWindowTitleToggle()
+    signal requestIdleToggle()
 
     // dynamic bar module ordering
     property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
@@ -117,6 +139,14 @@ QtObject {
     // granular notifications
     property int notificationTimeout: 5000
 
+    // granular window title & stretch settings
+    property string windowTitleMode: "auto" // "auto" (dynamic stretch), "fill" (fill space), "compact" (clamped)
+    property int windowTitleMaxWidth: 760
+    property bool windowTitleShowIcon: true
+
+    // hyprland lua dispatcher bridge
+    property bool hyprlandLua: true
+
     property bool _initialized: false
     property bool _loading: false
 
@@ -211,6 +241,25 @@ QtObject {
     onClockShowSecondsChanged: queueSave()
     onClockMilitaryChanged: queueSave()
     onNotificationTimeoutChanged: queueSave()
+    onScoopBorderEnabledChanged: queueSave()
+    onScoopBorderWidthChanged: queueSave()
+    onScoopBorderColorChanged: queueSave()
+    onPopupBorderWidthChanged: queueSave()
+    onPopupGlassHighlightChanged: queueSave()
+    onWorkspaceActiveTrailChanged: queueSave()
+    onWorkspaceTrailDurationChanged: queueSave()
+    onLauncherCalcEnabledChanged: queueSave()
+    onLauncherCommandEnabledChanged: queueSave()
+    onMediaWaveVisualizerChanged: queueSave()
+    onHoverToOpenChanged: queueSave()
+    onHoverDelayChanged: queueSave()
+    onHoverAutoCloseChanged: queueSave()
+    onWorkspaceModeChanged: queueSave()
+    onFontNerdChanged: queueSave()
+    onWindowTitleModeChanged: queueSave()
+    onWindowTitleMaxWidthChanged: queueSave()
+    onWindowTitleShowIconChanged: queueSave()
+    onHyprlandLuaChanged: queueSave()
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -299,7 +348,26 @@ QtObject {
         { key: "volumeMax", type: "int", def: 100 },
         { key: "clockShowSeconds", type: "bool", def: false },
         { key: "clockMilitary", type: "bool", def: true },
-        { key: "notificationTimeout", type: "int", def: 5000 }
+        { key: "notificationTimeout", type: "int", def: 5000 },
+        { key: "scoopBorderEnabled", type: "bool", def: true },
+        { key: "scoopBorderWidth", type: "int", def: 2 },
+        { key: "scoopBorderColor", type: "string", def: "auto" },
+        { key: "popupBorderWidth", type: "int", def: 1 },
+        { key: "popupGlassHighlight", type: "bool", def: true },
+        { key: "workspaceActiveTrail", type: "bool", def: true },
+        { key: "workspaceTrailDuration", type: "int", def: 240 },
+        { key: "launcherCalcEnabled", type: "bool", def: true },
+        { key: "launcherCommandEnabled", type: "bool", def: true },
+        { key: "mediaWaveVisualizer", type: "bool", def: true },
+        { key: "hoverToOpen", type: "bool", def: true },
+        { key: "hoverDelay", type: "int", def: 220 },
+        { key: "hoverAutoClose", type: "bool", def: true },
+        { key: "workspaceMode", type: "string", def: "slide" },
+        { key: "fontNerd", type: "string", def: "JetBrainsMono Nerd Font" },
+        { key: "windowTitleMode", type: "string", def: "auto" },
+        { key: "windowTitleMaxWidth", type: "int", def: 760 },
+        { key: "windowTitleShowIcon", type: "bool", def: true },
+        { key: "hyprlandLua", type: "bool", def: true }
     ]
 
     function loadObject(data) {
@@ -483,5 +551,48 @@ QtObject {
         barModulesCenter = ["clock"];
         barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
         queueSave();
+    }
+
+    // Hyprland Lua dispatcher bridge functions
+    function dispatchCloseWindow() {
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.close()" : "killactive");
+    }
+
+    function dispatchToggleFloat() {
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.float({ action = 'toggle' })" : "togglefloating");
+    }
+
+    function dispatchToggleFullscreen() {
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.fullscreen()" : "fullscreen 0");
+    }
+
+    function dispatchPinWindow() {
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.pin()" : "pin");
+    }
+
+    function dispatchWorkspace(target) {
+        if (hyprlandLua) {
+            let arg = typeof target === "number" ? target : `"${target}"`;
+            Hyprland.dispatch(`hl.dsp.focus({ workspace = ${arg} })`);
+        } else {
+            Hyprland.dispatch(`workspace ${target}`);
+        }
+    }
+
+    function dispatchToggleSpecial(name) {
+        if (hyprlandLua) {
+            Hyprland.dispatch(`hl.dsp.workspace.toggle_special("${name}")`);
+        } else {
+            Hyprland.dispatch(`togglespecialworkspace ${name}`);
+        }
+    }
+
+    function dispatchDpms(action) {
+        if (hyprlandLua) {
+            Hyprland.dispatch(`hl.dsp.dpms({ action = '${action}' })`);
+        } else {
+            let cmd = action === "disable" ? "dpms off" : (action === "enable" ? "dpms on" : "dpms toggle");
+            Hyprland.dispatch(cmd);
+        }
     }
 }

@@ -43,6 +43,13 @@ PanelWindow {
     readonly property bool isBottom: pos === "down" || pos === "bottom"
     readonly property bool isLeft: pos === "left"
     readonly property bool isRight: pos === "right"
+
+    readonly property real maxWindowTitleWidth: {
+        let halfScreen = root.width / 2;
+        let centerHalf = (centerRowH.visible ? centerRowH.width : 0) / 2;
+        let clockStart = halfScreen - centerHalf;
+        return Math.max(160, clockStart - 260);
+    }
     readonly property bool isVertical: isLeft || isRight
 
     readonly property int scoopRadius: Math.round(Settings?.scoopRadius ?? Settings?.screenCornerRadius ?? 16)
@@ -89,6 +96,17 @@ PanelWindow {
         screen: root.screen
     }
 
+    Connections {
+        target: Settings
+        function onRequestLauncherToggle() {
+            if (!root.screen || Quickshell.screens.length <= 1 || (root.hyprMonitor && Hyprland.focusedMonitor && root.hyprMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.launcherPopup.targetRelativeX = 0;
+                root.launcherPopup.targetRelativeY = 0;
+                root.launcherPopup.open = !root.launcherPopup.open;
+            }
+        }
+    }
+
     Component { id: compLauncher; Rectangle {
         id: launcherPill
         visible: Settings?.showLauncher ?? true
@@ -130,19 +148,19 @@ PanelWindow {
 
     Component { id: compWallpaper; WallpaperBrowser {} }
     Component { id: compWorkspaces; Workspaces {} }
-    Component { id: compWindowTitle; WindowTitle {} }
+    Component { id: compWindowTitle; WindowTitle { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compClock; Clock {} }
     Component { id: compMedia; NowPlaying {} }
     Component { id: compQuickNotes; QuickNotes {} }
     Component { id: compClipboard; Clipboard {} }
-    Component { id: compIdleInhibitor; IdleInhibitor {} }
+    Component { id: compIdleInhibitor; IdleInhibitor { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compNotifications; Notifications {} }
     Component { id: compSystemTray; SystemTray {} }
     Component { id: compBluetooth; Bluetooth {} }
     Component { id: compNetwork; NetworkStatus {} }
     Component { id: compVolume; VolumeControl {} }
-    Component { id: compBattery; Battery {} }
-    Component { id: compQuickSettings; QuickSettings {} }
+    Component { id: compBattery; Battery { barScreen: root.screen; barMonitor: root.hyprMonitor } }
+    Component { id: compQuickSettings; QuickSettings { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compPowerMenu; PowerMenu {} }
 
     function getModuleComponent(modId) {
@@ -201,22 +219,22 @@ PanelWindow {
             border.width: 0
 
             Rectangle {
-                visible: Settings?.barStyle === "accent-glow"
+                visible: Settings?.barStyle === "accent-glow" || Settings?.barStyle === "cyber-neon"
                 x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 2 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
                 y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 2 : 0))
                 width: Math.round(root.isVertical ? 2 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
                 height: Math.round(root.isVertical ? (parent.height - ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopBottomV.visible) ? (root.borderWidth + root.scoopRadius) : 0)) : 2)
                 color: Theme.primary
-                opacity: 0.90
+                opacity: Settings?.barStyle === "cyber-neon" ? 1.0 : 0.90
             }
 
             Rectangle {
-                visible: Settings?.barStyle === "glass"
+                visible: Settings?.barStyle === "glass" || Settings?.barStyle === "glass-frost"
                 x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 1 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
                 y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 1 : 0))
                 width: Math.round(root.isVertical ? 1 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
                 height: Math.round(root.isVertical ? (parent.height - ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopBottomV.visible) ? (root.borderWidth + root.scoopRadius) : 0)) : 1)
-                color: Qt.rgba(1, 1, 1, 0.22)
+                color: Theme.glassHighlight ?? Qt.rgba(1, 1, 1, 0.22)
             }
         }
 
@@ -287,9 +305,24 @@ PanelWindow {
                         active: root.isModuleVisible(modelData) && !root.isVertical
                         visible: active
                         sourceComponent: root.getModuleComponent(modelData)
-                        readonly property real targetW: item ? (modelData === "windowTitle" ? Math.max(40, Math.min(item.implicitWidth, 260)) : item.implicitWidth) : (Theme.barHeight - 8)
+                        readonly property real targetW: {
+                            if (!item) return (Theme.barHeight - 8);
+                            if (modelData === "windowTitle") {
+                                let mode = Settings?.windowTitleMode ?? "auto";
+                                if (mode === "fill") {
+                                    return Math.max(80, root.maxWindowTitleWidth);
+                                }
+                                if (mode === "compact") {
+                                    return Math.max(40, Math.min(item.implicitWidth, 260));
+                                }
+                                let maxAllowed = Math.min(Settings?.windowTitleMaxWidth ?? 760, root.maxWindowTitleWidth);
+                                return Math.max(40, Math.min(item.implicitWidth, maxAllowed));
+                            }
+                            return item.implicitWidth;
+                        }
                         width: Math.round(targetW)
                         height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
+                        Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                     }
                 }

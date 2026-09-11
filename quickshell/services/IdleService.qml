@@ -57,13 +57,7 @@ QtObject {
             if (!root.enabled) return;
 
             let action = isIdle ? "disable" : "enable";
-            let cmd = isIdle ? "dpms off" : "dpms on";
-
-            if (Hyprland.usingLua) {
-                Hyprland.dispatch(`hl.dsp.dpms({ action = '${action}' })`);
-            } else {
-                Hyprland.dispatch(cmd);
-            }
+            Settings.dispatchDpms(action);
         }
     }
 

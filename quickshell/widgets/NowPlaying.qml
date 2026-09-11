@@ -147,6 +147,32 @@ Rectangle {
             elide: Text.ElideRight
             width: Math.min(implicitWidth, root.compactMode ? 100 : 160)
         }
+
+        // Animated equalizer wave bars
+        Row {
+            visible: root.isPlaying && (Settings?.mediaWaveVisualizer ?? true)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            height: 10
+
+            Repeater {
+                model: 3
+                Rectangle {
+                    required property int index
+                    width: 2
+                    radius: 1
+                    color: Theme.primary
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    SequentialAnimation on height {
+                        running: root.isPlaying
+                        loops: Animation.Infinite
+                        NumberAnimation { to: index === 1 ? 10 : (index === 0 ? 7 : 9); duration: 240 + (index * 70); easing.type: Easing.InOutSine }
+                        NumberAnimation { to: index === 1 ? 3 : (index === 0 ? 2 : 4); duration: 240 + (index * 70); easing.type: Easing.InOutSine }
+                    }
+                }
+            }
+        }
     }
 
     MouseArea {
@@ -267,28 +293,56 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 14
 
-                        Rectangle {
+                        Item {
                             Layout.preferredWidth: 84
                             Layout.preferredHeight: 84
-                            radius: Theme.radiusMd
-                            color: Theme.surface_container_highest
-                            clip: true
 
-                            Image {
+                            // Ambient artwork glow
+                            Rectangle {
                                 anchors.fill: parent
-                                source: root.fixCoverUrl(root.player?.trackArtUrl)
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                visible: status === Image.Ready && source != ""
+                                anchors.margins: -4
+                                radius: Theme.radiusMd + 4
+                                color: Theme.cardGlow
+                                z: 0
+                                opacity: root.isPlaying ? 0.9 : 0.3
+                                Behavior on opacity { NumberAnimation { duration: Theme.animNormal } }
                             }
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: Theme.iconMusic
-                                font.family: Theme.fontIcon
-                                font.pixelSize: 28
-                                color: Theme.on_surface_variant
-                                visible: !(root.player?.trackArtUrl)
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.radiusMd
+                                color: Theme.surface_container_highest
+                                clip: true
+                                z: 1
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: root.fixCoverUrl(root.player?.trackArtUrl)
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    visible: status === Image.Ready && source != ""
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: Theme.iconMusic
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 28
+                                    color: Theme.on_surface_variant
+                                    visible: !(root.player?.trackArtUrl)
+                                }
+
+                                // Volume wheel directly on cover
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onWheel: (wheel) => {
+                                        if (root.player && root.player.volume !== undefined) {
+                                            root.player.volume = Math.max(0.0, Math.min(1.0, root.player.volume + (wheel.angleDelta.y > 0 ? 0.05 : -0.05)));
+                                        }
+                                    }
+                                }
                             }
                         }
 

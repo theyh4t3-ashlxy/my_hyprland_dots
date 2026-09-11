@@ -15,6 +15,35 @@ PopupPanel {
     property string query: ""
     property string activeCategory: "all" // "all", "internet", "dev", "media", "games", "system"
 
+    readonly property string cleanQuery: query.trim()
+    readonly property bool isCommand: (cleanQuery.startsWith(">") || cleanQuery.startsWith("$")) && (Settings?.launcherCommandEnabled ?? true)
+    readonly property string cleanCommand: isCommand ? cleanQuery.slice(1).trim() : ""
+    readonly property var calcResult: (Settings?.launcherCalcEnabled ?? true) && !isCommand ? evaluateMath(cleanQuery) : null
+
+    function evaluateMath(expr) {
+        if (!expr || expr.length < 2) return null;
+        let s = expr.trim();
+        if (!/^[\d\s\+\-\*\/\(\)\.\^\%eEpiPIsqrtSQRTabsABScosCOScinSINtanTAN\<\>\&\|\~]+$/.test(s) && !s.startsWith("0x")) {
+            return null;
+        }
+        if (!/[\+\-\*\/\^\%]|sqrt|abs|sin|cos|tan|0x/i.test(s)) return null;
+        try {
+            let sanitized = s
+                .replace(/sqrt\(/gi, "Math.sqrt(")
+                .replace(/abs\(/gi, "Math.abs(")
+                .replace(/sin\(/gi, "Math.sin(")
+                .replace(/cos\(/gi, "Math.cos(")
+                .replace(/tan\(/gi, "Math.tan(")
+                .replace(/\^/g, "**")
+                .replace(/\bpi\b/gi, "Math.PI");
+            let res = Function('"use strict"; return (' + sanitized + ')')();
+            if (typeof res === "number" && !isNaN(res) && isFinite(res)) {
+                return String(Math.round(res * 100000) / 100000);
+            }
+        } catch(e) {}
+        return null;
+    }
+
     onOpenChanged: {
         if (open) {
             query = "";
@@ -104,6 +133,18 @@ PopupPanel {
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            if (root.isCommand && root.cleanCommand.length > 0) {
+                                Quickshell.execDetached(["sh", "-c", root.cleanCommand]);
+                                root.open = false;
+                                event.accepted = true;
+                                return;
+                            }
+                            if (root.calcResult !== null) {
+                                Quickshell.execDetached(["wl-copy", root.calcResult]);
+                                root.open = false;
+                                event.accepted = true;
+                                return;
+                            }
                             // bypass delegate lookup so enter doesnt fail when delegates are incubating
                             let targetApp = appList.model?.values ? appList.model.values[appList.currentIndex] : null;
                             if (targetApp?.execute) {
@@ -154,12 +195,12 @@ PopupPanel {
 
             Repeater {
                 model: [
-                    { id: "all", label: "all", icon: "󰕰" },
-                    { id: "internet", label: "web", icon: "󰖟" },
-                    { id: "dev", label: "dev", icon: "󰅩" },
-                    { id: "media", label: "media", icon: "󰝚" },
-                    { id: "games", label: "games", icon: "󰊴" },
-                    { id: "system", label: "sys", icon: "󰒓" }
+                    { id: "all", label: "all", icon: Theme.iconGrid },
+                    { id: "internet", label: "web", icon: Theme.iconGlobe },
+                    { id: "dev", label: "dev", icon: Theme.iconTerminal },
+                    { id: "media", label: "media", icon: Theme.iconMusic },
+                    { id: "games", label: "games", icon: Theme.iconFlame },
+                    { id: "system", label: "sys", icon: Theme.iconSettings }
                 ]
 
                 delegate: Rectangle {
@@ -206,6 +247,134 @@ PopupPanel {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
             color: Theme.widgetBorder
+        }
+
+        // Inline Calculator Card
+        Rectangle {
+            id: calcCard
+            visible: root.calcResult !== null
+            Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            radius: Theme.radiusMd
+            color: Theme.primary_overlay
+            border.color: Theme.primary
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: Theme.radiusSm
+                    color: Theme.primary
+
+                    Text {
+                        text: "="
+                        font.family: Theme.fontMono
+                        font.pixelSize: 16
+                        font.weight: Font.Bold
+                        color: Theme.on_primary
+                        anchors.centerIn: parent
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        text: root.calcResult ?? ""
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.fontSizeLg
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                    }
+
+                    Text {
+                        text: "enter to copy result to clipboard"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                    }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    Quickshell.execDetached(["wl-copy", root.calcResult]);
+                    root.open = false;
+                }
+            }
+        }
+
+        // Inline Shell Command Runner Card
+        Rectangle {
+            id: cmdCard
+            visible: root.isCommand && root.cleanCommand.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            radius: Theme.radiusMd
+            color: Theme.surface_container_high
+            border.color: Theme.primary
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: Theme.radiusSm
+                    color: Theme.surface_container_highest
+
+                    Text {
+                        text: ">_"
+                        font.family: Theme.fontMono
+                        font.pixelSize: 12
+                        font.weight: Font.Bold
+                        color: Theme.primary
+                        anchors.centerIn: parent
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        text: root.cleanCommand
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.fontSizeSm
+                        font.weight: Font.DemiBold
+                        color: Theme.on_surface
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        text: "enter to run in background"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.primary
+                    }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    Quickshell.execDetached(["sh", "-c", root.cleanCommand]);
+                    root.open = false;
+                }
+            }
         }
 
         // App List & Empty State Container
