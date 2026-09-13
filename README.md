@@ -24,6 +24,7 @@ it runs on my machine. if your compositor kernel panics on boot, that is fundame
 - continuous screen borders: corner scoops now connect with continuous pixel-perfect borders wrapping the monitor like an ankle monitor.
 - top bar clipping dead: eradicated nested animations and width clipping so hovering over one icon doesn't eat adjacent widgets alive.
 - schema-driven settings: murdered manual serialization boilerplate. dynamic schema or bust.
+- flatpak sandbox containment: gtk-3.0 and gtk-4.0 configs are synced as physical directories instead of symlinks because bubblewrap throws a tantrum if it encounters symlinks across container boundaries.
 - curl pipe installer fixed: install.zsh reads directly from /dev/tty so piping remote curl commands doesn't immediately choke on eof like a coward.
 - zsh prompt customizer: live interactive customizer with prompt styles (two-line, single-line, minimal, bracket, full mental breakdown), custom symbols, and colors for artificial dopamine when code won't compile.
 - help cheatsheet: instant colorized keybind cheat sheet so you remember what keys you remapped while dissociated at 4 am.
@@ -31,28 +32,40 @@ it runs on my machine. if your compositor kernel panics on boot, that is fundame
 
 # how to nuke wayland
 
-clone this repo somewhere that won't trigger an existential crisis:
-(zsh is mandatory. i do not use bash. i do not bash on people, but i don't talk to bash users either.)
+prerequisites: an arch-based distro, zsh, and a complete lack of regard for your system stability.
+
+do not run this script as root. if you run `sudo ./install.zsh`, the script detects your hubris, roasts you in bold red ansi, and terminates immediately before you chmod your entire life into 000.
+
+clone the repo:
 
 ```zsh
 git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git ~/my-hyprland-dots
 cd ~/my-hyprland-dots
 ```
 
-run the installer so you don't have to think:
+run the harness:
 
 ```zsh
 chmod +x install.zsh
 ./install.zsh
 ```
 
-it boots an interactive menu. if you want zero questions and maximum system jeopardy:
-- `./install.zsh --all`: full send. dumps your existing config into `~/.cache/dotfiles-backups`, symlinks everything, compiles zsh bytecode under duress, generates palette colors, boots quickshell, offers zero apologies.
-- `./install.zsh --doctor`: inspects missing fonts (segoe fluent icons, jetbrainsmono nerd font, noto sans), validates quickshell compilation, and tells you why your desktop is crying in a corner.
-- `./install.zsh --update`: pulls latest commits, syncs links, and reloads without nuking your personal tweaks.
-- `./install.zsh --reload`: kicks running hyprland and restarts `qs -d` in the background while praying the socket doesn't lock up.
+if fzf is installed, it spawns an interactive multi-select menu. if fzf is missing, it falls back to comma-separated numbers because we accommodate your technological neglect.
 
-if your desktop looks like an abandoned void, throw some wallpapers into `~/.wallpapers/` and spam `wp random` until your visual cortex stops hurting.
+# flags for people who hate interactive menus
+
+- `./install.zsh --all`: full send. archives existing configs into `~/.cache/dotfiles-backups/backup_<timestamp>.tar.gz`, pulls packages, symlinks everything, compiles zsh bytecode, runs matugen, starts quickshell via uwsm, offers zero apologies.
+- `./install.zsh --doctor`: runs a diagnostic scan on your machine. checks for missing binaries (hyprland, uwsm, matugen, awww, mpvpaper, quickshell), inspects typography (jetbrainsmono nerd font, noto sans), validates symlinks, and tells you why your desktop is held together by spit and duct tape.
+- `./install.zsh --update`: pulls latest commits from git, fixes permission bits on python helper scripts, resyncs links, samples wallpaper palette, and reloads without nuking your local changes.
+- `./install.zsh --reload`: signals hyprctl reload and restarts quickshell (`qs -d`) inside your uwsm session so it doesn't linger as an orphaned background zombie.
+- `./install.zsh --links`: symlinks dotfiles into `~/.config` without touching system packages.
+- `./install.zsh --deps`: installs dependencies without touching your existing dotfiles.
+- `./install.zsh --aur`: bootstraps `paru-bin` via makepkg if you are on arch without an aur helper. arch without the aur is just debian with anxiety.
+- `./install.zsh --fetch-wp`: downloads a clean catppuccin landscape wallpaper into `~/.wallpapers/downloaded/` so your desktop doesn't look like an abandoned void.
+- `./install.zsh --pkgs=desktop,terminal,media`: install specific package categories only. options: desktop, terminal, tools, editors, media, fonts, system.
+- `./install.zsh --dots=quickshell,hypr,kitty`: symlink specific configs only. options: quickshell, hypr, matugen, kitty, zsh, fastfetch, yazi, nvim, gtk-3.0, gtk-4.0.
+- `./install.zsh --no-theme`: skip wallpaper palette extraction via matugen.
+- `./install.zsh --no-backup`: live dangerously and skip tarball generation.
 
 # the fun route
 
@@ -61,6 +74,8 @@ if you have zero self-preservation instincts and actively hate your life as we s
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/theyh4t3-ashlxy/my_hyprland_dots/main/install.zsh | zsh
 ```
+
+the installer hijacks `/dev/tty` for user input, so piping curl will not panic on eof. you have no excuse.
 
 # known bugs
 
