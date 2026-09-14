@@ -202,6 +202,21 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestMediaToggle() {
+            root.syncAnchor();
+            popup.open = !popup.open;
+        }
+        function onRequestMediaOpen() {
+            root.syncAnchor();
+            popup.open = true;
+        }
+        function onRequestMediaClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
         cardWidth: 420
@@ -512,7 +527,7 @@ Rectangle {
                     width: parent.width - 24
 
                     Text {
-                        text: Theme.getVibe(Theme.kaoSilent, Theme.iconHeadphones, "󰋋")
+                        text: Theme.getVibe(Theme.kaoSilent, Theme.iconHeadphones, Theme.iconHeadphones)
                         font.family: Theme.fontIcon
                         font.pixelSize: 28
                         color: Theme.on_surface_variant

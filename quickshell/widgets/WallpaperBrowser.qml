@@ -4,6 +4,8 @@ import ".."
 import "../controls"
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Rectangle {
     id: root
@@ -18,6 +20,8 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
     Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
+    property var barScreen: null
+    property var barMonitor: null
     property string activeTab: "local"
     property string liveSubTab: "local"
     property string localCategoryFilter: "all"
@@ -26,18 +30,30 @@ Rectangle {
     property string onlineQuery: ""
     property string onlineSorting: "date_added"
     property int onlinePage: 1
-    property string onlineResolution: (Quickshell?.screens && Quickshell.screens.length > 0) ? (Quickshell.screens[0].width + "x" + Quickshell.screens[0].height) : "1920x1080"
-    property string onlineResolutionMode: "exact"
+    readonly property string nativeRes: (Quickshell?.screens && Quickshell.screens.length > 0) ? (Quickshell.screens[0].width + "x" + Quickshell.screens[0].height) : "1920x1080"
+    property string onlineResolution: nativeRes
     property bool isOnlineLoading: false
     property bool isBatchDownloading: false
     property string batchStatusText: ""
     property string liveSearchQuery: ""
     property var allLocalWallpapers: []
 
-    ListModel { id: localWpModel }
-    ListModel { id: localLiveWpModel }
+    readonly property string wpScriptPath: decodeURIComponent(Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, ""))
+
     ListModel { id: onlineWpModel }
     ListModel { id: liveWpModel }
+
+    readonly property var localLiveWallpapers: {
+        let res = [];
+        let items = root.allLocalWallpapers || [];
+        for (let i = 0; i < items.length; i++) {
+            let item = items[i];
+            if (item && (item.isVideo || item.isGif || item.isLive || ["gif", "mp4", "webm"].indexOf(item.ext) !== -1)) {
+                res.push(item);
+            }
+        }
+        return res;
+    }
 
     FileView {
         id: liveWpFile
@@ -50,13 +66,6 @@ Rectangle {
         }
     }
 
-    readonly property string wpScriptPath: decodeURIComponent(Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, ""))
-
-    function fetchLiveWallpapers(q) {
-        Quickshell.execDetached(["python3", wpScriptPath, "fetch-live", q || ""]);
-        liveParseTimer.restart();
-    }
-
     Timer {
         id: liveParseTimer
         interval: 300
@@ -65,6 +74,99 @@ Rectangle {
             liveWpFile.reload();
             root.loadLiveFromJson(liveWpFile.text());
         }
+    }
+
+    Timer {
+        id: batchStatusResetTimer
+        interval: 4000
+        onTriggered: root.batchStatusText = ""
+    }
+
+    Process {
+        id: batchDownloadProc
+        command: []
+        running: false
+        onExited: (code) => {
+            root.isBatchDownloading = false;
+            root.batchStatusText = (code === 0) ? "wallpapers saved to ~/.wallpapers/" : "download failed";
+            batchStatusResetTimer.restart();
+            reloadLocalWallpapers();
+        }
+    }
+
+    Connections {
+        target: WallpaperService ?? null
+        ignoreUnknownSignals: true
+        function onWallpapersUpdated() {
+            root.parseLocalWallpapers();
+        }
+    }
+
+    HyprlandFocusGrab {
+        id: hyprFocusGrab
+        active: popup.open
+        windows: {
+            let targets = [];
+            if (popup) targets.push(popup);
+            if (popup?.window) targets.push(popup.window);
+            let barWin = root.QsWindow?.window;
+            if (barWin && targets.indexOf(barWin) === -1) targets.push(barWin);
+            return targets;
+        }
+        onCleared: popup.open = false
+    }
+
+    function syncKeyboardFocus(openState) {
+        if (popup) {
+            try {
+                if (popup.focusable !== undefined) popup.focusable = openState;
+                if (popup.grabFocus !== undefined) popup.grabFocus = openState;
+                if (popup.WlrLayershell) {
+                    popup.WlrLayershell.keyboardFocus = openState ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None;
+                }
+            } catch (e) {}
+        }
+        try {
+            let win = root.QsWindow?.window;
+            if (win) {
+                if (win.focusable !== undefined) win.focusable = openState;
+                if (win.WlrLayershell) {
+                    win.WlrLayershell.keyboardFocus = openState ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None;
+                }
+            }
+        } catch (e) {}
+    }
+
+    Connections {
+        target: popup
+        function onOpenChanged() {
+            root.syncKeyboardFocus(popup.open);
+            if (popup.open) {
+                Qt.callLater(() => {
+                    if (root.activeTab === "local") localSearchInput.forceActiveFocus();
+                    else if (root.activeTab === "online") onlineInput.forceActiveFocus();
+                });
+            }
+        }
+    }
+
+    onActiveTabChanged: {
+        if (popup.open) {
+            Qt.callLater(() => {
+                if (root.activeTab === "local") localSearchInput.forceActiveFocus();
+                else if (root.activeTab === "online") onlineInput.forceActiveFocus();
+            });
+        }
+    }
+
+    Component.onCompleted: {
+        parseLocalWallpapers();
+        reloadLocalWallpapers();
+    }
+
+    function fetchLiveWallpapers(q) {
+        Quickshell.execDetached(["python3", wpScriptPath, "fetch-live", q || ""]);
+        liveParseTimer.restart();
     }
 
     function loadLiveFromJson(raw) {
@@ -78,30 +180,13 @@ Rectangle {
         } catch(e) {}
     }
 
-    Connections {
-        target: WallpaperService ?? null
-        ignoreUnknownSignals: true
-        function onWallpapersUpdated() {
-            root.parseLocalWallpapers();
-        }
-    }
-
     function parseLocalWallpapers() {
         if (!WallpaperService?.localWpListFile) return;
         WallpaperService.localWpListFile.reload();
         let str = WallpaperService.localWpListFile.text();
         if (!str || str.trim() === "") return;
         try {
-            let items = JSON.parse(str);
-            root.allLocalWallpapers = items || [];
-            localWpModel.clear();
-            localLiveWpModel.clear();
-            for (let i = 0; i < items.length; i++) {
-                localWpModel.append(items[i]);
-                if (items[i].isVideo || items[i].isGif || items[i].isLive || items[i].ext === "gif" || items[i].ext === "mp4" || items[i].ext === "webm") {
-                    localLiveWpModel.append(items[i]);
-                }
-            }
+            root.allLocalWallpapers = JSON.parse(str) || [];
         } catch(e) {}
     }
 
@@ -111,25 +196,20 @@ Rectangle {
         }
     }
 
-    Component.onCompleted: {
-        parseLocalWallpapers();
-        reloadLocalWallpapers();
-    }
-
-    function fetchWallhaven(query, sort, page, resolution, resMode) {
+    function fetchWallhaven(query, sort, page, resolution) {
         root.isOnlineLoading = true;
         let req = new XMLHttpRequest();
         let q = (query !== undefined && query !== null) ? query.trim() : root.onlineQuery;
         let s = sort || root.onlineSorting || "date_added";
         let p = page || 1;
         let r = (resolution !== undefined && resolution !== null) ? resolution.trim() : root.onlineResolution;
-        let rm = resMode || root.onlineResolutionMode || "exact";
+
+        r = r.replace(/\s*[\*xX]\s*/g, "x").replace(/\s+/g, "");
 
         root.onlineQuery = q;
         root.onlineSorting = s;
         root.onlinePage = p;
         root.onlineResolution = r;
-        root.onlineResolutionMode = rm;
 
         let params = [];
         if (q && q !== "") params.push("q=" + encodeURIComponent(q));
@@ -139,15 +219,10 @@ Rectangle {
         params.push("purity=100");
 
         if (r && r !== "" && r.toLowerCase() !== "any") {
-            if (rm === "atleast") {
-                params.push("atleast=" + encodeURIComponent(r));
-            } else {
-                params.push("resolutions=" + encodeURIComponent(r));
-            }
+            params.push("resolutions=" + encodeURIComponent(r));
         }
 
-        let url = "https://wallhaven.cc/api/v1/search?" + params.join("&");
-        req.open("GET", url);
+        req.open("GET", "https://wallhaven.cc/api/v1/search?" + params.join("&"));
         req.timeout = 10000;
         req.ontimeout = () => { root.isOnlineLoading = false; };
         req.onerror = () => { root.isOnlineLoading = false; };
@@ -156,8 +231,7 @@ Rectangle {
                 root.isOnlineLoading = false;
                 if (req.status === 200) {
                     try {
-                        let parsed = JSON.parse(req.responseText);
-                        let data = parsed?.data ?? [];
+                        let data = JSON.parse(req.responseText)?.data ?? [];
                         onlineWpModel.clear();
                         for (let i = 0; i < data.length; i++) {
                             onlineWpModel.append({
@@ -185,12 +259,16 @@ Rectangle {
                 if (u) urls.push(u);
             }
         } else if (root.activeTab === "live") {
-            let activeModel = (root.liveSubTab === "local") ? localLiveWpModel : liveWpModel;
-            for (let i = 0; i < activeModel.count; i++) {
-                let item = activeModel.get(i);
-                let u = item?.url || item?.path;
-                if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    urls.push(u);
+            let activeList = (root.liveSubTab === "local") ? root.localLiveWallpapers : [];
+            if (root.liveSubTab === "local") {
+                for (let i = 0; i < activeList.length; i++) {
+                    let u = activeList[i]?.url || activeList[i]?.path;
+                    if (u && (u.startsWith("http://") || u.startsWith("https://"))) urls.push(u);
+                }
+            } else {
+                for (let i = 0; i < liveWpModel.count; i++) {
+                    let u = liveWpModel.get(i)?.url || liveWpModel.get(i)?.path;
+                    if (u && (u.startsWith("http://") || u.startsWith("https://"))) urls.push(u);
                 }
             }
         }
@@ -203,22 +281,281 @@ Rectangle {
         batchDownloadProc.running = true;
     }
 
-    Process {
-        id: batchDownloadProc
-        command: []
-        running: false
-        onExited: (code) => {
-            root.isBatchDownloading = false;
-            root.batchStatusText = (code === 0) ? "wallpapers saved to ~/.wallpapers/" : "download completed with errors";
-            batchStatusResetTimer.restart();
-            reloadLocalWallpapers();
+    component CategoryHeader: RowLayout {
+        id: catHdr
+        property string title: ""
+        property string icon: ""
+        Layout.fillWidth: true
+        spacing: 8
+        Layout.topMargin: 8
+        Layout.bottomMargin: 2
+
+        Text {
+            visible: catHdr.icon !== ""
+            text: catHdr.icon
+            font.family: Theme?.fontIcon ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeSm ?? 12
+            color: Theme.primary
+        }
+
+        Text {
+            text: catHdr.title
+            font.family: Theme?.fontFamily ?? "sans-serif"
+            font.pixelSize: Theme?.fontSizeXs ?? 10
+            font.weight: Font.Bold
+            color: Theme.primary
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.widgetBorder
         }
     }
 
-    Timer {
-        id: batchStatusResetTimer
-        interval: 4000
-        onTriggered: root.batchStatusText = ""
+    component SettingCard: Rectangle {
+        default property alias content: cardCol.data
+        Layout.fillWidth: true
+        implicitHeight: cardCol.implicitHeight
+        radius: Theme?.widgetRadius ?? 12
+        color: Theme.cardBg
+        border.color: Theme.cardBorder
+        border.width: 1
+        clip: true
+
+        Column {
+            id: cardCol
+            width: parent.width
+            spacing: 0
+        }
+    }
+
+    component Chip: Rectangle {
+        id: chipRoot
+        property bool selected: false
+        property string label: ""
+        property real chipHeight: 28
+        property real chipRadius: Theme?.radiusPill ?? 999
+        property int fontSize: Theme?.fontSizeXs ?? 10
+        property bool fillWidth: false
+        property color activeBg: Theme.primary
+        property color inactiveBg: Theme.surface_container_highest
+        property color activeFg: Theme.on_primary ?? "#ffffff"
+        property color inactiveFg: Theme.on_surface
+        signal clicked()
+
+        Layout.fillWidth: fillWidth
+        Layout.preferredHeight: chipHeight
+        Layout.preferredWidth: fillWidth ? -1 : (chipText.implicitWidth + 18)
+        radius: chipRadius
+        color: selected ? activeBg : (chipMouse.containsMouse ? Theme.surface_container_high : inactiveBg)
+        border.color: selected ? Theme.primary : (Theme?.cardBorder ?? Theme?.widgetBorder ?? "transparent")
+        border.width: 1
+
+        Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+        Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+
+        Text {
+            id: chipText
+            anchors.centerIn: parent
+            text: chipRoot.label
+            font.family: Theme?.fontFamily ?? "sans-serif"
+            font.pixelSize: chipRoot.fontSize
+            font.weight: chipRoot.selected ? Font.Bold : Font.Medium
+            color: chipRoot.selected ? chipRoot.activeFg : chipRoot.inactiveFg
+        }
+
+        MouseArea {
+            id: chipMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: chipRoot.clicked()
+        }
+    }
+
+    component SectionHeader: Text {
+        font.family: Theme?.fontFamily ?? "sans-serif"
+        font.pixelSize: Theme?.fontSizeSm ?? 12
+        font.weight: Font.Bold
+        color: Theme.primary
+    }
+
+    component GroupLabel: Text {
+        font.family: Theme?.fontFamily ?? "sans-serif"
+        font.pixelSize: Theme?.fontSizeXs ?? 10
+        font.weight: Font.Medium
+        color: Theme.on_surface_variant
+    }
+
+    component WallpaperCard: Rectangle {
+        id: cardRoot
+        property string thumbUrl: ""
+        property string titleText: ""
+        property string badgeText: ""
+        property string tagText: ""
+        property bool tagAccent: false
+        property bool isSelected: false
+        property bool allowDownload: false
+        signal applyRequested()
+        signal downloadRequested()
+
+        color: "transparent"
+
+        Rectangle {
+            id: innerCard
+            anchors.fill: parent
+            anchors.margins: 4
+            color: Theme.cardBg
+            radius: Theme?.widgetRadius ?? 12
+            clip: true
+            border.color: cardRoot.isSelected ? Theme.primary : (cardMouse.containsMouse ? Theme.primary : Theme.cardBorder)
+            border.width: cardRoot.isSelected ? 2 : 1
+
+            Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+
+            Image {
+                anchors.fill: parent
+                source: (cardRoot.thumbUrl.startsWith("http://") || cardRoot.thumbUrl.startsWith("https://") || cardRoot.thumbUrl.startsWith("file://")) ? cardRoot.thumbUrl : ("file://" + cardRoot.thumbUrl)
+                sourceSize: Qt.size(280, 180)
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 42
+                z: 1
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Theme.alpha(Theme.surface, 0.88) }
+                }
+            }
+
+            Rectangle {
+                id: leftBadge
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: 8
+                height: 20
+                width: bText.implicitWidth + 12
+                radius: Theme?.radiusPill ?? 999
+                color: Theme.alpha(Theme.surface, 0.80)
+                border.color: Theme.alpha(Theme.outline, 0.25)
+                border.width: 1
+                visible: cardRoot.badgeText !== ""
+                z: 2
+
+                Text {
+                    id: bText
+                    anchors.centerIn: parent
+                    text: cardRoot.badgeText
+                    font.family: Theme?.fontFamily ?? "sans-serif"
+                    font.pixelSize: (Theme?.fontSizeXs ?? 10) - 1
+                    font.weight: Font.Medium
+                    color: Theme.on_surface
+                }
+            }
+
+            Row {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 8
+                spacing: 6
+                z: 2
+
+                Rectangle {
+                    height: 20
+                    width: tText.implicitWidth + 12
+                    radius: Theme?.radiusPill ?? 999
+                    color: cardRoot.tagAccent ? Theme.primary : Theme.alpha(Theme.surface, 0.80)
+                    border.color: cardRoot.tagAccent ? "transparent" : Theme.alpha(Theme.outline, 0.25)
+                    border.width: 1
+                    visible: cardRoot.tagText !== ""
+
+                    Text {
+                        id: tText
+                        anchors.centerIn: parent
+                        text: cardRoot.tagText
+                        font.family: Theme?.fontMono ?? "monospace"
+                        font.pixelSize: (Theme?.fontSizeXs ?? 10) - 1
+                        font.weight: Font.Bold
+                        color: cardRoot.tagAccent ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface_variant
+                    }
+                }
+
+                Rectangle {
+                    height: 20
+                    width: 20
+                    radius: 10
+                    color: Theme.primary
+                    visible: cardRoot.isSelected
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Theme?.iconCheck ?? "✓"
+                        font.family: Theme?.fontIcon ?? "sans-serif"
+                        font.pixelSize: 10
+                        color: Theme.on_primary ?? "#ffffff"
+                    }
+                }
+            }
+
+            RowLayout {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 8
+                spacing: 6
+                z: 3
+
+                Text {
+                    Layout.fillWidth: true
+                    text: cardRoot.titleText !== "" ? cardRoot.titleText : "click to set"
+                    font.family: Theme?.fontFamily ?? "sans-serif"
+                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                    font.weight: Font.Medium
+                    color: Theme.on_surface
+                    elide: Text.ElideRight
+                }
+
+                Rectangle {
+                    width: 22
+                    height: 22
+                    radius: Theme?.radiusPill ?? 999
+                    color: dlMouse.containsMouse ? Theme.primary : Theme.alpha(Theme.surface, 0.80)
+                    border.color: Theme.alpha(Theme.outline, 0.25)
+                    border.width: 1
+                    visible: cardRoot.allowDownload
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Theme?.iconDownload ?? "󰇚"
+                        font.family: Theme?.fontIcon ?? "sans-serif"
+                        font.pixelSize: 10
+                        color: dlMouse.containsMouse ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                    }
+
+                    MouseArea {
+                        id: dlMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: cardRoot.downloadRequested()
+                    }
+                }
+            }
+
+            MouseArea {
+                id: cardMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: cardRoot.applyRequested()
+            }
+        }
     }
 
     Row {
@@ -241,186 +578,104 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            let pos = root.mapToItem(null, 0, 0);
-            if (Theme?.isVertical) {
-                popup.targetRelativeY = pos.y + (root.height / 2);
-            } else {
-                popup.targetRelativeX = pos.x + (root.width / 2);
+            const p = root.mapToItem(null, 0, 0);
+            if (p) {
+                popup.targetRelativeX = p.x + (root.width / 2);
+                popup.targetRelativeY = p.y + (root.height / 2);
             }
             popup.open = !popup.open;
             if (popup.open) reloadLocalWallpapers();
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestWallpaperToggle() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                const p = root.mapToItem(null, 0, 0);
+                if (p) {
+                    popup.targetRelativeX = p.x + (root.width / 2);
+                    popup.targetRelativeY = p.y + (root.height / 2);
+                }
+                popup.open = !popup.open;
+                if (popup.open) reloadLocalWallpapers();
+            }
+        }
+        function onRequestWallpaperOpen() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                const p = root.mapToItem(null, 0, 0);
+                if (p) {
+                    popup.targetRelativeX = p.x + (root.width / 2);
+                    popup.targetRelativeY = p.y + (root.height / 2);
+                }
+                popup.open = true;
+                reloadLocalWallpapers();
+            }
+        }
+        function onRequestWallpaperClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
-        cardWidth: 720
-        cardHeight: 560
-        targetRelativeX: root.x + (root.width / 2)
+        screen: root.barScreen
+        wantsFocus: true
+        cardWidth: 760
+        cardHeight: Math.min(590, (popup.screen?.height ?? 800) - 80)
+        targetRelativeX: (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2)
+        targetRelativeY: (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2)
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme?.widgetSpacing ?? 10
 
-            // Header & Tabs
+            // 1. Unified Window Header
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: 10
 
-                Rectangle {
+                Text {
+                    text: Theme?.iconWallpaper ?? "󰸉"
+                    font.family: Theme?.fontIcon ?? "sans-serif"
+                    font.pixelSize: Theme?.fontSizeLg ?? 16
+                    color: Theme.primary
+                }
+
+                ColumnLayout {
+                    spacing: 1
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 34
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    color: root.activeTab === "local" ? Theme.primary : Theme.surface_container_highest
 
-                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        Text {
-                            text: Theme?.iconFolder ?? "󰉋"
-                            font.family: Theme?.fontIcon ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            color: root.activeTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                        Text {
-                            text: "local"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            font.weight: Font.Bold
-                            color: root.activeTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
+                    Text {
+                        text: "wallpapers & aesthetics"
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeMd ?? 14
+                        font.weight: Font.Bold
+                        color: Theme.on_surface
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.activeTab = "local";
-                            reloadLocalWallpapers();
+                    Text {
+                        text: {
+                            if (root.activeTab === "local") return (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers in gallery";
+                            if (root.activeTab === "online") return (onlineWpModel.count > 0 ? (onlineWpModel.count + " wallhaven wallpapers loaded") : "explore wallhaven community gallery");
+                            if (root.activeTab === "live") return (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) + " animated & video streams";
+                            return "matugen color schemes & awww engine";
                         }
+                        font.family: Theme?.fontFamily ?? "sans-serif"
+                        font.pixelSize: Theme?.fontSizeXs ?? 10
+                        color: Theme.on_surface_variant
                     }
                 }
 
+                // Batch download action
                 Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 34
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    color: root.activeTab === "online" ? Theme.primary : Theme.surface_container_highest
-
-                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        Text {
-                            text: Theme?.iconGlobe ?? "󰖟"
-                            font.family: Theme?.fontIcon ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            color: root.activeTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                        Text {
-                            text: "wallhaven"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            font.weight: Font.Bold
-                            color: root.activeTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.activeTab = "online";
-                            if (onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage, root.onlineResolution, root.onlineResolutionMode);
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 34
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    color: root.activeTab === "live" ? Theme.primary : Theme.surface_container_highest
-
-                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        Text {
-                            text: Theme?.iconFlame ?? "󰈸"
-                            font.family: Theme?.fontIcon ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            color: root.activeTab === "live" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                        Text {
-                            text: "live"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            font.weight: Font.Bold
-                            color: root.activeTab === "live" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.activeTab = "live";
-                            if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 34
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    color: root.activeTab === "theme" ? Theme.primary : Theme.surface_container_highest
-
-                    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        Text {
-                            text: Theme?.iconPalette ?? "󰏘"
-                            font.family: Theme?.fontIcon ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            color: root.activeTab === "theme" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                        Text {
-                            text: "effects & theme"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
-                            font.weight: Font.Bold
-                            color: root.activeTab === "theme" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.activeTab = "theme"
-                    }
-                }
-
-                // Batch download button
-                Rectangle {
-                    Layout.preferredHeight: 34
-                    Layout.preferredWidth: dlAllRow.implicitWidth + 16
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
+                    Layout.preferredHeight: 32
+                    Layout.preferredWidth: dlAllRow.implicitWidth + 20
+                    radius: Theme?.radiusPill ?? 999
                     color: dlAllMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
                     border.color: Theme.widgetBorder
                     border.width: 1
-                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && ((root.liveSubTab === "local" ? localLiveWpModel.count : liveWpModel.count) > 0))
+                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && ((root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) > 0))
                     opacity: root.isBatchDownloading ? 0.6 : 1.0
 
                     RowLayout {
@@ -436,7 +691,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : (root.liveSubTab === "local" ? localLiveWpModel.count : liveWpModel.count)) + ")")
+                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count)) + ")")
                             font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
@@ -455,7 +710,6 @@ Rectangle {
 
                 IconButton {
                     icon: Theme?.iconShuffle ?? "󰒝"
-                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "roll random wallpaper"
                     onClicked: {
                         let activeCat = "all";
@@ -471,26 +725,97 @@ Rectangle {
 
                 IconButton {
                     icon: Theme?.iconRefresh ?? "↺"
-                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "refresh / rescan"
                     onClicked: {
                         if (root.activeTab === "local") reloadLocalWallpapers();
-                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
+                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text);
                         else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery);
                         else WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                     }
                 }
 
-                // escape hatch for mouse users
                 IconButton {
                     icon: Theme?.iconClose ?? "✕"
-                    iconSize: Theme?.fontSizeSm ?? 12
                     tooltip: "close panel"
                     onClicked: popup.open = false
                 }
             }
 
-            // Status notification banner
+            // 2. Cohesive Segmented Tab Bar (matching QuickSettings)
+            Flickable {
+                Layout.fillWidth: true
+                height: 36
+                contentWidth: tabRow.implicitWidth
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                RowLayout {
+                    id: tabRow
+                    spacing: 6
+
+                    Repeater {
+                        model: [
+                            { id: "local", label: "local gallery", icon: Theme?.iconFolder ?? "󰉋" },
+                            { id: "online", label: "wallhaven", icon: Theme?.iconGlobe ?? "󰖟" },
+                            { id: "live", label: "live / video", icon: Theme?.iconFlame ?? "󰈸" },
+                            { id: "theme", label: "effects & theme", icon: Theme?.iconPalette ?? "󰏘" }
+                        ]
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            height: 32
+                            width: tabItemRow.implicitWidth + 24
+                            radius: Theme?.widgetRadius ?? 10
+                            color: root.activeTab === modelData.id ? Theme.primary : (tabMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest)
+
+                            Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+
+                            RowLayout {
+                                id: tabItemRow
+                                anchors.centerIn: parent
+                                spacing: 6
+
+                                Text {
+                                    text: modelData.icon
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeXs ?? 10
+                                    color: root.activeTab === modelData.id ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                                }
+
+                                Text {
+                                    text: modelData.label
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 11
+                                    font.weight: Font.Medium
+                                    color: root.activeTab === modelData.id ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                                }
+                            }
+
+                            MouseArea {
+                                id: tabMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.activeTab = modelData.id;
+                                    if (modelData.id === "local") reloadLocalWallpapers();
+                                    else if (modelData.id === "online" && onlineWpModel.count === 0) fetchWallhaven(root.onlineQuery, root.onlineSorting, root.onlinePage, root.onlineResolution);
+                                    else if (modelData.id === "live" && liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.widgetBorder
+            }
+
+            // Status message
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 28
@@ -503,12 +828,14 @@ Rectangle {
                 RowLayout {
                     anchors.centerIn: parent
                     spacing: 6
+
                     Text {
                         text: Theme?.iconCheck ?? "✓"
                         font.family: Theme?.fontIcon ?? "sans-serif"
                         font.pixelSize: Theme?.fontSizeXs ?? 10
                         color: Theme.primary
                     }
+
                     Text {
                         text: root.batchStatusText
                         font.family: Theme?.fontFamily ?? "sans-serif"
@@ -519,435 +846,43 @@ Rectangle {
                 }
             }
 
-            // Monitor Selector Chip Row
+            // Target Monitor Selector (visible for wallpaper tabs)
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 6
+                spacing: 8
+                visible: root.activeTab !== "theme"
 
-                Text {
-                    text: "monitor:"
-                    font.family: Theme?.fontFamily ?? "sans-serif"
-                    font.pixelSize: 10
+                GroupLabel {
+                    text: "target monitor:"
                     font.weight: Font.Bold
-                    color: Theme.on_surface_variant
                 }
 
-                Rectangle {
-                    Layout.preferredHeight: 22
-                    Layout.preferredWidth: allMonText.implicitWidth + 14
-                    radius: Theme?.radiusPill ?? 999
-                    color: WallpaperService?.targetMonitor === "all" ? Theme.primary : (Theme?.cardBg ?? Theme.surface_container_high)
-                    border.color: Theme?.cardBorder ?? Theme.widgetBorder
-                    border.width: 1
-
-                    Text {
-                        id: allMonText
-                        text: "all monitors 󰍹"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: 9
-                        font.weight: Font.Medium
-                        color: WallpaperService?.targetMonitor === "all" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        anchors.centerIn: parent
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (WallpaperService) WallpaperService.targetMonitor = "all";
-                        }
-                    }
+                Chip {
+                    label: "all monitors 󰍹"
+                    selected: WallpaperService?.targetMonitor === "all"
+                    chipHeight: 26
+                    chipRadius: Theme?.radiusPill ?? 999
+                    fontSize: Theme?.fontSizeXs ?? 10
+                    onClicked: if (WallpaperService) WallpaperService.targetMonitor = "all"
                 }
 
                 Repeater {
                     model: Quickshell?.screens ?? []
-                    delegate: Rectangle {
+                    delegate: Chip {
                         required property var modelData
-                        Layout.preferredHeight: 22
-                        Layout.preferredWidth: monChipText.implicitWidth + 14
-                        radius: Theme?.radiusPill ?? 999
-                        color: WallpaperService?.targetMonitor === modelData.name ? Theme.primary : (Theme?.cardBg ?? Theme.surface_container_high)
-                        border.color: Theme?.cardBorder ?? Theme.widgetBorder
-                        border.width: 1
-
-                        Text {
-                            id: monChipText
-                            text: modelData?.name ?? "screen"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: 9
-                            font.weight: Font.Medium
-                            color: WallpaperService?.targetMonitor === modelData.name ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                            anchors.centerIn: parent
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (WallpaperService) WallpaperService.targetMonitor = modelData.name;
-                            }
-                        }
+                        label: modelData?.name ?? "screen"
+                        selected: WallpaperService?.targetMonitor === modelData.name
+                        chipHeight: 26
+                        chipRadius: Theme?.radiusPill ?? 999
+                        fontSize: Theme?.fontSizeXs ?? 10
+                        onClicked: if (WallpaperService) WallpaperService.targetMonitor = modelData.name
                     }
                 }
 
                 Item { Layout.fillWidth: true }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.widgetBorder
-            }
-
-            // LIVE TAB VIEW
-            ColumnLayout {
-                id: liveView
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: root.activeTab === "live"
-                spacing: 10
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: liveInputCol.implicitHeight + 20
-                    color: Theme?.cardBg ?? Theme.surface_container_low
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    border.color: Theme?.cardBorder ?? Theme.widgetBorder
-                    border.width: 1
-
-                    ColumnLayout {
-                        id: liveInputCol
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 8
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Text {
-                                text: Theme?.iconFlame ?? "󰈸"
-                                font.family: Theme?.fontIcon ?? "sans-serif"
-                                font.pixelSize: Theme?.fontSizeSm ?? 12
-                                color: Theme.primary
-                            }
-
-                            Text {
-                                text: "custom video / animated url or path"
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: Theme?.fontSizeSm ?? 12
-                                font.weight: Font.Bold
-                                color: Theme.on_surface
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: ".mp4 · .webm · .gif · .webp"
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 10
-                                color: Theme.on_surface_disabled
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 36
-                                radius: Theme?.radiusSm ?? 6
-                                color: Theme.surface_container_highest
-                                border.color: liveUrlInput.activeFocus ? Theme.primary : Theme.widgetBorder
-                                border.width: 1
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: Theme?.widgetPaddingH ?? 8
-                                    spacing: 6
-
-                                    TextInput {
-                                        id: liveUrlInput
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        verticalAlignment: TextInput.AlignVCenter
-                                        font.family: Theme?.fontFamily ?? "sans-serif"
-                                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                                        color: Theme.on_surface
-                                        selectByMouse: true
-                                        onAccepted: {
-                                            if (text.trim() !== "") WallpaperService?.setWallpaper(text.trim());
-                                        }
-                                    }
-
-                                    IconButton {
-                                        icon: Theme?.iconClose ?? "✕"
-                                        tooltip: "clear input"
-                                        iconSize: 10
-                                        visible: liveUrlInput.text.length > 0
-                                        onClicked: liveUrlInput.text = ""
-                                    }
-                                }
-                            }
-
-                            IconButton {
-                                icon: Theme?.iconClipboard ?? "󰅌"
-                                tooltip: "paste url from clipboard"
-                                onClicked: {
-                                    let clip = Quickshell?.clipboardText ? Quickshell.clipboardText.trim() : "";
-                                    if (clip !== "") liveUrlInput.text = clip;
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredHeight: 36
-                                Layout.preferredWidth: applyLiveText.implicitWidth + 24
-                                radius: Theme?.radiusSm ?? 6
-                                color: Theme.primary
-                                opacity: liveUrlInput.text.trim() !== "" ? 1.0 : 0.6
-
-                                RowLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 4
-
-                                    Text {
-                                        text: Theme?.iconCheck ?? "✓"
-                                        font.family: Theme?.fontIcon ?? "sans-serif"
-                                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                                        color: Theme.on_primary ?? "#ffffff"
-                                    }
-                                    Text {
-                                        id: applyLiveText
-                                        text: "apply live"
-                                        font.family: Theme?.fontFamily ?? "sans-serif"
-                                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                                        font.weight: Font.Bold
-                                        color: Theme.on_primary ?? "#ffffff"
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (liveUrlInput.text.trim() !== "") {
-                                            WallpaperService?.setWallpaper(liveUrlInput.text.trim());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Text {
-                                text: "sample presets:"
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 10
-                                color: Theme.on_surface_variant
-                            }
-
-                            Repeater {
-                                model: [
-                                    { label: "pixel rain", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdWU0MXhnbG05Mm11YWN5a2RmcGlkMGt1dXpnNnRpdDJva24ya3A2ayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKTDnUxE6uQja4U/giphy.gif" },
-                                    { label: "lofi room", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMHU2MnRhZW03NXpiOG1vd24xaWtvbTllYmg0cW81djE5OTl2YnBkayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/LmNwrBhejkK9EFP504/giphy.gif" },
-                                    { label: "cyberpunk train", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmtvaDVqbzZ2dHB1YXZsNWF5dWp2b3hpd2g4ODNsd28xNXc1OTU4NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/giphy.gif" },
-                                    { label: "space nebula", url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOTR0NGh0d2R2dWd1dmZobnlvaHQ4MGoxbHRid2M4M21udmVvM3JmZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0MYEqEzwMWFCg8rm/giphy.gif" }
-                                ]
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    Layout.preferredHeight: 22
-                                    Layout.preferredWidth: pChipText.implicitWidth + 10
-                                    radius: Theme?.radiusPill ?? 999
-                                    color: Theme.pillBg
-                                    border.color: Theme.pillBorder
-                                    border.width: 1
-
-                                    Text {
-                                        id: pChipText
-                                        text: modelData.label
-                                        font.family: Theme?.fontFamily ?? "sans-serif"
-                                        font.pixelSize: 9
-                                        color: Theme.on_surface
-                                        anchors.centerIn: parent
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            liveUrlInput.text = modelData.url;
-                                            WallpaperService?.setWallpaper(modelData.url);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Subheader with catalog toggle so liveWpModel isnt dead code
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: localLiveTabTxt.implicitWidth + 14
-                        radius: Theme?.radiusPill ?? 999
-                        color: root.liveSubTab === "local" ? Theme.primary : Theme.surface_container_highest
-
-                        Text {
-                            id: localLiveTabTxt
-                            anchors.centerIn: parent
-                            text: "local (" + localLiveWpModel.count + ")"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                            color: root.liveSubTab === "local" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.liveSubTab = "local"
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: onlineLiveTabTxt.implicitWidth + 14
-                        radius: Theme?.radiusPill ?? 999
-                        color: root.liveSubTab === "online" ? Theme.primary : Theme.surface_container_highest
-
-                        Text {
-                            id: onlineLiveTabTxt
-                            anchors.centerIn: parent
-                            text: "online stream (" + liveWpModel.count + ")"
-                            font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                            color: root.liveSubTab === "online" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.liveSubTab = "online";
-                                if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
-                            }
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Text {
-                        text: "auto-extracted matugen palette"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: 10
-                        color: Theme.on_surface_disabled
-                    }
-                }
-
-                GridView {
-                    id: liveGrid
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    cellWidth: width / 3
-                    cellHeight: cellWidth * 0.65
-                    model: root.liveSubTab === "local" ? localLiveWpModel : liveWpModel
-
-                    delegate: Item {
-                        required property var modelData
-                        readonly property string path: modelData?.path || modelData?.url || ""
-                        readonly property string thumb: modelData?.thumb || modelData?.url || modelData?.path || ""
-                        readonly property string name: modelData?.name || modelData?.title || "live wallpaper"
-                        readonly property string ext: modelData?.ext ?? "live"
-                        readonly property bool isVideo: modelData?.isVideo ?? false
-                        readonly property bool isGif: modelData?.isGif ?? false
-
-                        width: liveGrid.cellWidth
-                        height: liveGrid.cellHeight
-
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            color: Theme.surface_container_high
-                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                            clip: true
-                            border.color: liveLocMouse.containsMouse ? Theme.primary : "transparent"
-                            border.width: 1
-
-                            Image {
-                                anchors.fill: parent
-                                source: (thumb.startsWith("http://") || thumb.startsWith("https://") || thumb.startsWith("file://")) ? thumb : ("file://" + thumb)
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 6
-                                height: 16
-                                width: lBadgeText.implicitWidth + 8
-                                radius: 4
-                                color: Theme.primary
-
-                                Text {
-                                    id: lBadgeText
-                                    text: isVideo ? "LIVE VIDEO" : (isGif ? "ANIMATED GIF" : ext.toUpperCase())
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                    color: Theme.on_primary ?? "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 24
-                                color: Qt.rgba(0, 0, 0, 0.75)
-                                visible: liveLocMouse.containsMouse
-
-                                Text {
-                                    text: name
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: "#ffffff"
-                                    elide: Text.ElideRight
-                                    anchors.centerIn: parent
-                                    width: parent.width - 8
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                            }
-
-                            MouseArea {
-                                id: liveLocMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (root.liveSubTab === "local") {
-                                        WallpaperService?.applyLocalWallpaper ? WallpaperService.applyLocalWallpaper(path) : WallpaperService?.setWallpaper(path);
-                                    } else {
-                                        WallpaperService?.setWallpaper(path);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // LOCAL TAB VIEW
+            // LOCAL TAB
             ColumnLayout {
                 id: localView
                 Layout.fillWidth: true
@@ -955,27 +890,26 @@ Rectangle {
                 visible: root.activeTab === "local"
                 spacing: 8
 
-                // Search Bar for Local
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    color: Theme.surface_container_highest
-                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                    border.color: localSearchInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                    Layout.preferredHeight: 38
+                    color: Theme.cardBg
+                    radius: Theme?.widgetRadius ?? 10
+                    border.color: localSearchInput.activeFocus ? Theme.primary : Theme.cardBorder
                     border.width: 1
 
                     Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: Theme?.widgetPaddingH ?? 8
+                        anchors.margins: Theme?.widgetPaddingH ?? 10
                         spacing: 8
 
                         Text {
                             text: Theme?.iconSearch ?? "󰍉"
                             font.family: Theme?.fontIcon ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeSm ?? 12
-                            color: Theme.on_surface_variant
+                            color: localSearchInput.activeFocus ? Theme.primary : Theme.on_surface_variant
                         }
 
                         TextInput {
@@ -986,7 +920,39 @@ Rectangle {
                             font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeSm ?? 12
                             color: Theme.on_surface
+                            selectByMouse: true
+                            activeFocusOnTab: true
                             onTextChanged: root.localSearchQuery = text.toLowerCase()
+
+                            Text {
+                                text: "search local wallpapers by name or tag..."
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                color: Theme.on_surface_disabled
+                                visible: localSearchInput.text.length === 0 && !localSearchInput.activeFocus
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        IconButton {
+                            icon: Theme?.iconClose ?? "✕"
+                            iconSize: 10
+                            tooltip: "clear search"
+                            visible: localSearchInput.text.length > 0
+                            onClicked: {
+                                localSearchInput.text = "";
+                                root.localSearchQuery = "";
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.IBeamCursor
+                        propagateComposedEvents: true
+                        onPressed: (mouse) => {
+                            localSearchInput.forceActiveFocus();
+                            mouse.accepted = false;
                         }
                     }
                 }
@@ -995,21 +961,18 @@ Rectangle {
                     let cats = ["all"];
                     let items = root.allLocalWallpapers || [];
                     for (let i = 0; i < items.length; i++) {
-                        let item = items[i];
-                        let pCat = item?.parentCategory || "root";
-                        if (pCat && cats.indexOf(pCat) === -1) {
-                            cats.push(pCat);
-                        }
+                        let pCat = items[i]?.parentCategory || "root";
+                        if (pCat && cats.indexOf(pCat) === -1) cats.push(pCat);
                     }
                     return cats;
                 }
 
-                // using implicitWidth prevents horizontal scrolling from dying
                 Flickable {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     contentWidth: catRow.implicitWidth
                     flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
                     clip: true
 
                     RowLayout {
@@ -1018,31 +981,16 @@ Rectangle {
 
                         Repeater {
                             model: localView.uniqueParentCategories
-
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property string modelData
-                                Layout.preferredHeight: 26
-                                Layout.preferredWidth: catText.implicitWidth + 16
-                                radius: Theme?.radiusPill ?? 999
-                                color: root.localCategoryFilter === modelData ? Theme.primary : Theme.surface_container_high
-
-                                Text {
-                                    id: catText
-                                    text: modelData
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    font.weight: Font.Medium
-                                    color: root.localCategoryFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        root.localCategoryFilter = modelData;
-                                        root.localSubCategoryFilter = "all";
-                                    }
+                                label: modelData
+                                selected: root.localCategoryFilter === modelData
+                                chipHeight: 26
+                                chipRadius: Theme?.radiusPill ?? 999
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    root.localCategoryFilter = modelData;
+                                    root.localSubCategoryFilter = "all";
                                 }
                             }
                         }
@@ -1056,9 +1004,7 @@ Rectangle {
                     for (let i = 0; i < items.length; i++) {
                         let item = items[i];
                         if (item && item.parentCategory === root.localCategoryFilter && item.subCategory && item.subCategory !== "") {
-                            if (subs.indexOf(item.subCategory) === -1) {
-                                subs.push(item.subCategory);
-                            }
+                            if (subs.indexOf(item.subCategory) === -1) subs.push(item.subCategory);
                         }
                     }
                     return subs.length > 1 ? subs : [];
@@ -1066,10 +1012,11 @@ Rectangle {
 
                 Flickable {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 26
+                    Layout.preferredHeight: 28
                     visible: localView.uniqueSubCategories.length > 0
                     contentWidth: subCatRow.implicitWidth
                     flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
                     clip: true
 
                     RowLayout {
@@ -1080,35 +1027,21 @@ Rectangle {
                             text: (Theme?.iconFolder ?? "\uE2C7") + " subfolder:"
                             font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeXs ?? 10
+                            font.weight: Font.Medium
                             color: Theme.on_surface_variant
                             Layout.alignment: Qt.AlignVCenter
                         }
 
                         Repeater {
                             model: localView.uniqueSubCategories
-
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property string modelData
-                                Layout.preferredHeight: 22
-                                Layout.preferredWidth: subCatText.implicitWidth + 14
-                                radius: Theme?.radiusPill ?? 999
-                                color: root.localSubCategoryFilter === modelData ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    id: subCatText
-                                    text: modelData
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 10
-                                    font.weight: Font.Medium
-                                    color: root.localSubCategoryFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.localSubCategoryFilter = modelData
-                                }
+                                label: modelData
+                                selected: root.localSubCategoryFilter === modelData
+                                chipHeight: 26
+                                chipRadius: Theme?.radiusPill ?? 999
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: root.localSubCategoryFilter = modelData
                             }
                         }
                     }
@@ -1131,9 +1064,7 @@ Rectangle {
                         let subMatch = subFilter === "all" || subCat === subFilter;
                         let searchMatch = sQuery === "" || nameStr.indexOf(sQuery) !== -1 || catStr.indexOf(sQuery) !== -1;
 
-                        if (pMatch && subMatch && searchMatch) {
-                            result.push(item);
-                        }
+                        if (pMatch && subMatch && searchMatch) result.push(item);
                     }
                     return result;
                 }
@@ -1142,42 +1073,45 @@ Rectangle {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    Text {
-                        text: (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
+                    GroupLabel {
+                        text: (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers matching"
                     }
 
                     Item { Layout.fillWidth: true }
 
                     Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: rollText.implicitWidth + 18
+                        Layout.preferredHeight: 26
+                        Layout.preferredWidth: rollText.implicitWidth + 20
                         radius: Theme?.radiusPill ?? 999
-                        color: Theme.surface_container_highest
+                        color: rollMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                        border.color: Theme.widgetBorder
+                        border.width: 1
 
                         RowLayout {
                             anchors.centerIn: parent
-                            spacing: 4
+                            spacing: 5
+
                             Text {
                                 text: Theme?.iconShuffle ?? "\uE043"
                                 font.family: Theme?.fontIcon ?? "sans-serif"
-                                font.pixelSize: 10
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 color: Theme.primary
                             }
+
                             Text {
                                 id: rollText
                                 text: "random from here"
                                 font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 10
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
                                 font.weight: Font.Medium
                                 color: Theme.on_surface
                             }
                         }
 
                         MouseArea {
+                            id: rollMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 let cat = "all";
@@ -1198,134 +1132,62 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
                     cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
                     model: localView.filteredLocalWps
+                    visible: localView.filteredLocalWps.length > 0
 
-                    delegate: Item {
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
+
+                    delegate: WallpaperCard {
                         required property var modelData
-                        readonly property string path: modelData?.path ?? ""
-                        readonly property string thumb: modelData?.thumb || modelData?.path || ""
-                        readonly property string name: modelData?.name ?? ""
-                        readonly property string category: modelData?.category ?? ""
-                        readonly property bool isLive: modelData?.isLive ?? false
-                        readonly property bool isVideo: modelData?.isVideo ?? false
-                        readonly property bool isGif: modelData?.isGif ?? false
-                        readonly property string ext: modelData?.ext ?? ""
-
                         width: localGrid.cellWidth
                         height: localGrid.cellHeight
+                        thumbUrl: modelData?.thumb || modelData?.path || ""
+                        titleText: modelData?.name ?? ""
+                        badgeText: modelData?.category === "root" ? "" : (modelData?.category ?? "")
+                        tagText: modelData?.isVideo ? "LIVE" : (modelData?.isGif ? "GIF" : (modelData?.ext ?? "").toUpperCase())
+                        tagAccent: modelData?.isLive || modelData?.isVideo
+                        isSelected: modelData?.path === WallpaperService?.currentWallpaperPath
+                        onApplyRequested: WallpaperService?.applyLocalWallpaper ? WallpaperService.applyLocalWallpaper(modelData?.path) : null
+                    }
+                }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            color: Theme.surface_container_high
-                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                            clip: true
-                            border.color: (path === WallpaperService?.currentWallpaperPath) ? Theme.primary : (locMouse.containsMouse ? Theme.primary_overlay : "transparent")
-                            border.width: (path === WallpaperService?.currentWallpaperPath) ? 2 : 1
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: localView.filteredLocalWps.length === 0
 
-                            Image {
-                                anchors.fill: parent
-                                source: (thumb.startsWith("http://") || thumb.startsWith("https://") || thumb.startsWith("file://")) ? thumb : ("file://" + thumb)
-                                sourceSize: Qt.size(240, 156)
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
 
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 6
-                                height: 18
-                                width: 18
-                                radius: 9
-                                color: Theme.primary
-                                visible: path === WallpaperService?.currentWallpaperPath
-                                z: 2
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: Theme?.iconFolder ?? "󰉋"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: 32
+                            color: Theme.on_surface_disabled
+                        }
 
-                                Text {
-                                    text: Theme?.iconCheck ?? "✓"
-                                    font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: 10
-                                    color: Theme.on_primary ?? "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.left: parent.left
-                                anchors.margins: 6
-                                height: 16
-                                width: badgeText.implicitWidth + 8
-                                radius: 4
-                                color: Qt.rgba(0, 0, 0, 0.65)
-
-                                Text {
-                                    id: badgeText
-                                    text: category === "root" ? "wallpapers" : category
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 8
-                                    color: "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 6
-                                height: 16
-                                width: formatBadgeText.implicitWidth + 8
-                                radius: 4
-                                color: isLive ? Theme.primary : Qt.rgba(0, 0, 0, 0.65)
-                                visible: isLive || (ext !== "png" && ext !== "jpg" && ext !== "")
-
-                                Text {
-                                    id: formatBadgeText
-                                    text: isVideo ? "LIVE" : (isGif ? "GIF" : ext.toUpperCase())
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                    color: isLive ? (Theme.on_primary ?? "#ffffff") : "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 22
-                                color: Qt.rgba(0, 0, 0, 0.7)
-                                visible: locMouse.containsMouse
-
-                                Text {
-                                    text: name
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: "#ffffff"
-                                    elide: Text.ElideRight
-                                    anchors.centerIn: parent
-                                    width: parent.width - 8
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                            }
-
-                            MouseArea {
-                                id: locMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService?.applyLocalWallpaper ? WallpaperService.applyLocalWallpaper(path) : null
-                            }
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "no wallpapers found\ntry adjusting your category or search filter"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            color: Theme.on_surface_variant
+                            horizontalAlignment: Text.AlignHCenter
+                            lineHeight: 1.4
                         }
                     }
                 }
             }
 
-            // ONLINE TAB VIEW (Wallhaven)
+            // WALLHAVEN TAB
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -1338,24 +1200,24 @@ Rectangle {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36
-                        color: Theme.surface_container_highest
-                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                        border.color: onlineInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                        Layout.preferredHeight: 38
+                        color: Theme.cardBg
+                        radius: Theme?.widgetRadius ?? 10
+                        border.color: onlineInput.activeFocus ? Theme.primary : Theme.cardBorder
                         border.width: 1
 
                         Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: Theme?.widgetPaddingH ?? 8
-                            spacing: 6
+                            anchors.margins: Theme?.widgetPaddingH ?? 10
+                            spacing: 8
 
                             Text {
                                 text: Theme?.iconSearch ?? "󰍉"
                                 font.family: Theme?.fontIcon ?? "sans-serif"
                                 font.pixelSize: Theme?.fontSizeSm ?? 12
-                                color: Theme.on_surface_variant
+                                color: onlineInput.activeFocus ? Theme.primary : Theme.on_surface_variant
                             }
 
                             TextInput {
@@ -1368,9 +1230,10 @@ Rectangle {
                                 color: Theme.on_surface
                                 text: root.onlineQuery
                                 selectByMouse: true
+                                activeFocusOnTab: true
 
                                 Text {
-                                    text: "search wallpapers (leave empty for all)..."
+                                    text: "search wallhaven (anime, nature, cyber...)"
                                     font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: Theme?.fontSizeSm ?? 12
                                     color: Theme.on_surface_disabled
@@ -1380,7 +1243,7 @@ Rectangle {
 
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                        fetchWallhaven(text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
+                                        fetchWallhaven(text, root.onlineSorting, 1, resInput.text);
                                         event.accepted = true;
                                     }
                                 }
@@ -1389,43 +1252,51 @@ Rectangle {
                             IconButton {
                                 icon: Theme?.iconClose ?? "✕"
                                 iconSize: 10
-                                tooltip: "clear query"
+                                tooltip: "clear search"
                                 visible: onlineInput.text.length > 0
                                 onClicked: {
                                     onlineInput.text = "";
-                                    fetchWallhaven("", root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
+                                    fetchWallhaven("", root.onlineSorting, 1, resInput.text);
                                 }
                             }
 
                             IconButton {
                                 icon: Theme?.iconSearch ?? "󰍉"
-                                iconSize: Theme?.fontSizeSm ?? 12
                                 tooltip: "search"
-                                onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode)
+                                onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text)
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            propagateComposedEvents: true
+                            onPressed: (mouse) => {
+                                onlineInput.forceActiveFocus();
+                                mouse.accepted = false;
                             }
                         }
                     }
 
                     Rectangle {
-                        Layout.preferredWidth: 175
-                        Layout.preferredHeight: 36
-                        color: Theme.surface_container_highest
-                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                        border.color: resInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                        Layout.preferredWidth: 190
+                        Layout.preferredHeight: 38
+                        color: Theme.cardBg
+                        radius: Theme?.widgetRadius ?? 10
+                        border.color: resInput.activeFocus ? Theme.primary : Theme.cardBorder
                         border.width: 1
 
                         Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 4
-                            spacing: 4
+                            anchors.margins: Theme?.widgetPaddingH ?? 10
+                            spacing: 6
 
                             Text {
                                 text: "󰍹"
                                 font.family: Theme?.fontIcon ?? "sans-serif"
-                                font.pixelSize: Theme?.fontSizeXs ?? 10
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
                                 color: Theme.primary
                             }
 
@@ -1439,11 +1310,12 @@ Rectangle {
                                 color: Theme.on_surface
                                 text: root.onlineResolution
                                 selectByMouse: true
+                                activeFocusOnTab: true
 
                                 Text {
-                                    text: "res (any)"
+                                    text: "res (" + root.nativeRes + ")"
                                     font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 10
                                     color: Theme.on_surface_disabled
                                     visible: resInput.text.length === 0 && !resInput.activeFocus
                                     anchors.verticalCenter: parent.verticalCenter
@@ -1451,137 +1323,41 @@ Rectangle {
 
                                 Keys.onPressed: (event) => {
                                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, text, root.onlineResolutionMode);
+                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, text);
                                         event.accepted = true;
                                     }
                                 }
                             }
 
-                            Rectangle {
-                                Layout.preferredHeight: 24
-                                Layout.preferredWidth: modeToggleText.implicitWidth + 10
-                                radius: Theme?.radiusSm ?? 6
-                                color: root.onlineResolutionMode === "atleast" ? Theme.primary : Theme.surface_container_high
-
-                                Text {
-                                    id: modeToggleText
-                                    text: root.onlineResolutionMode === "atleast" ? "≥ min" : "exact"
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                    color: root.onlineResolutionMode === "atleast" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface_variant
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        root.onlineResolutionMode = (root.onlineResolutionMode === "exact") ? "atleast" : "exact";
-                                        fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    Text {
-                        text: "res:"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                        color: Theme.on_surface_variant
-                    }
-
-                    Repeater {
-                        model: [
-                            { label: "1920x1200", val: "1920x1200" },
-                            { label: "1080p", val: "1920x1080" },
-                            { label: "1440p", val: "2560x1440" },
-                            { label: "4K", val: "3840x2160" },
-                            { label: "any", val: "any" }
-                        ]
-
-                        delegate: Rectangle {
-                            required property var modelData
-                            Layout.preferredHeight: 22
-                            Layout.preferredWidth: rChipText.implicitWidth + 12
-                            radius: Theme?.radiusPill ?? 999
-                            color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? Theme.primary : Theme.surface_container_highest
-                            border.color: Theme?.cardBorder ?? Theme.widgetBorder
-                            border.width: 1
-
-                            Text {
-                                id: rChipText
-                                text: modelData.label
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 9
-                                font.weight: Font.Medium
-                                color: ((root.onlineResolution === modelData.val) || (modelData.val === "any" && (!root.onlineResolution || root.onlineResolution === "any"))) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                anchors.centerIn: parent
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
+                            IconButton {
+                                icon: Theme?.iconRefresh ?? "↺"
+                                iconSize: 10
+                                tooltip: "native (" + root.nativeRes + ")"
                                 onClicked: {
-                                    let v = modelData.val;
-                                    resInput.text = (v === "any" ? "" : v);
-                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, (v === "any" ? "" : v), root.onlineResolutionMode);
+                                    resInput.text = root.nativeRes;
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, root.nativeRes);
+                                }
+                            }
+
+                            IconButton {
+                                icon: Theme?.iconClose ?? "✕"
+                                iconSize: 10
+                                tooltip: "clear resolution"
+                                visible: resInput.text.length > 0
+                                onClicked: {
+                                    resInput.text = "";
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, 1, "");
                                 }
                             }
                         }
-                    }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 14
-                        color: Theme.widgetBorder
-                    }
-
-                    Flickable {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 22
-                        contentWidth: kwRow.implicitWidth
-                        flickableDirection: Flickable.HorizontalFlick
-                        clip: true
-
-                        RowLayout {
-                            id: kwRow
-                            spacing: 5
-
-                            Repeater {
-                                model: ["cyberpunk", "nature", "minimalist", "space", "anime", "city", "dark", "abstract"]
-                                delegate: Rectangle {
-                                    required property string modelData
-                                    Layout.preferredHeight: 20
-                                    Layout.preferredWidth: kwText.implicitWidth + 10
-                                    radius: Theme?.radiusPill ?? 999
-                                    color: root.onlineQuery === modelData ? Theme.primary : Theme.surface_container_high
-
-                                    Text {
-                                        id: kwText
-                                        text: modelData
-                                        font.family: Theme?.fontFamily ?? "sans-serif"
-                                        font.pixelSize: 9
-                                        color: root.onlineQuery === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                        anchors.centerIn: parent
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            onlineInput.text = modelData;
-                                            fetchWallhaven(modelData, root.onlineSorting, 1, resInput.text, root.onlineResolutionMode);
-                                        }
-                                    }
-                                }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            propagateComposedEvents: true
+                            onPressed: (mouse) => {
+                                resInput.forceActiveFocus();
+                                mouse.accepted = false;
                             }
                         }
                     }
@@ -1600,75 +1376,26 @@ Rectangle {
                             { label: "random", val: "random" }
                         ]
 
-                        delegate: Rectangle {
+                        delegate: Chip {
                             required property var modelData
-                            Layout.preferredHeight: 24
-                            Layout.preferredWidth: sortText.implicitWidth + 12
-                            radius: Theme?.radiusSm ?? 6
-                            color: root.onlineSorting === modelData.val ? Theme.primary : Theme.surface_container_highest
-
-                            Text {
-                                id: sortText
-                                text: modelData.label
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 10
-                                font.weight: root.onlineSorting === modelData.val ? Font.Bold : Font.Normal
-                                color: root.onlineSorting === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                anchors.centerIn: parent
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: fetchWallhaven(onlineInput.text, modelData.val, 1, resInput.text, root.onlineResolutionMode)
-                            }
+                            label: modelData.label
+                            selected: root.onlineSorting === modelData.val
+                            chipRadius: Theme?.radiusPill ?? 999
+                            chipHeight: 26
+                            fontSize: Theme?.fontSizeXs ?? 10
+                            onClicked: fetchWallhaven(onlineInput.text, modelData.val, 1, resInput.text)
                         }
                     }
 
                     Item { Layout.fillWidth: true }
 
                     Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: dlPageText.implicitWidth + 18
-                        radius: Theme?.radiusSm ?? 6
-                        color: dlPageMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                        Layout.preferredHeight: 26
+                        Layout.preferredWidth: 32
+                        radius: Theme?.radiusPill ?? 999
+                        color: prevMouse.containsMouse ? Theme.surface_container_high : (root.onlinePage > 1 ? Theme.surface_container_highest : Theme.surface_container_low)
                         border.color: Theme.widgetBorder
                         border.width: 1
-                        visible: onlineWpModel.count > 0
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 4
-                            Text {
-                                text: root.isBatchDownloading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconDownload ?? "󰇚")
-                                font.family: Theme?.fontIcon ?? "sans-serif"
-                                font.pixelSize: 10
-                                color: Theme.primary
-                            }
-                            Text {
-                                id: dlPageText
-                                text: root.isBatchDownloading ? "downloading..." : ("download page (" + onlineWpModel.count + ")")
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                                color: Theme.on_surface
-                            }
-                        }
-
-                        MouseArea {
-                            id: dlPageMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: root.isBatchDownloading ? Qt.ArrowCursor : Qt.PointingHandCursor
-                            onClicked: downloadCurrentSection()
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: 28
-                        radius: Theme?.radiusSm ?? 6
-                        color: root.onlinePage > 1 ? Theme.surface_container_highest : Theme.surface_container_low
                         opacity: root.onlinePage > 1 ? 1.0 : 0.4
 
                         Text {
@@ -1680,28 +1407,32 @@ Rectangle {
                         }
 
                         MouseArea {
+                            id: prevMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             enabled: root.onlinePage > 1 && !root.isOnlineLoading
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
                                 if (root.onlinePage > 1) {
-                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1, resInput.text, root.onlineResolutionMode);
+                                    fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage - 1, resInput.text);
                                 }
                             }
                         }
                     }
 
                     Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: pageText.implicitWidth + 12
-                        radius: Theme?.radiusSm ?? 6
+                        Layout.preferredHeight: 26
+                        Layout.preferredWidth: pageText.implicitWidth + 16
+                        radius: Theme?.radiusPill ?? 999
                         color: Theme.surface_container_high
+                        border.color: Theme.widgetBorder
+                        border.width: 1
 
                         Text {
                             id: pageText
-                            text: "p. " + root.onlinePage
+                            text: "page " + root.onlinePage
                             font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: 10
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
                             font.weight: Font.Bold
                             color: Theme.primary
                             anchors.centerIn: parent
@@ -1709,10 +1440,12 @@ Rectangle {
                     }
 
                     Rectangle {
-                        Layout.preferredHeight: 24
-                        Layout.preferredWidth: 28
-                        radius: Theme?.radiusSm ?? 6
-                        color: Theme.surface_container_highest
+                        Layout.preferredHeight: 26
+                        Layout.preferredWidth: 32
+                        radius: Theme?.radiusPill ?? 999
+                        color: nextMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
+                        border.color: Theme.widgetBorder
+                        border.width: 1
 
                         Text {
                             text: "▶"
@@ -1723,10 +1456,12 @@ Rectangle {
                         }
 
                         MouseArea {
+                            id: nextMouse
                             anchors.fill: parent
+                            hoverEnabled: true
                             enabled: !root.isOnlineLoading
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1, resInput.text, root.onlineResolutionMode)
+                            onClicked: fetchWallhaven(onlineInput.text, root.onlineSorting, root.onlinePage + 1, resInput.text)
                         }
                     }
                 }
@@ -1736,136 +1471,29 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
                     cellWidth: width / 3
                     cellHeight: cellWidth * 0.65
                     model: onlineWpModel
                     visible: !root.isOnlineLoading && onlineWpModel.count > 0
 
-                    delegate: Item {
-                        required property string thumbUrl
-                        required property string fullUrl
-                        required property string id
-                        required property string resolution
-                        required property string fileType
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
 
+                    delegate: WallpaperCard {
+                        required property var modelData
                         width: onlineGrid.cellWidth
                         height: onlineGrid.cellHeight
-
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            color: Theme.surface_container_high
-                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                            clip: true
-                            border.color: onMouse.containsMouse ? Theme.primary : "transparent"
-                            border.width: 1
-
-                            Image {
-                                anchors.fill: parent
-                                source: thumbUrl
-                                sourceSize: Qt.size(260, 170)
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                            }
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.left: parent.left
-                                anchors.margins: 6
-                                height: 16
-                                width: resBadgeText.implicitWidth + 8
-                                radius: 4
-                                color: Qt.rgba(0, 0, 0, 0.7)
-                                visible: resolution !== ""
-
-                                Text {
-                                    id: resBadgeText
-                                    text: resolution
-                                    font.family: Theme?.fontMono ?? "monospace"
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                    color: "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 6
-                                height: 16
-                                width: ftBadgeText.implicitWidth + 8
-                                radius: 4
-                                color: fileType === "PNG" ? Qt.rgba(0.15, 0.6, 0.2, 0.85) : Qt.rgba(0, 0, 0, 0.7)
-                                visible: fileType !== ""
-
-                                Text {
-                                    id: ftBadgeText
-                                    text: fileType
-                                    font.family: Theme?.fontMono ?? "monospace"
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                    color: "#ffffff"
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            MouseArea {
-                                id: onMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService?.setWallpaper ? WallpaperService.setWallpaper(fullUrl) : null
-                            }
-
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 24
-                                color: Qt.rgba(0, 0, 0, 0.8)
-                                visible: onMouse.containsMouse
-                                z: 2
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 6
-                                    anchors.rightMargin: 6
-                                    spacing: 4
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: "click to apply"
-                                        font.family: Theme?.fontFamily ?? "sans-serif"
-                                        font.pixelSize: 9
-                                        color: "#ffffff"
-                                    }
-
-                                    Rectangle {
-                                        width: 20
-                                        height: 20
-                                        radius: 3
-                                        color: dlOnlyMouse.containsMouse ? Theme.primary : Qt.rgba(1, 1, 1, 0.2)
-
-                                        Text {
-                                            text: Theme?.iconDownload ?? "󰇚"
-                                            font.family: Theme?.fontIcon ?? "sans-serif"
-                                            font.pixelSize: 9
-                                            color: "#ffffff"
-                                            anchors.centerIn: parent
-                                        }
-
-                                        MouseArea {
-                                            id: dlOnlyMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: WallpaperService?.batchDownload ? WallpaperService.batchDownload([fullUrl]) : null
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        thumbUrl: modelData.thumbUrl
+                        titleText: modelData.id
+                        badgeText: modelData.resolution
+                        tagText: modelData.fileType
+                        tagAccent: modelData.fileType === "PNG"
+                        allowDownload: true
+                        onApplyRequested: WallpaperService?.setWallpaper ? WallpaperService.setWallpaper(modelData.fullUrl) : null
+                        onDownloadRequested: WallpaperService?.batchDownload ? WallpaperService.batchDownload([modelData.fullUrl]) : null
                     }
                 }
 
@@ -1874,21 +1502,267 @@ Rectangle {
                     Layout.fillHeight: true
                     visible: root.isOnlineLoading || onlineWpModel.count === 0
 
-                    Text {
-                        text: root.isOnlineLoading
-                            ? ((Theme?.iconRefresh ?? "↺") + "\nfetching " + (root.onlineSorting === "date_added" ? "latest" : root.onlineSorting) + (root.onlineResolution && root.onlineResolution !== "any" ? (" " + root.onlineResolution) : "") + " wallpapers...")
-                            : "no wallpapers found\ntry adjusting search or resolution"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeMd ?? 14
-                        color: Theme.on_surface_variant
-                        horizontalAlignment: Text.AlignHCenter
+                    ColumnLayout {
                         anchors.centerIn: parent
-                        lineHeight: 1.5
+                        spacing: 8
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: root.isOnlineLoading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconGlobe ?? "󰖟")
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: 32
+                            color: root.isOnlineLoading ? Theme.primary : Theme.on_surface_disabled
+
+                            RotationAnimator on rotation {
+                                running: root.isOnlineLoading
+                                loops: Animation.Infinite
+                                from: 0
+                                to: 360
+                                duration: 1000
+                            }
+                        }
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: root.isOnlineLoading
+                                ? ("fetching " + (root.onlineSorting === "date_added" ? "latest" : root.onlineSorting) + (root.onlineResolution ? (" " + root.onlineResolution) : "") + " wallpapers...")
+                                : "no wallpapers found\ntry adjusting search or resolution"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            color: Theme.on_surface_variant
+                            horizontalAlignment: Text.AlignHCenter
+                            lineHeight: 1.4
+                        }
                     }
                 }
             }
 
-            // EFFECTS & THEME TAB VIEW
+            // LIVE TAB
+            ColumnLayout {
+                id: liveView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: root.activeTab === "live"
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 38
+                        radius: Theme?.widgetRadius ?? 10
+                        color: Theme.cardBg
+                        border.color: liveUrlInput.activeFocus ? Theme.primary : Theme.cardBorder
+                        border.width: 1
+
+                        Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: Theme?.widgetPaddingH ?? 10
+                            spacing: 8
+
+                            Text {
+                                text: Theme?.iconFlame ?? "󰈸"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                color: Theme.primary
+                            }
+
+                            TextInput {
+                                id: liveUrlInput
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                color: Theme.on_surface
+                                selectByMouse: true
+                                activeFocusOnTab: true
+
+                                Text {
+                                    text: "video url or file path (.mp4, .webm, .gif)..."
+                                    font.family: Theme?.fontFamily ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
+                                    color: Theme.on_surface_disabled
+                                    visible: liveUrlInput.text.length === 0 && !liveUrlInput.activeFocus
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                onAccepted: {
+                                    if (text.trim() !== "") WallpaperService?.setWallpaper(text.trim());
+                                }
+                            }
+
+                            IconButton {
+                                icon: Theme?.iconClose ?? "✕"
+                                tooltip: "clear input"
+                                iconSize: 10
+                                visible: liveUrlInput.text.length > 0
+                                onClicked: liveUrlInput.text = ""
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.IBeamCursor
+                            propagateComposedEvents: true
+                            onPressed: (mouse) => {
+                                liveUrlInput.forceActiveFocus();
+                                mouse.accepted = false;
+                            }
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme?.iconClipboard ?? "󰅌"
+                        tooltip: "paste clipboard"
+                        onClicked: {
+                            let clip = Quickshell?.clipboardText ? Quickshell.clipboardText.trim() : "";
+                            if (clip !== "") liveUrlInput.text = clip;
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.preferredHeight: 38
+                        Layout.preferredWidth: applyLiveText.implicitWidth + 24
+                        radius: Theme?.widgetRadius ?? 10
+                        color: liveApplyMouse.containsMouse ? Theme.primary_overlay : Theme.primary
+                        border.color: Theme.primary
+                        border.width: 1
+                        opacity: liveUrlInput.text.trim() !== "" ? 1.0 : 0.6
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                text: Theme?.iconCheck ?? "✓"
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
+                                color: liveApplyMouse.containsMouse ? Theme.primary : (Theme.on_primary ?? "#ffffff")
+                            }
+                            Text {
+                                id: applyLiveText
+                                text: "apply"
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                font.weight: Font.Bold
+                                color: liveApplyMouse.containsMouse ? Theme.primary : (Theme.on_primary ?? "#ffffff")
+                            }
+                        }
+
+                        MouseArea {
+                            id: liveApplyMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (liveUrlInput.text.trim() !== "") {
+                                    WallpaperService?.setWallpaper(liveUrlInput.text.trim());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Chip {
+                        label: "local live (" + root.localLiveWallpapers.length + ")"
+                        selected: root.liveSubTab === "local"
+                        chipHeight: 26
+                        chipRadius: Theme?.radiusPill ?? 999
+                        fontSize: Theme?.fontSizeXs ?? 10
+                        onClicked: root.liveSubTab = "local"
+                    }
+
+                    Chip {
+                        label: "online streams (" + liveWpModel.count + ")"
+                        selected: root.liveSubTab === "online"
+                        chipHeight: 26
+                        chipRadius: Theme?.radiusPill ?? 999
+                        fontSize: Theme?.fontSizeXs ?? 10
+                        onClicked: {
+                            root.liveSubTab = "online";
+                            if (liveWpModel.count === 0) fetchLiveWallpapers(root.liveSearchQuery);
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+
+                GridView {
+                    id: liveGrid
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    cellWidth: width / 3
+                    cellHeight: cellWidth * 0.65
+                    model: root.liveSubTab === "local" ? root.localLiveWallpapers : liveWpModel
+                    visible: (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) > 0
+
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
+
+                    delegate: WallpaperCard {
+                        required property var modelData
+                        width: liveGrid.cellWidth
+                        height: liveGrid.cellHeight
+                        thumbUrl: modelData?.thumb || modelData?.url || modelData?.path || ""
+                        titleText: modelData?.name || modelData?.title || "live wallpaper"
+                        badgeText: (modelData?.isVideo ? "VIDEO" : (modelData?.isGif ? "GIF" : "STREAM"))
+                        tagText: (modelData?.ext ?? "LIVE").toUpperCase()
+                        tagAccent: true
+                        isSelected: modelData?.path === WallpaperService?.currentWallpaperPath
+                        onApplyRequested: {
+                            let p = modelData?.path || modelData?.url;
+                            if (root.liveSubTab === "local" && WallpaperService?.applyLocalWallpaper) {
+                                WallpaperService.applyLocalWallpaper(p);
+                            } else {
+                                WallpaperService?.setWallpaper(p);
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) === 0
+
+                    ColumnLayout {
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: Theme?.iconFlame ?? "󰈸"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: 32
+                            color: Theme.on_surface_disabled
+                        }
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "no live wallpapers found"
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            color: Theme.on_surface_variant
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+            }
+
+            // EFFECTS & THEME TAB
             Flickable {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -1898,104 +1772,56 @@ Rectangle {
                 contentHeight: themeCol.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
 
+                WheelHandler {
+                    orientation: Qt.Vertical
+                    target: parent
+                }
+
                 ColumnLayout {
                     id: themeCol
                     width: parent.width - 4
                     spacing: 12
 
-                    Text {
-                        text: "matugen color mode"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                        font.weight: Font.Bold
-                        color: Theme.primary
+                    CategoryHeader {
+                        title: "matugen color extraction & theme"
+                        icon: Theme?.iconPalette ?? "󰏘"
                     }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 32
-                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                            color: WallpaperService?.currentMode === "dark" ? Theme.primary : Theme.surface_container_highest
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Text {
-                                    text: Theme?.iconMoon ?? "󰖔"
-                                    font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: WallpaperService?.currentMode === "dark" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                                Text {
-                                    text: "dark mode"
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    font.weight: Font.Medium
-                                    color: WallpaperService?.currentMode === "dark" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService?.setMode ? WallpaperService.setMode("dark") : null
-                            }
+                        Chip {
+                            label: (Theme?.iconMoon ?? "󰖔") + "  dark mode"
+                            selected: WallpaperService?.currentMode === "dark"
+                            fillWidth: true
+                            chipRadius: Theme?.radiusPill ?? 999
+                            chipHeight: 32
+                            onClicked: WallpaperService?.setMode ? WallpaperService.setMode("dark") : null
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 32
-                            radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                            color: WallpaperService?.currentMode === "light" ? Theme.primary : Theme.surface_container_highest
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Text {
-                                    text: Theme?.iconSun ?? "󰖙"
-                                    font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: WallpaperService?.currentMode === "light" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                                Text {
-                                    text: "light mode"
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    font.weight: Font.Medium
-                                    color: WallpaperService?.currentMode === "light" ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: WallpaperService?.setMode ? WallpaperService.setMode("light") : null
-                            }
+                        Chip {
+                            label: (Theme?.iconSun ?? "󰖙") + "  light mode"
+                            selected: WallpaperService?.currentMode === "light"
+                            fillWidth: true
+                            chipRadius: Theme?.radiusPill ?? 999
+                            chipHeight: 32
+                            onClicked: WallpaperService?.setMode ? WallpaperService.setMode("light") : null
                         }
                     }
 
-                    Text {
-                        text: "matugen scheme type"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "matugen scheme type" }
 
                     GridLayout {
                         Layout.fillWidth: true
-                        columns: 3
+                        columns: 5
                         rowSpacing: 6
                         columnSpacing: 6
 
                         Repeater {
                             model: [
                                 { label: "tonal spot", val: "scheme-tonal-spot" },
+                                { label: "smart", val: "scheme-smart" },
                                 { label: "vibrant", val: "scheme-vibrant" },
                                 { label: "expressive", val: "scheme-expressive" },
                                 { label: "content", val: "scheme-content" },
@@ -2006,45 +1832,29 @@ Rectangle {
                                 { label: "neutral", val: "scheme-neutral" }
                             ]
 
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 28
-                                radius: Theme?.radiusSm ?? 6
-                                color: WallpaperService?.currentSchemeType === modelData.val ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: WallpaperService?.currentSchemeType === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: WallpaperService?.setScheme ? WallpaperService.setScheme(modelData.val) : null
-                                }
+                                label: modelData.label
+                                selected: WallpaperService?.currentSchemeType === modelData.val
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: WallpaperService?.setScheme ? WallpaperService.setScheme(modelData.val) : null
                             }
                         }
                     }
 
-                    Text {
-                        text: "custom hex color override"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "custom hex color override" }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
 
                         Rectangle {
-                            Layout.preferredWidth: 32
-                            Layout.preferredHeight: 32
-                            radius: Theme?.radiusSm ?? 6
+                            Layout.preferredWidth: 38
+                            Layout.preferredHeight: 38
+                            radius: Theme?.radiusPill ?? 999
                             color: {
                                 let h = hexInput.text.trim();
                                 return (h.startsWith("#") && (h.length === 7 || h.length === 9)) ? h : Theme.primary;
@@ -2055,22 +1865,26 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 32
-                            radius: Theme?.radiusSm ?? 6
-                            color: Theme.surface_container_highest
-                            border.color: hexInput.activeFocus ? Theme.primary : Theme.widgetBorder
+                            Layout.preferredHeight: 38
+                            radius: Theme?.widgetRadius ?? 10
+                            color: Theme.cardBg
+                            border.color: hexInput.activeFocus ? Theme.primary : Theme.cardBorder
                             border.width: 1
+
+                            Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
                             TextInput {
                                 id: hexInput
                                 anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
                                 verticalAlignment: TextInput.AlignVCenter
                                 text: Theme?.source_color || "#a8c8ff"
                                 font.family: Theme?.fontMono ?? "monospace"
-                                font.pixelSize: Theme?.fontSizeXs ?? 10
+                                font.pixelSize: 11
                                 color: Theme.on_surface
+                                selectByMouse: true
+                                activeFocusOnTab: true
                                 onAccepted: {
                                     let h = text.trim();
                                     if (h.startsWith("#") && (h.length === 7 || h.length === 9)) {
@@ -2078,13 +1892,25 @@ Rectangle {
                                     }
                                 }
                             }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.IBeamCursor
+                                propagateComposedEvents: true
+                                onPressed: (mouse) => {
+                                    hexInput.forceActiveFocus();
+                                    mouse.accepted = false;
+                                }
+                            }
                         }
 
                         Rectangle {
-                            Layout.preferredWidth: 64
-                            Layout.preferredHeight: 32
-                            radius: Theme?.radiusSm ?? 6
+                            Layout.preferredWidth: 68
+                            Layout.preferredHeight: 38
+                            radius: Theme?.widgetRadius ?? 10
                             color: applyHexMouse.containsMouse ? Theme.primary_overlay : Theme.primary
+                            border.color: Theme.primary
+                            border.width: 1
 
                             Text {
                                 anchors.centerIn: parent
@@ -2112,7 +1938,7 @@ Rectangle {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: 6
 
                         Repeater {
                             model: [
@@ -2124,14 +1950,15 @@ Rectangle {
                             delegate: Rectangle {
                                 required property string modelData
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 22
-                                radius: Theme?.radiusSm ?? 6
+                                Layout.preferredHeight: 24
+                                radius: Theme?.radiusPill ?? 999
                                 color: modelData
-                                border.color: Theme.on_surface
-                                border.width: hexInput.text === modelData ? 2 : 0
+                                border.color: hexInput.text === modelData ? Theme.on_surface : Theme.alpha(Theme.outline, 0.3)
+                                border.width: hexInput.text === modelData ? 2 : 1
 
                                 MouseArea {
                                     anchors.fill: parent
+                                    hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         hexInput.text = modelData;
@@ -2142,106 +1969,46 @@ Rectangle {
                         }
                     }
 
-                    Rectangle {
+                    CategoryHeader {
+                        title: "awww transition engine"
+                        icon: Theme?.iconFlame ?? "󰈸"
+                    }
+
+                    GroupLabel { text: "image resize & aspect mode" }
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 32
-                        radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                        color: Theme.surface_container_high
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            Text {
-                                text: Theme?.iconRefresh ?? "↺"
-                                font.family: Theme?.fontIcon ?? "sans-serif"
-                                font.pixelSize: Theme?.fontSizeXs ?? 10
-                                color: Theme.on_surface
-                            }
-                            Text {
-                                text: "sync colors with current wallpaper"
-                                font.family: Theme?.fontFamily ?? "sans-serif"
-                                font.pixelSize: Theme?.fontSizeXs ?? 10
-                                font.weight: Font.Medium
-                                color: Theme.on_surface
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: Theme.widgetBorder
-                    }
-
-                    // Transitions
-                    Text {
-                        text: "awww transition effects"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                    }
-
-                    Text {
-                        text: "transition type"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
-
-                    GridLayout {
-                        Layout.fillWidth: true
-                        columns: 4
-                        rowSpacing: 6
-                        columnSpacing: 6
+                        spacing: 6
 
                         Repeater {
-                            model: ["wipe", "wave", "grow", "fade", "center", "outer", "simple", "left", "right", "top", "bottom", "random"]
+                            model: [
+                                { label: "crop (fill)", val: "crop" },
+                                { label: "fit (letterbox)", val: "fit" },
+                                { label: "stretch", val: "stretch" },
+                                { label: "no resize", val: "no" }
+                            ]
 
-                            delegate: Rectangle {
-                                required property string modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 26
-                                radius: Theme?.radiusSm ?? 6
-                                readonly property string currentVal: Settings?.awwwTransitionType ?? Settings?.swwwTransitionType ?? "fade"
-                                color: currentVal === modelData ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: parent.currentVal === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (Settings) {
-                                            if (Settings.awwwTransitionType !== undefined) Settings.awwwTransitionType = modelData;
-                                            if (Settings.swwwTransitionType !== undefined) Settings.swwwTransitionType = modelData;
-                                            if (Settings.save) Settings.save();
-                                        }
+                            delegate: Chip {
+                                required property var modelData
+                                readonly property string currentResize: Settings?.awwwResize ?? "crop"
+                                label: modelData.label
+                                selected: currentResize === modelData.val
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwResize = modelData.val;
+                                        if (Settings.save) Settings.save();
                                     }
+                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                                 }
                             }
                         }
                     }
 
-                    Text {
-                        text: "transition angle"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "transition type" }
 
                     GridLayout {
                         Layout.fillWidth: true
@@ -2250,49 +2017,111 @@ Rectangle {
                         columnSpacing: 6
 
                         Repeater {
-                            model: [
-                                { label: "0°", val: 0 }, { label: "30°", val: 30 }, { label: "45°", val: 45 },
-                                { label: "60°", val: 60 }, { label: "90°", val: 90 }, { label: "120°", val: 120 },
-                                { label: "135°", val: 135 }, { label: "180°", val: 180 }, { label: "225°", val: 225 }, { label: "270°", val: 270 }
-                            ]
+                            model: ["fade", "simple", "wipe", "wave", "grow", "center", "outer", "any", "random", "left", "right", "top", "bottom", "none"]
 
-                            delegate: Rectangle {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 24
-                                radius: Theme?.radiusSm ?? 6
-                                readonly property int currentAngle: Settings?.awwwTransitionAngle ?? Settings?.swwwTransitionAngle ?? 0
-                                color: currentAngle === modelData.val ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: parent.currentAngle === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (Settings) {
-                                            if (Settings.awwwTransitionAngle !== undefined) Settings.awwwTransitionAngle = modelData.val;
-                                            if (Settings.swwwTransitionAngle !== undefined) Settings.swwwTransitionAngle = modelData.val;
-                                            if (Settings.save) Settings.save();
-                                        }
+                            delegate: Chip {
+                                required property string modelData
+                                readonly property string currentVal: Settings?.awwwTransitionType ?? "fade"
+                                label: modelData
+                                selected: currentVal === modelData
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwTransitionType = modelData;
+                                        if (Settings.save) Settings.save();
                                     }
                                 }
                             }
                         }
                     }
 
-                    Text {
-                        text: "transition frame rate (fps)"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
+                    GroupLabel {
+                        text: "transition angle (wipe / wave)"
+                        visible: {
+                            let t = Settings?.awwwTransitionType ?? "fade";
+                            return t === "wipe" || t === "wave";
+                        }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: {
+                            let t = Settings?.awwwTransitionType ?? "fade";
+                            return t === "wipe" || t === "wave";
+                        }
+
+                        Repeater {
+                            model: [
+                                { label: "0°", val: 0 },
+                                { label: "45°", val: 45 },
+                                { label: "90°", val: 90 },
+                                { label: "135°", val: 135 },
+                                { label: "180°", val: 180 },
+                                { label: "270°", val: 270 }
+                            ]
+
+                            delegate: Chip {
+                                required property var modelData
+                                readonly property int currentAngle: Settings?.awwwTransitionAngle ?? 0
+                                label: modelData.label
+                                selected: currentAngle === modelData.val
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwTransitionAngle = modelData.val;
+                                        if (Settings.save) Settings.save();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GroupLabel {
+                        text: "circle origin position (grow / outer)"
+                        visible: {
+                            let t = Settings?.awwwTransitionType ?? "fade";
+                            return t === "grow" || t === "outer";
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: {
+                            let t = Settings?.awwwTransitionType ?? "fade";
+                            return t === "grow" || t === "outer";
+                        }
+
+                        Repeater {
+                            model: ["center", "top", "bottom", "left", "right"]
+
+                            delegate: Chip {
+                                required property string modelData
+                                readonly property string currentPos: Settings?.awwwTransitionPos ?? "center"
+                                label: modelData
+                                selected: currentPos === modelData
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwTransitionPos = modelData;
+                                        if (Settings.save) Settings.save();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GroupLabel { text: "transition frame rate (fps)" }
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -2306,103 +2135,59 @@ Rectangle {
                                 { label: "240 fps", val: 240 }
                             ]
 
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 24
-                                radius: Theme?.radiusSm ?? 6
-                                readonly property int currentFps: Settings?.awwwTransitionFps ?? Settings?.swwwTransitionFps ?? 60
-                                color: currentFps === modelData.val ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: 10
-                                    color: parent.currentFps === modelData.val ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (Settings) {
-                                            if (Settings.awwwTransitionFps !== undefined) Settings.awwwTransitionFps = modelData.val;
-                                            if (Settings.swwwTransitionFps !== undefined) Settings.swwwTransitionFps = modelData.val;
-                                            if (Settings.save) Settings.save();
-                                        }
+                                readonly property int currentFps: Settings?.awwwTransitionFps ?? 60
+                                label: modelData.label
+                                selected: currentFps === modelData.val
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwTransitionFps = modelData.val;
+                                        if (Settings.save) Settings.save();
                                     }
                                 }
                             }
                         }
                     }
 
-                    Text {
-                        text: "awww scaling filter"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "awww scaling filter" }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6
 
                         Repeater {
-                            model: ["Lanczos3", "Nearest", "CatmullRom", "Mitchell"]
+                            model: ["Lanczos3", "Bilinear", "CatmullRom", "Mitchell", "Nearest"]
 
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property string modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 24
-                                radius: Theme?.radiusSm ?? 6
-                                readonly property string currentFilter: Settings?.awwwFilter ?? Settings?.swwwFilter ?? "Lanczos3"
-                                color: currentFilter === modelData ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.toLowerCase()
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: parent.currentFilter === modelData ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (Settings) {
-                                            if (Settings.awwwFilter !== undefined) Settings.awwwFilter = modelData;
-                                            if (Settings.swwwFilter !== undefined) Settings.swwwFilter = modelData;
-                                            if (Settings.save) Settings.save();
-                                        }
+                                readonly property string currentFilter: Settings?.awwwFilter ?? "Lanczos3"
+                                label: modelData.toLowerCase()
+                                selected: currentFilter === modelData
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.awwwFilter = modelData;
+                                        if (Settings.save) Settings.save();
                                     }
                                 }
                             }
                         }
                     }
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: Theme.widgetBorder
+                    CategoryHeader {
+                        title: "mpvpaper live video engine"
+                        icon: Theme?.iconFilm ?? "󰿎"
                     }
 
-                    // mpvpaper Live Video Settings
-                    Text {
-                        text: "mpvpaper live video controls"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                        font.weight: Font.Bold
-                        color: Theme.primary
-                    }
-
-                    Text {
-                        text: "video scaling & crop mode (panscan)"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "video scaling & crop mode (panscan)" }
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -2415,120 +2200,58 @@ Rectangle {
                                 { label: "balanced zoom", val: 0.5 }
                             ]
 
-                            delegate: Rectangle {
+                            delegate: Chip {
                                 required property var modelData
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 26
-                                radius: Theme?.radiusSm ?? 6
-                                color: Math.abs((Settings?.mpvPanscan ?? 1.0) - modelData.val) < 0.05 ? Theme.primary : Theme.surface_container_highest
-
-                                Text {
-                                    text: modelData.label
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: Math.abs((Settings?.mpvPanscan ?? 1.0) - modelData.val) < 0.05 ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                    anchors.centerIn: parent
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (Settings) {
-                                            Settings.mpvPanscan = modelData.val;
-                                            if (Settings.save) Settings.save();
-                                        }
-                                        WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
+                                label: modelData.label
+                                selected: Math.abs((Settings?.mpvPanscan ?? 1.0) - modelData.val) < 0.05
+                                fillWidth: true
+                                chipRadius: Theme?.radiusPill ?? 999
+                                chipHeight: 26
+                                fontSize: Theme?.fontSizeXs ?? 10
+                                onClicked: {
+                                    if (Settings) {
+                                        Settings.mpvPanscan = modelData.val;
+                                        if (Settings.save) Settings.save();
                                     }
+                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                                 }
                             }
                         }
                     }
 
-                    Text {
-                        text: "video audio"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
+                    GroupLabel { text: "video audio playback" }
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            radius: Theme?.radiusSm ?? 6
-                            color: !(Settings?.mpvAudio ?? false) ? Theme.primary : Theme.surface_container_highest
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Text {
-                                    text: Theme?.iconVolMute ?? "󰝟"
-                                    font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: !(Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                        Chip {
+                            label: (Theme?.iconVolMute ?? "󰝟") + "  mute audio"
+                            selected: !(Settings?.mpvAudio ?? false)
+                            fillWidth: true
+                            chipRadius: Theme?.radiusPill ?? 999
+                            chipHeight: 28
+                            onClicked: {
+                                if (Settings) {
+                                    Settings.mpvAudio = false;
+                                    if (Settings.save) Settings.save();
                                 }
-                                Text {
-                                    text: "mute audio (silent)"
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    font.weight: Font.Medium
-                                    color: !(Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (Settings) {
-                                        Settings.mpvAudio = false;
-                                        if (Settings.save) Settings.save();
-                                    }
-                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
-                                }
+                                WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                             }
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 28
-                            radius: Theme?.radiusSm ?? 6
-                            color: (Settings?.mpvAudio ?? false) ? Theme.primary : Theme.surface_container_highest
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 6
-
-                                Text {
-                                    text: Theme?.iconVolHigh ?? "󰕾"
-                                    font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: (Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                        Chip {
+                            label: (Theme?.iconVolHigh ?? "󰕾") + "  play ambient sound"
+                            selected: Settings?.mpvAudio ?? false
+                            fillWidth: true
+                            chipRadius: Theme?.radiusPill ?? 999
+                            chipHeight: 28
+                            onClicked: {
+                                if (Settings) {
+                                    Settings.mpvAudio = true;
+                                    if (Settings.save) Settings.save();
                                 }
-                                Text {
-                                    text: "play ambient sound"
-                                    font.family: Theme?.fontFamily ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    font.weight: Font.Medium
-                                    color: (Settings?.mpvAudio ?? false) ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (Settings) {
-                                        Settings.mpvAudio = true;
-                                        if (Settings.save) Settings.save();
-                                    }
-                                    WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
-                                }
+                                WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
                             }
                         }
                     }

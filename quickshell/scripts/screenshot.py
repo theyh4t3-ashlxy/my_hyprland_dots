@@ -50,6 +50,11 @@ def open_editor(file_path: str) -> bool:
                 return True
             except Exception:
                 pass
+    try:
+        subprocess.Popen(["xdg-open", file_path])
+        return True
+    except Exception:
+        pass
     return False
 
 def handle_post_capture(action: str, file_path: str, send_notification: bool):
@@ -65,13 +70,31 @@ def handle_post_capture(action: str, file_path: str, send_notification: bool):
     if send_notification:
         notify(file_path, action)
 
+def trigger_native_capture(mode: str = "region"):
+    # Zero grim. Pure native quickshell screencopy IPC.
+    cmd = ["qs", "ipc", "call", "screenshot"]
+    if mode in ("fullscreen", "full"):
+        cmd.append("full")
+    elif mode == "window":
+        cmd.append("window")
+    else:
+        cmd.append("open")
+    try:
+        subprocess.run(cmd, check=False)
+    except Exception:
+        pass
+
 def main():
     if len(sys.argv) < 2:
+        trigger_native_capture("region")
         return
 
     cmd = sys.argv[1].lower()
 
-    if cmd == "post":
+    if cmd == "capture":
+        mode = sys.argv[2].lower() if len(sys.argv) > 2 else "region"
+        trigger_native_capture(mode)
+    elif cmd == "post":
         action = sys.argv[2].lower() if len(sys.argv) > 2 else "both"
         file_path = sys.argv[3] if len(sys.argv) > 3 else ""
         send_note = sys.argv[4] == "1" if len(sys.argv) > 4 else True
@@ -86,6 +109,8 @@ def main():
         file_path = sys.argv[2] if len(sys.argv) > 2 else ""
         action = sys.argv[3].lower() if len(sys.argv) > 3 else "save"
         notify(file_path, action)
+    else:
+        trigger_native_capture("region")
 
 if __name__ == "__main__":
     main()

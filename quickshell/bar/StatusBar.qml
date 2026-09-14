@@ -105,6 +105,16 @@ PanelWindow {
                 root.launcherPopup.open = !root.launcherPopup.open;
             }
         }
+        function onRequestLauncherOpen() {
+            if (!root.screen || Quickshell.screens.length <= 1 || (root.hyprMonitor && Hyprland.focusedMonitor && root.hyprMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.launcherPopup.targetRelativeX = 0;
+                root.launcherPopup.targetRelativeY = 0;
+                root.launcherPopup.open = true;
+            }
+        }
+        function onRequestLauncherClose() {
+            root.launcherPopup.open = false;
+        }
     }
 
     Component { id: compLauncher; Rectangle {
@@ -146,7 +156,7 @@ PanelWindow {
         }
     }}
 
-    Component { id: compWallpaper; WallpaperBrowser {} }
+    Component { id: compWallpaper; WallpaperBrowser { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compWorkspaces; Workspaces {} }
     Component { id: compWindowTitle; WindowTitle { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compClock; Clock {} }
@@ -365,6 +375,7 @@ PanelWindow {
                         readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
                         width: Math.round(targetW)
                         height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
+                        Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
                     }
                 }

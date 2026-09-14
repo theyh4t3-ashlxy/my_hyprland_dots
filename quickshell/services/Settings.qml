@@ -8,15 +8,13 @@ import Quickshell.Hyprland
 QtObject {
     id: root
 
-    // bar vibes
     property string barPosition: "top"
     property int barMargin: 0
     property bool barFloating: false
     property int barHeight: 32
-    property string barStyle: "regular" // "regular", "glass", "pure-black", "translucent", "accent-glow", "monochrome"
+    property string barStyle: "regular"
     property int scoopRadius: 16
     property real scoopTension: 0.55228475
-    // screen corners & concave styles
     property int screenCornerRadius: 16
     property int screenBorderWidth: 0
     property bool screenFrameDocked: true
@@ -33,25 +31,77 @@ QtObject {
     property bool launcherCalcEnabled: true
     property bool launcherCommandEnabled: true
     property bool mediaWaveVisualizer: true
-    property bool hoverToOpen: true
+    property bool hoverToOpen: false
     property int hoverDelay: 220
     property bool hoverAutoClose: true
-    property string workspaceMode: "slide" // "slide", "fluid-trail", "discrete"
+    property string workspaceMode: "slide"
     property string fontNerd: "JetBrainsMono Nerd Font"
 
     signal requestLauncherToggle()
-    signal requestQuickSettingsToggle()
-    signal requestBatteryToggle()
-    signal requestWindowTitleToggle()
-    signal requestIdleToggle()
+    signal requestLauncherOpen()
+    signal requestLauncherClose()
 
-    // dynamic bar module ordering
+    signal requestQuickSettingsToggle()
+    signal requestQuickSettingsOpen()
+    signal requestQuickSettingsClose()
+
+    signal requestBatteryToggle()
+    signal requestBatteryOpen()
+    signal requestBatteryClose()
+
+    signal requestVolumeToggle()
+    signal requestVolumeOpen()
+    signal requestVolumeClose()
+
+    signal requestNetworkToggle()
+    signal requestNetworkOpen()
+    signal requestNetworkClose()
+
+    signal requestBluetoothToggle()
+    signal requestBluetoothOpen()
+    signal requestBluetoothClose()
+
+    signal requestMediaToggle()
+    signal requestMediaOpen()
+    signal requestMediaClose()
+
+    signal requestPowerMenuToggle()
+    signal requestPowerMenuOpen()
+    signal requestPowerMenuClose()
+
+    signal requestClockToggle()
+    signal requestClockOpen()
+    signal requestClockClose()
+
+    signal requestClipboardToggle()
+    signal requestClipboardOpen()
+    signal requestClipboardClose()
+
+    signal requestWallpaperToggle()
+    signal requestWallpaperOpen()
+    signal requestWallpaperClose()
+
+    signal requestQuickNotesToggle()
+    signal requestQuickNotesOpen()
+    signal requestQuickNotesClose()
+
+    signal requestWorkspacesToggle()
+    signal requestWorkspacesOpen()
+    signal requestWorkspacesClose()
+
+    signal requestWindowTitleToggle()
+    signal requestWindowTitleOpen()
+    signal requestWindowTitleClose()
+
+    signal requestIdleToggle()
+    signal requestIdleOpen()
+    signal requestIdleClose()
+
     property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
     property var barModulesCenter: ["clock"]
     property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
     property bool showBarStudio: false
 
-    // matugen & awww engine
     property string currentWallpaper: "/home/ashley/.wallpapers/hyprland/hypr.png"
     property string matugenMode: "dark"
     property string matugenScheme: "scheme-tonal-spot"
@@ -61,16 +111,16 @@ QtObject {
     property int awwwTransitionDuration: 3
     property int awwwTransitionFps: 60
     property string awwwFilter: "Lanczos3"
+    property string awwwResize: "crop"
+    property string awwwTransitionPos: "center"
     property real mpvPanscan: 1.0
     property bool mpvAudio: false
 
-    // anim & chaos vibe
     property string animSpeed: "snappy"
     property bool unhingedFlavor: true
-    property string vibeStyle: "nerd" // "kaomoji", "nerd", "text"
-    property bool dnd: false // do not disturb: silence toast popups
+    property string vibeStyle: "nerd"
+    property bool dnd: false
 
-    // visibility toggles
     property bool showWorkspaces: true
     property bool showWindowTitle: true
     property bool showClock: true
@@ -90,12 +140,11 @@ QtObject {
     property bool showQuickNotes: true
     property bool showMotionSandbox: false
 
-    // formatting & typography
     property string clockFormat: "HH:mm"
     property string dateFormat: "ddd, MMM d"
     property bool showBarDate: false
     property int workspaceCount: 10
-    property string iconSet: "material" // "material", "windows", "awesome"
+    property string iconSet: "material"
     property string fontFamily: "Noto Sans"
     property string fontMono: "JetBrainsMono Nerd Font"
     property string fontWindows: "Segoe Fluent Icons"
@@ -105,9 +154,8 @@ QtObject {
     property string fontWeight: "regular"
     property var networkAliases: ({})
 
-    // screenshot granular settings
     property string screenshotDir: "~/Pictures/Screenshots"
-    property string screenshotDefaultAction: "both" // "both", "copy", "save", "edit"
+    property string screenshotDefaultAction: "both"
     property bool screenshotWindowSnapping: true
     property bool screenshotNotify: true
     property bool screenshotFreeze: true
@@ -119,7 +167,6 @@ QtObject {
     property bool screenshotShowHandles: true
     property bool screenshotFlash: true
 
-    // granular layout & density
     property int barRadius: 0
     property real barOpacity: 1.0
     property int widgetRadius: 2
@@ -128,27 +175,23 @@ QtObject {
     property int widgetPaddingH: 8
     property real popupOpacity: 1.0
 
-    // granular audio & media
     property int volumeStep: 5
     property int volumeMax: 100
 
-    // granular clock & date
     property bool clockShowSeconds: false
     property bool clockMilitary: true
 
-    // granular notifications
     property int notificationTimeout: 5000
 
-    // granular window title & stretch settings
-    property string windowTitleMode: "auto" // "auto" (dynamic stretch), "fill" (fill space), "compact" (clamped)
+    property string windowTitleMode: "auto"
     property int windowTitleMaxWidth: 760
     property bool windowTitleShowIcon: true
 
-    // hyprland lua dispatcher bridge
     property bool hyprlandLua: true
 
     property bool _initialized: false
     property bool _loading: false
+    property bool _isSaving: false
 
     property Timer autoSaveTimer: Timer {
         interval: 80
@@ -157,6 +200,14 @@ QtObject {
             if (root._initialized && !root._loading) {
                 root.save();
             }
+        }
+    }
+
+    property Timer resetSavingTimer: Timer {
+        interval: 300
+        repeat: false
+        onTriggered: {
+            root._isSaving = false;
         }
     }
 
@@ -187,6 +238,8 @@ QtObject {
     onAwwwTransitionDurationChanged: queueSave()
     onAwwwTransitionFpsChanged: queueSave()
     onAwwwFilterChanged: queueSave()
+    onAwwwResizeChanged: queueSave()
+    onAwwwTransitionPosChanged: queueSave()
     onAnimSpeedChanged: queueSave()
     onUnhingedFlavorChanged: queueSave()
     onCurrentWallpaperChanged: queueSave()
@@ -260,6 +313,18 @@ QtObject {
     onWindowTitleMaxWidthChanged: queueSave()
     onWindowTitleShowIconChanged: queueSave()
     onHyprlandLuaChanged: queueSave()
+    onScreenshotDirChanged: queueSave()
+    onScreenshotDefaultActionChanged: queueSave()
+    onScreenshotWindowSnappingChanged: queueSave()
+    onScreenshotNotifyChanged: queueSave()
+    onScreenshotFreezeChanged: queueSave()
+    onScreenshotDimOpacityChanged: queueSave()
+    onScreenshotBorderWidthChanged: queueSave()
+    onScreenshotBorderRadiusChanged: queueSave()
+    onScreenshotShowCrosshairChanged: queueSave()
+    onScreenshotShowBadgeChanged: queueSave()
+    onScreenshotShowHandlesChanged: queueSave()
+    onScreenshotFlashChanged: queueSave()
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -274,7 +339,7 @@ QtObject {
         { key: "screenFrameDocked", type: "bool", def: true },
         { key: "screenCornerMode", type: "string", def: "all" },
         { key: "cornerStyle", type: "string", def: "cubic" },
-        { key: "cornerColorMode", type: "string", def: "bar" },
+        { key: "cornerColorMode", type: "string", def: "theme" },
         { key: "currentWallpaper", type: "string", def: "/home/ashley/.wallpapers/hyprland/hypr.png" },
         { key: "matugenMode", type: "string", def: "dark" },
         { key: "matugenScheme", type: "string", def: "scheme-tonal-spot" },
@@ -284,6 +349,8 @@ QtObject {
         { key: "awwwTransitionDuration", type: "int", def: 3 },
         { key: "awwwTransitionFps", type: "int", def: 60 },
         { key: "awwwFilter", type: "string", def: "Lanczos3" },
+        { key: "awwwResize", type: "string", def: "crop" },
+        { key: "awwwTransitionPos", type: "string", def: "center" },
         { key: "mpvPanscan", type: "float", def: 1.0 },
         { key: "mpvAudio", type: "bool", def: false },
         { key: "dnd", type: "bool", def: false },
@@ -359,7 +426,7 @@ QtObject {
         { key: "launcherCalcEnabled", type: "bool", def: true },
         { key: "launcherCommandEnabled", type: "bool", def: true },
         { key: "mediaWaveVisualizer", type: "bool", def: true },
-        { key: "hoverToOpen", type: "bool", def: true },
+        { key: "hoverToOpen", type: "bool", def: false },
         { key: "hoverDelay", type: "int", def: 220 },
         { key: "hoverAutoClose", type: "bool", def: true },
         { key: "workspaceMode", type: "string", def: "slide" },
@@ -396,7 +463,11 @@ QtObject {
             } else if (item.type === "json") {
                 try {
                     let obj = typeof v === "string" ? JSON.parse(v) : v;
-                    if (obj && (typeof obj === "object" || Array.isArray(obj))) root[item.key] = obj;
+                    if (obj && (typeof obj === "object" || Array.isArray(obj))) {
+                        if (JSON.stringify(root[item.key]) !== JSON.stringify(obj)) {
+                            root[item.key] = obj;
+                        }
+                    }
                 } catch(e) {}
             }
         }
@@ -420,7 +491,6 @@ QtObject {
             next[ssid] = trimmed;
         }
         root.networkAliases = next;
-        queueSave();
     }
 
     function loadConf(str) {
@@ -445,34 +515,36 @@ QtObject {
         root._initialized = true;
     }
 
-
-    property bool _isSaving: false
-
-    property Timer resetSavingTimer: Timer {
-        interval: 400
-        repeat: false
-        onTriggered: {
-            root._isSaving = false;
-        }
-    }
-
-    readonly property string confPath: Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, "")
+    readonly property string confPath: decodeURIComponent(Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, ""))
 
     property FileView confFile: FileView {
         path: root.confPath
+        blockLoading: true
         watchChanges: true
         printErrors: false
         onLoaded: root.loadFromFile()
+        onLoadFailed: (error) => {
+            // so we don't end up trapped in purgatory on clean setups
+            root._initialized = true;
+            root.save();
+        }
+        onSaved: resetSavingTimer.restart()
+        onSaveFailed: (error) => resetSavingTimer.restart()
         onFileChanged: {
             if (!root._isSaving) {
                 confFile.reload();
-                root.loadFromFile();
             }
         }
     }
 
     Component.onCompleted: {
-        root.loadFromFile();
+        let str = confFile.text();
+        if (str && str.trim() !== "") {
+            root.loadConf(str);
+        } else {
+            root._initialized = true;
+            root.save();
+        }
     }
 
     function loadFromFile() {
@@ -486,7 +558,7 @@ QtObject {
         let lines = [];
         for (let i = 0; i < _schema.length; i++) {
             let item = _schema[i];
-            let val = root[item.key];
+            let val = root[item.key] !== undefined ? root[item.key] : item.def;
             if (item.type === "string") {
                 lines.push(item.key + '="' + val + '"');
             } else if (item.type === "json") {
@@ -505,10 +577,8 @@ QtObject {
         resetSavingTimer.restart();
     }
 
-    // nuke everything and go back to factory stock
     function resetToDefaults() {
         root._loading = true;
-        Quickshell.execDetached(["rm", "-f", "/home/ashley/.config/quickshell/settings.conf", "/home/ashley/my-hyprland-dots/quickshell/settings.conf"]);
         for (let i = 0; i < _schema.length; i++) {
             let item = _schema[i];
             root[item.key] = (item.type === "json") ? (Array.isArray(item.def) ? item.def.slice() : Object.assign({}, item.def)) : item.def;
@@ -525,7 +595,6 @@ QtObject {
         if (zone === "left") barModulesLeft = list;
         else if (zone === "center") barModulesCenter = list;
         else barModulesRight = list;
-        queueSave();
     }
 
     function transferModule(fromZone, toZone, fromIdx) {
@@ -543,17 +612,14 @@ QtObject {
         if (toZone === "left") barModulesLeft = toList;
         else if (toZone === "center") barModulesCenter = toList;
         else barModulesRight = toList;
-        queueSave();
     }
 
     function resetBarLayout() {
         barModulesLeft = ["launcher", "wallpaper", "workspaces", "windowTitle"];
         barModulesCenter = ["clock"];
         barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
-        queueSave();
     }
 
-    // Hyprland Lua dispatcher bridge functions
     function dispatchCloseWindow() {
         Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.close()" : "killactive");
     }
@@ -563,7 +629,7 @@ QtObject {
     }
 
     function dispatchToggleFullscreen() {
-        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.fullscreen()" : "fullscreen 0");
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.fullscreen({ action = 'toggle' })" : "fullscreen 0");
     }
 
     function dispatchPinWindow() {

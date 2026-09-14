@@ -125,8 +125,34 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestQuickNotesToggle() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = !popup.open;
+            if (popup.open) {
+                root.notesFile.reload();
+                root.loadNotes(root.notesFile.text());
+            }
+        }
+        function onRequestQuickNotesOpen() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = true;
+            root.notesFile.reload();
+            root.loadNotes(root.notesFile.text());
+        }
+        function onRequestQuickNotesClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
+        wantsFocus: true
         cardWidth: 460
         cardHeight: 560
         targetRelativeX: root.mapToItem(null, 0, 0).x + (root.width / 2)

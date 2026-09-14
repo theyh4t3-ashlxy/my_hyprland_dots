@@ -47,6 +47,25 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestPowerMenuToggle() {
+            let pos = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pos ? (pos.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pos ? (pos.y + (root.height / 2)) : 0;
+            popup.open = !popup.open;
+        }
+        function onRequestPowerMenuOpen() {
+            let pos = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pos ? (pos.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pos ? (pos.y + (root.height / 2)) : 0;
+            popup.open = true;
+        }
+        function onRequestPowerMenuClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
         cardWidth: 440

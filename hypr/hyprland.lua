@@ -8,3 +8,6 @@ require("binds")
 require("startup")
 require("rules")
 require("gestures")
+
+-- HyprMod managed settings
+require("hyprmod")

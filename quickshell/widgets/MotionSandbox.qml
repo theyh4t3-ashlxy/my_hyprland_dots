@@ -11,8 +11,12 @@ PanelWindow {
     required property var modelData
     screen: modelData
 
-    property bool open: false
-    property string dockPosition: "bottom" // "top", "bottom", "left", "right"
+    property bool open: Settings.showMotionSandbox
+    onOpenChanged: {
+        if (Settings.showMotionSandbox !== open) Settings.showMotionSandbox = open;
+    }
+
+    property string dockPosition: "bottom"
     readonly property bool isBottom: dockPosition === "bottom"
     readonly property bool isTop: dockPosition === "top"
     readonly property bool isLeft: dockPosition === "left"
@@ -20,22 +24,22 @@ PanelWindow {
     readonly property bool isVertical: isLeft || isRight
 
     property bool springMode: false
-    property string activeSandboxMode: "toy" // "toy" or "cards"
+    property string activeSandboxMode: "toy"
     property int bounceScore: 0
-    property string gravityMode: "normal" // "normal", "zero", "reverse", "chaos"
+    property string gravityMode: "normal"
 
     anchors {
-        top: root.isTop || root.isVertical
-        bottom: root.isBottom || root.isVertical
-        left: root.isLeft || !root.isVertical
-        right: root.isRight || !root.isVertical
+        top: root.isTop
+        bottom: root.isBottom
+        left: root.isLeft
+        right: root.isRight
     }
 
     margins {
-        top: root.isTop ? 0 : (root.isVertical ? 40 : 0)
-        bottom: root.isBottom ? 0 : (root.isVertical ? 40 : 0)
-        left: root.isLeft ? 0 : (root.isBottom || root.isTop ? 40 : 0)
-        right: root.isRight ? 0 : (root.isBottom || root.isTop ? 40 : 0)
+        top: 0
+        bottom: 0
+        left: 0
+        right: 0
     }
 
     color: "transparent"
@@ -44,14 +48,12 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:motionsandbox"
 
     visible: open
-    implicitWidth: root.isVertical ? 360 : 580
-    implicitHeight: root.isVertical ? 500 : 280
+    implicitWidth: root.isVertical ? 380 : 620
+    implicitHeight: root.isVertical ? 520 : 320
 
-    // Dual Concave Joint Welds into Screen Edge
     Item {
         anchors.fill: parent
 
-        // Top edge weld scoops
         ConcaveCorner {
             x: 0
             y: 0
@@ -73,7 +75,6 @@ PanelWindow {
             visible: root.isTop && Settings.scoopRadius > 0
         }
 
-        // Bottom edge weld scoops
         ConcaveCorner {
             x: 0
             y: parent.height - Theme.scoopRadiusY
@@ -95,7 +96,6 @@ PanelWindow {
             visible: root.isBottom && Settings.scoopRadius > 0
         }
 
-        // Left edge weld scoops
         ConcaveCorner {
             x: 0
             y: 0
@@ -117,7 +117,6 @@ PanelWindow {
             visible: root.isLeft && Settings.scoopRadius > 0
         }
 
-        // Right edge weld scoops
         ConcaveCorner {
             x: parent.width - Theme.scoopRadiusX
             y: 0
@@ -139,7 +138,6 @@ PanelWindow {
             visible: root.isRight && Settings.scoopRadius > 0
         }
 
-        // Card body
         Rectangle {
             id: body
             anchors.fill: parent
@@ -162,7 +160,6 @@ PanelWindow {
                 anchors.margins: 14
                 spacing: 8
 
-                // Header & Controls
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -176,8 +173,6 @@ PanelWindow {
                         Layout.fillWidth: true
                     }
 
-                    
-                    // Sandbox mode toggle
                     RowLayout {
                         spacing: 4
                         Repeater {
@@ -190,8 +185,8 @@ PanelWindow {
                                 height: 24
                                 width: modeText.implicitWidth + 14
                                 radius: Theme.radiusPill
-                                color: root.activeSandboxMode === modelData.id ? Theme.primary : Theme.cardBg
-                                border.color: Theme.cardBorder
+                                color: root.activeSandboxMode === modelData.id ? Theme.primary : Theme.surface_container_highest
+                                border.color: Theme.widgetBorder
                                 border.width: 1
 
                                 Text {
@@ -213,8 +208,46 @@ PanelWindow {
                         }
                     }
 
-                    // Mode Toggle (Flick Momentum vs Spring Return)
+                    RowLayout {
+                        visible: root.activeSandboxMode === "toy"
+                        spacing: 4
+
+                        Repeater {
+                            model: [
+                                { id: "normal", label: "grav" },
+                                { id: "zero", label: "zero-g" },
+                                { id: "reverse", label: "anti-g" },
+                                { id: "chaos", label: "chaos" }
+                            ]
+
+                            delegate: Rectangle {
+                                required property var modelData
+                                height: 22
+                                width: gText.implicitWidth + 10
+                                radius: Theme.radiusPill
+                                color: root.gravityMode === modelData.id ? Theme.secondary : Theme.surface_container_high
+
+                                Text {
+                                    id: gText
+                                    text: modelData.label
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                    color: root.gravityMode === modelData.id ? Theme.on_secondary : Theme.on_surface_variant
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.gravityMode = modelData.id
+                                }
+                            }
+                        }
+                    }
+
                     Rectangle {
+                        visible: root.activeSandboxMode === "cards"
                         height: 24
                         implicitWidth: modeRow.implicitWidth + 14
                         radius: Theme.radiusPill
@@ -240,30 +273,28 @@ PanelWindow {
                         }
                     }
 
-                    // Reset Positions Button
                     IconButton {
                         icon: Theme.iconRefresh
                         iconSize: Theme.fontSizeXs
-                        tooltip: "reset card positions"
+                        tooltip: "reset playground"
                         onClicked: {
-                            dragCard1.animateTo(10, 10);
-                            dragCard2.animateTo(145, 10);
-                            dragCard3.animateTo(280, 10);
+                            root.bounceScore = 0;
+                            toyBall.resetBall();
+                            dragCard1.snapHome();
+                            dragCard2.snapHome();
+                            dragCard3.snapHome();
                         }
                     }
 
-                    // 4-Way Dock Position Selector
                     RowLayout {
                         spacing: 2
-
                         Repeater {
                             model: [
-                                { pos: "bottom", icon: "" },
-                                { pos: "top", icon: "" },
-                                { pos: "left", icon: "" },
-                                { pos: "right", icon: "" }
+                                { pos: "bottom", icon: Theme?.iconChevronDown ?? "↓" },
+                                { pos: "top", icon: Theme?.iconChevronUp ?? "↑" },
+                                { pos: "left", icon: Theme?.iconChevronLeft ?? "←" },
+                                { pos: "right", icon: Theme?.iconChevronRight ?? "→" }
                             ]
-
                             delegate: Rectangle {
                                 required property var modelData
                                 width: 24
@@ -282,7 +313,13 @@ PanelWindow {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.dockPosition = modelData.pos
+                                    onClicked: {
+                                        root.dockPosition = modelData.pos;
+                                        dragCard1.snapHome();
+                                        dragCard2.snapHome();
+                                        dragCard3.snapHome();
+                                        toyBall.resetBall();
+                                    }
                                 }
                             }
                         }
@@ -293,8 +330,8 @@ PanelWindow {
                         iconSize: Theme.fontSizeXs
                         tooltip: "close sandbox"
                         onClicked: {
-                            root.open = false
-                            Settings.showMotionSandbox = false
+                            root.open = false;
+                            Settings.showMotionSandbox = false;
                         }
                     }
                 }
@@ -305,157 +342,359 @@ PanelWindow {
                     color: Theme.widgetBorder
                 }
 
-                // Free Canvas Playground Area
                 Item {
                     id: canvasArea
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
 
-                    // Momentum Draggable Card 1 (Vibe)
-                    Rectangle {
-                        id: dragCard1
-                        x: 10
-                        y: 10
-                        width: 120
-                        height: 90
-                        radius: Theme.radiusMd
-                        color: Theme.surface_container_highest
-                        border.color: dragArea1.drag.active ? Theme.primary : Theme.widgetBorder
-                        border.width: 1
-                        z: dragArea1.drag.active ? 10 : 1
+                    Item {
+                        id: toyLayer
+                        anchors.fill: parent
+                        visible: root.activeSandboxMode === "toy"
 
-                        property real lastX: 0
-                        property real lastY: 0
-                        property real lastTime: 0
-                        property real velX: 0
-                        property real velY: 0
+                        component Bumper: Rectangle {
+                            id: bmpRoot
+                            property int points: 50
+                            property alias icon: bmpIcon.text
+                            width: 52
+                            height: 52
+                            radius: 26
+                            color: Theme.surface_container_high
+                            border.color: Theme.widgetBorder
+                            border.width: 2
 
-                        function animateTo(targetX, targetY) {
-                            animX1.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
-                            animY1.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
-                            momentumAnim1.restart();
-                        }
-
-                        ParallelAnimation {
-                            id: momentumAnim1
-                            NumberAnimation { id: animX1; target: dragCard1; property: "x"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
-                            NumberAnimation { id: animY1; target: dragCard1; property: "y"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
-                        }
-
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            Text {
-                                text: "󰁕"
-                                font.family: Theme.fontIcon
-                                font.pixelSize: 18
-                                color: Theme.primary
-                                Layout.alignment: Qt.AlignHCenter
+                            function pulse() {
+                                bumpAnim.restart();
                             }
+
+                            SequentialAnimation {
+                                id: bumpAnim
+                                ParallelAnimation {
+                                    ColorAnimation { target: bmpRoot; property: "color"; to: Theme.primary; duration: 60 }
+                                    NumberAnimation { target: bmpRoot; property: "scale"; to: 1.22; duration: 60; easing.type: Easing.OutBack }
+                                }
+                                ParallelAnimation {
+                                    ColorAnimation { target: bmpRoot; property: "color"; to: Theme.surface_container_high; duration: 240 }
+                                    NumberAnimation { target: bmpRoot; property: "scale"; to: 1.0; duration: 240; easing.type: Easing.OutQuad }
+                                }
+                            }
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 1
+                                Text {
+                                    id: bmpIcon
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: 14
+                                    color: Theme.primary
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "+" + bmpRoot.points
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 8
+                                    font.weight: Font.Bold
+                                    color: Theme.on_surface_variant
+                                }
+                            }
+                        }
+
+                        Bumper {
+                            id: bump1
+                            x: Math.round(canvasArea.width * 0.24 - width / 2)
+                            y: Math.round(canvasArea.height * 0.42 - height / 2)
+                            points: 25
+                            icon: "󰓠"
+                        }
+
+                        Bumper {
+                            id: bump2
+                            x: Math.round(canvasArea.width * 0.50 - width / 2)
+                            y: Math.round(canvasArea.height * 0.28 - height / 2)
+                            points: 100
+                            icon: "󰓦"
+                        }
+
+                        Bumper {
+                            id: bump3
+                            x: Math.round(canvasArea.width * 0.76 - width / 2)
+                            y: Math.round(canvasArea.height * 0.42 - height / 2)
+                            points: 50
+                            icon: "󰓡"
+                        }
+
+                        RowLayout {
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.margins: 6
+                            spacing: 6
+
+                            Rectangle {
+                                height: 20
+                                implicitWidth: scText.implicitWidth + 12
+                                radius: Theme.radiusPill
+                                color: Theme.primary_overlay
+
+                                Text {
+                                    id: scText
+                                    anchors.centerIn: parent
+                                    text: "score: " + root.bounceScore
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                    color: Theme.primary
+                                }
+                            }
+
                             Text {
-                                text: "flick momentum"
+                                text: "click canvas to shockwave • drag ball to fling"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                                color: Theme.on_surface
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-                            Text {
-                                text: "(" + Math.round(dragCard1.x) + ", " + Math.round(dragCard1.y) + ")"
-                                font.family: Theme.fontMono
                                 font.pixelSize: 9
                                 color: Theme.on_surface_variant
-                                Layout.alignment: Qt.AlignHCenter
                             }
                         }
 
                         MouseArea {
-                            id: dragArea1
                             anchors.fill: parent
-                            drag.target: dragCard1
-                            drag.axis: Drag.XAndYAxis
-                            drag.minimumX: 0
-                            drag.maximumX: canvasArea.width - dragCard1.width
-                            drag.minimumY: 0
-                            drag.maximumY: canvasArea.height - dragCard1.height
-                            cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                            onClicked: (mouse) => {
+                                const dx = toyBall.x + toyBall.width / 2 - mouse.x;
+                                const dy = toyBall.y + toyBall.height / 2 - mouse.y;
+                                const dist = Math.max(16, Math.hypot(dx, dy));
+                                const force = Math.min(1800, 35000 / dist);
+                                toyBall.vx += (dx / dist) * force;
+                                toyBall.vy += (dy / dist) * force;
+                                root.bounceScore += 5;
+                            }
+                        }
 
-                            onPressed: (mouse) => {
-                                momentumAnim1.stop();
-                                dragCard1.lastX = mouse.x;
-                                dragCard1.lastY = mouse.y;
-                                dragCard1.lastTime = Date.now();
-                                dragCard1.velX = 0;
-                                dragCard1.velY = 0;
+                        Rectangle {
+                            id: toyBall
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: Theme.primary
+                            border.color: Theme.on_primary
+                            border.width: 2
+                            z: 10
+
+                            property real vx: 180
+                            property real vy: -240
+                            property real chaosAngle: 0
+                            property bool dragging: false
+                            property real dragStartX: 0
+                            property real dragStartY: 0
+                            property real lastDragTime: 0
+
+                            function resetBall() {
+                                x = Math.round(canvasArea.width / 2 - width / 2);
+                                y = Math.round(canvasArea.height * 0.75);
+                                vx = (Math.random() - 0.5) * 360;
+                                vy = -420;
                             }
 
-                            onPositionChanged: (mouse) => {
-                                let now = Date.now();
-                                let dt = Math.max(1, now - dragCard1.lastTime);
-                                dragCard1.velX = (mouse.x - dragCard1.lastX) / dt * 60;
-                                dragCard1.velY = (mouse.y - dragCard1.lastY) / dt * 60;
-                                dragCard1.lastX = mouse.x;
-                                dragCard1.lastY = mouse.y;
-                                dragCard1.lastTime = now;
+                            Component.onCompleted: resetBall()
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰮯"
+                                font.family: Theme.fontIcon
+                                font.pixelSize: 12
+                                color: Theme.on_primary
                             }
 
-                            onReleased: {
-                                if (root.springMode) {
-                                    dragCard1.animateTo(10, 10);
-                                } else {
-                                    // Glide with calculated velocity momentum
-                                    dragCard1.animateTo(dragCard1.x + dragCard1.velX * 4, dragCard1.y + dragCard1.velY * 4);
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+
+                                onPressed: (mouse) => {
+                                    toyBall.dragging = true;
+                                    toyBall.vx = 0;
+                                    toyBall.vy = 0;
+                                    toyBall.dragStartX = toyBall.x;
+                                    toyBall.dragStartY = toyBall.y;
+                                    toyBall.lastDragTime = Date.now();
+                                }
+
+                                onPositionChanged: (mouse) => {
+                                    if (!toyBall.dragging) return;
+                                    const p = mapToItem(canvasArea, mouse.x, mouse.y);
+                                    toyBall.x = Math.max(0, Math.min(canvasArea.width - toyBall.width, p.x - toyBall.width / 2));
+                                    toyBall.y = Math.max(0, Math.min(canvasArea.height - toyBall.height, p.y - toyBall.height / 2));
+                                }
+
+                                onReleased: (mouse) => {
+                                    if (!toyBall.dragging) return;
+                                    toyBall.dragging = false;
+                                    const dt = Math.max(16, Date.now() - toyBall.lastDragTime);
+                                    toyBall.vx = Math.max(-1400, Math.min(1400, ((toyBall.x - toyBall.dragStartX) / dt) * 1000));
+                                    toyBall.vy = Math.max(-1400, Math.min(1400, ((toyBall.y - toyBall.dragStartY) / dt) * 1000));
+                                    if (Math.hypot(toyBall.vx, toyBall.vy) < 60) {
+                                        toyBall.vy = -380;
+                                    }
+                                }
+                            }
+                        }
+
+                        Timer {
+                            interval: 16
+                            running: root.visible && root.activeSandboxMode === "toy" && !toyBall.dragging
+                            repeat: true
+                            onTriggered: {
+                                const dt = 0.016;
+                                let gx = 0, gy = 0;
+                                const gMag = 920;
+
+                                if (root.gravityMode === "normal") {
+                                    if (root.isBottom) gy = gMag;
+                                    else if (root.isTop) gy = -gMag;
+                                    else if (root.isLeft) gx = -gMag;
+                                    else if (root.isRight) gx = gMag;
+                                } else if (root.gravityMode === "reverse") {
+                                    if (root.isBottom) gy = -gMag;
+                                    else if (root.isTop) gy = gMag;
+                                    else if (root.isLeft) gx = gMag;
+                                    else if (root.isRight) gx = -gMag;
+                                } else if (root.gravityMode === "chaos") {
+                                    toyBall.chaosAngle += 0.08;
+                                    gx = Math.sin(toyBall.chaosAngle) * gMag;
+                                    gy = Math.cos(toyBall.chaosAngle * 1.3) * gMag;
+                                }
+
+                                toyBall.vx += gx * dt;
+                                toyBall.vy += gy * dt;
+
+                                toyBall.vx *= 0.994;
+                                toyBall.vy *= 0.994;
+
+                                toyBall.x += toyBall.vx * dt;
+                                toyBall.y += toyBall.vy * dt;
+
+                                const maxX = canvasArea.width - toyBall.width;
+                                const maxY = canvasArea.height - toyBall.height;
+                                const bounceLoss = 0.78;
+
+                                if (toyBall.x < 0) {
+                                    toyBall.x = 0;
+                                    toyBall.vx = -toyBall.vx * bounceLoss;
+                                    if (Math.abs(toyBall.vx) > 40) root.bounceScore += 1;
+                                } else if (toyBall.x > maxX) {
+                                    toyBall.x = maxX;
+                                    toyBall.vx = -toyBall.vx * bounceLoss;
+                                    if (Math.abs(toyBall.vx) > 40) root.bounceScore += 1;
+                                }
+
+                                if (toyBall.y < 0) {
+                                    toyBall.y = 0;
+                                    toyBall.vy = -toyBall.vy * bounceLoss;
+                                    if (Math.abs(toyBall.vy) > 40) root.bounceScore += 1;
+                                } else if (toyBall.y > maxY) {
+                                    toyBall.y = maxY;
+                                    toyBall.vy = -toyBall.vy * bounceLoss;
+                                    if (Math.abs(toyBall.vy) > 40) root.bounceScore += 1;
+                                }
+
+                                const bx = toyBall.x + toyBall.width / 2;
+                                const by = toyBall.y + toyBall.height / 2;
+                                const ballRadius = toyBall.width / 2;
+
+                                const bumpers = [bump1, bump2, bump3];
+                                for (let i = 0; i < bumpers.length; ++i) {
+                                    const b = bumpers[i];
+                                    const cx = b.x + b.width / 2;
+                                    const cy = b.y + b.height / 2;
+                                    const bRadius = b.width / 2;
+                                    const dist = Math.hypot(bx - cx, by - cy);
+                                    const minDist = ballRadius + bRadius;
+
+                                    if (dist < minDist && dist > 0.001) {
+                                        const nx = (bx - cx) / dist;
+                                        const ny = (by - cy) / dist;
+
+                                        toyBall.x = cx + nx * (minDist + 1) - ballRadius;
+                                        toyBall.y = cy + ny * (minDist + 1) - ballRadius;
+
+                                        const dot = toyBall.vx * nx + toyBall.vy * ny;
+                                        if (dot < 0) {
+                                            toyBall.vx -= 1.88 * dot * nx;
+                                            toyBall.vy -= 1.88 * dot * ny;
+                                        }
+
+                                        toyBall.vx += nx * 140;
+                                        toyBall.vy += ny * 140;
+
+                                        b.pulse();
+                                        root.bounceScore += b.points;
+                                    }
                                 }
                             }
                         }
                     }
 
-                    // Momentum Draggable Card 2 (DJ)
-                    Rectangle {
-                        id: dragCard2
-                        x: 145
-                        y: 10
+                    component PhysicsCard: Rectangle {
+                        id: pcRoot
+                        property int homeX: 10
+                        property int homeY: 10
+                        property alias icon: pcIcon.text
+                        property alias title: pcTitle.text
+                        property color accentColor: Theme.primary
+
                         width: 120
-                        height: 90
+                        height: 88
                         radius: Theme.radiusMd
                         color: Theme.surface_container_highest
-                        border.color: dragArea2.drag.active ? Theme.warn : Theme.widgetBorder
+                        border.color: pcMouse.drag.active ? accentColor : Theme.widgetBorder
                         border.width: 1
-                        z: dragArea2.drag.active ? 10 : 1
+                        z: pcMouse.drag.active ? 20 : 1
 
-                        property real lastX: 0
-                        property real lastY: 0
+                        property real lastCanvasX: 0
+                        property real lastCanvasY: 0
                         property real lastTime: 0
                         property real velX: 0
                         property real velY: 0
 
+                        function snapHome() {
+                            momentumAnim.stop();
+                            animX.to = Math.max(0, Math.min(canvasArea.width - width, homeX));
+                            animY.to = Math.max(0, Math.min(canvasArea.height - height, homeY));
+                            animX.easing.type = Easing.OutBack;
+                            animY.easing.type = Easing.OutBack;
+                            animX.duration = Theme.animSlow;
+                            animY.duration = Theme.animSlow;
+                            momentumAnim.restart();
+                        }
+
                         function animateTo(targetX, targetY) {
-                            animX2.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
-                            animY2.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
-                            momentumAnim2.restart();
+                            momentumAnim.stop();
+                            animX.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
+                            animY.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
+                            animX.easing.type = Easing.OutCubic;
+                            animY.easing.type = Easing.OutCubic;
+                            animX.duration = Theme.animNormal;
+                            animY.duration = Theme.animNormal;
+                            momentumAnim.restart();
                         }
 
                         ParallelAnimation {
-                            id: momentumAnim2
-                            NumberAnimation { id: animX2; target: dragCard2; property: "x"; duration: Theme.animSlow; easing.type: Easing.OutQuad }
-                            NumberAnimation { id: animY2; target: dragCard2; property: "y"; duration: Theme.animSlow; easing.type: Easing.OutQuad }
+                            id: momentumAnim
+                            NumberAnimation { id: animX; target: pcRoot; property: "x" }
+                            NumberAnimation { id: animY; target: pcRoot; property: "y" }
                         }
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            spacing: 4
+                            spacing: 3
 
                             Text {
-                                text: "󰈈"
+                                id: pcIcon
                                 font.family: Theme.fontIcon
                                 font.pixelSize: 18
-                                color: Theme.warn
+                                color: pcRoot.accentColor
                                 Layout.alignment: Qt.AlignHCenter
                             }
                             Text {
-                                text: "freedom card"
+                                id: pcTitle
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
@@ -463,7 +702,7 @@ PanelWindow {
                                 Layout.alignment: Qt.AlignHCenter
                             }
                             Text {
-                                text: "(" + Math.round(dragCard2.x) + ", " + Math.round(dragCard2.y) + ")"
+                                text: "(" + Math.round(pcRoot.x) + ", " + Math.round(pcRoot.y) + ")"
                                 font.family: Theme.fontMono
                                 font.pixelSize: 9
                                 color: Theme.on_surface_variant
@@ -472,146 +711,93 @@ PanelWindow {
                         }
 
                         MouseArea {
-                            id: dragArea2
+                            id: pcMouse
                             anchors.fill: parent
-                            drag.target: dragCard2
+                            drag.target: pcRoot
                             drag.axis: Drag.XAndYAxis
                             drag.minimumX: 0
-                            drag.maximumX: canvasArea.width - dragCard2.width
+                            drag.maximumX: canvasArea.width - pcRoot.width
                             drag.minimumY: 0
-                            drag.maximumY: canvasArea.height - dragCard2.height
+                            drag.maximumY: canvasArea.height - pcRoot.height
                             cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
-                            onPressed: (mouse) => {
-                                momentumAnim2.stop();
-                                dragCard2.lastX = mouse.x;
-                                dragCard2.lastY = mouse.y;
-                                dragCard2.lastTime = Date.now();
-                                dragCard2.velX = 0;
-                                dragCard2.velY = 0;
+                            onPressed: {
+                                momentumAnim.stop();
+                                pcRoot.lastCanvasX = pcRoot.x;
+                                pcRoot.lastCanvasY = pcRoot.y;
+                                pcRoot.lastTime = Date.now();
+                                pcRoot.velX = 0;
+                                pcRoot.velY = 0;
                             }
 
-                            onPositionChanged: (mouse) => {
-                                let now = Date.now();
-                                let dt = Math.max(1, now - dragCard2.lastTime);
-                                dragCard2.velX = (mouse.x - dragCard2.lastX) / dt * 60;
-                                dragCard2.velY = (mouse.y - dragCard2.lastY) / dt * 60;
-                                dragCard2.lastX = mouse.x;
-                                dragCard2.lastY = mouse.y;
-                                dragCard2.lastTime = now;
+                            // calculate delta on parent canvas coordinate space, not self-canceling local mouse
+                            onPositionChanged: {
+                                const now = Date.now();
+                                const dt = Math.max(8, now - pcRoot.lastTime);
+                                const vx = ((pcRoot.x - pcRoot.lastCanvasX) / dt) * 1000;
+                                const vy = ((pcRoot.y - pcRoot.lastCanvasY) / dt) * 1000;
+                                pcRoot.velX = pcRoot.velX * 0.25 + vx * 0.75;
+                                pcRoot.velY = pcRoot.velY * 0.25 + vy * 0.75;
+                                pcRoot.lastCanvasX = pcRoot.x;
+                                pcRoot.lastCanvasY = pcRoot.y;
+                                pcRoot.lastTime = now;
                             }
 
                             onReleased: {
+                                if (Date.now() - pcRoot.lastTime > 80) {
+                                    pcRoot.velX = 0;
+                                    pcRoot.velY = 0;
+                                }
+
                                 if (root.springMode) {
-                                    dragCard2.animateTo(145, 10);
+                                    pcRoot.snapHome();
                                 } else {
-                                    dragCard2.animateTo(dragCard2.x + dragCard2.velX * 5, dragCard2.y + dragCard2.velY * 5);
+                                    pcRoot.animateTo(pcRoot.x + pcRoot.velX * 0.22, pcRoot.y + pcRoot.velY * 0.22);
                                 }
                             }
                         }
                     }
 
-                    // Momentum Draggable Card 3 (Media Pill)
-                    Rectangle {
-                        id: dragCard3
-                        x: 280
-                        y: 10
-                        width: 120
-                        height: 90
-                        radius: Theme.radiusMd
-                        color: Theme.surface_container_highest
-                        border.color: dragArea3.drag.active ? Theme.secondary : Theme.widgetBorder
-                        border.width: 1
-                        z: dragArea3.drag.active ? 10 : 1
+                    Item {
+                        id: cardsLayer
+                        anchors.fill: parent
+                        visible: root.activeSandboxMode === "cards"
 
-                        property real lastX: 0
-                        property real lastY: 0
-                        property real lastTime: 0
-                        property real velX: 0
-                        property real velY: 0
-
-                        function animateTo(targetX, targetY) {
-                            animX3.to = Math.max(0, Math.min(canvasArea.width - width, targetX));
-                            animY3.to = Math.max(0, Math.min(canvasArea.height - height, targetY));
-                            momentumAnim3.restart();
+                        PhysicsCard {
+                            id: dragCard1
+                            homeX: 10
+                            homeY: 10
+                            x: homeX
+                            y: homeY
+                            icon: "󰁕"
+                            title: "flick momentum"
+                            accentColor: Theme.primary
                         }
 
-                        ParallelAnimation {
-                            id: momentumAnim3
-                            NumberAnimation { id: animX3; target: dragCard3; property: "x"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
-                            NumberAnimation { id: animY3; target: dragCard3; property: "y"; duration: Theme.animNormal; easing.type: Easing.OutQuad }
+                        PhysicsCard {
+                            id: dragCard2
+                            homeX: root.isVertical ? 10 : 145
+                            homeY: root.isVertical ? 106 : 10
+                            x: homeX
+                            y: homeY
+                            icon: "󰈈"
+                            title: "freedom card"
+                            accentColor: Theme.warn
                         }
 
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            Text {
-                                text: Theme.iconMusic
-                                font.family: Theme.fontIcon
-                                font.pixelSize: 18
-                                color: Theme.secondary
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-                            Text {
-                                text: "media pill"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 10
-                                font.weight: Font.Bold
-                                color: Theme.on_surface
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-                            Text {
-                                text: "(" + Math.round(dragCard3.x) + ", " + Math.round(dragCard3.y) + ")"
-                                font.family: Theme.fontMono
-                                font.pixelSize: 9
-                                color: Theme.on_surface_variant
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-                        }
-
-                        MouseArea {
-                            id: dragArea3
-                            anchors.fill: parent
-                            drag.target: dragCard3
-                            drag.axis: Drag.XAndYAxis
-                            drag.minimumX: 0
-                            drag.maximumX: canvasArea.width - dragCard3.width
-                            drag.minimumY: 0
-                            drag.maximumY: canvasArea.height - dragCard3.height
-                            cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-
-                            onPressed: (mouse) => {
-                                momentumAnim3.stop();
-                                dragCard3.lastX = mouse.x;
-                                dragCard3.lastY = mouse.y;
-                                dragCard3.lastTime = Date.now();
-                                dragCard3.velX = 0;
-                                dragCard3.velY = 0;
-                            }
-
-                            onPositionChanged: (mouse) => {
-                                let now = Date.now();
-                                let dt = Math.max(1, now - dragCard3.lastTime);
-                                dragCard3.velX = (mouse.x - dragCard3.lastX) / dt * 60;
-                                dragCard3.velY = (mouse.y - dragCard3.lastY) / dt * 60;
-                                dragCard3.lastX = mouse.x;
-                                dragCard3.lastY = mouse.y;
-                                dragCard3.lastTime = now;
-                            }
-
-                            onReleased: {
-                                if (root.springMode) {
-                                    dragCard3.animateTo(280, 10);
-                                } else {
-                                    dragCard3.animateTo(dragCard3.x + dragCard3.velX * 4, dragCard3.y + dragCard3.velY * 4);
-                                }
-                            }
+                        PhysicsCard {
+                            id: dragCard3
+                            homeX: root.isVertical ? 10 : 280
+                            homeY: root.isVertical ? 202 : 10
+                            x: homeX
+                            y: homeY
+                            icon: Theme.iconMusic
+                            title: "media pill"
+                            accentColor: Theme.secondary
                         }
                     }
                 }
 
-                // Active Curve & Tension Controls Footer
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -626,7 +812,6 @@ PanelWindow {
 
                     RowLayout {
                         spacing: 4
-
                         Repeater {
                             model: [
                                 { id: "hyprland", label: "hypr" },
@@ -634,7 +819,6 @@ PanelWindow {
                                 { id: "chill", label: "chill" },
                                 { id: "instant", label: "zero" }
                             ]
-
                             delegate: Rectangle {
                                 required property var modelData
                                 width: 48

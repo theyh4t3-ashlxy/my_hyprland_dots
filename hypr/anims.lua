@@ -1,13 +1,11 @@
--- chaotic punch that peaks around the halfway mark and cushions the landing
 hl.curve("superSnappy", {
     type = "bezier",
-    points = { { 0.18, 1.25 }, { 0.4, 1.0 } },
+    points = { { 0.18, 1.55 }, { 0.6, 1.0 } },
 })
 
--- crisp flick that rolls out its momentum instead of freezing mid-slide
 hl.curve("smoothOut", {
     type = "bezier",
-    points = { { 0.22, 1.0 }, { 0.42, 1.0 } },
+    points = { { 0.22, 1.0 }, { 0.68, 1.0 } },
 })
 
 hl.curve("linear", {
@@ -25,15 +23,23 @@ hl.animation({
 hl.animation({
     leaf = "windows",
     enabled = true,
-    speed = 3.6,
+    speed = 3.4,
     bezier = "superSnappy",
+    style = "popin 80%",
+})
+
+hl.animation({
+    leaf = "windowsOut",
+    enabled = true,
+    speed = 2.0,
+    bezier = "smoothOut",
     style = "popin 80%",
 })
 
 hl.animation({
     leaf = "workspaces",
     enabled = true,
-    speed = 3.6,
+    speed = 3.4,
     bezier = "smoothOut",
     style = "slidefade 15%",
 })
@@ -44,6 +50,13 @@ hl.animation({
     speed = 2.4,
     bezier = "smoothOut",
     style = "fade",
+})
+
+hl.animation({
+    leaf = "fade",
+    enabled = true,
+    speed = 2.2,
+    bezier = "smoothOut",
 })
 
 hl.animation({

@@ -50,6 +50,25 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestBluetoothToggle() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = !popup.open;
+        }
+        function onRequestBluetoothOpen() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = true;
+        }
+        function onRequestBluetoothClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
         cardWidth: 420

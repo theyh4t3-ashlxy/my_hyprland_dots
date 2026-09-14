@@ -110,30 +110,6 @@ Rectangle {
         screen: windowTitleRoot.barScreen
     }
 
-    Timer {
-        id: hoverOpenTimer
-        interval: Settings?.hoverDelay ?? 220
-        repeat: false
-        onTriggered: {
-            if (wtMouse.containsMouse && (Settings?.hoverToOpen ?? true)) {
-                let pt = windowTitleRoot.mapToItem(null, 0, 0);
-                winPopup.targetRelativeX = pt.x + (windowTitleRoot.width / 2);
-                winPopup.open = true;
-            }
-        }
-    }
-
-    Timer {
-        id: hoverCloseTimer
-        interval: 350
-        repeat: false
-        onTriggered: {
-            if (!wtMouse.containsMouse && !winPopup.cardHovered && (Settings?.hoverAutoClose ?? true) && !winPopup.pinned) {
-                winPopup.open = false;
-            }
-        }
-    }
-
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 10
@@ -181,30 +157,11 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         z: 10
-        onEntered: {
-            hoverCloseTimer.stop();
-            hoverOpenTimer.restart();
-        }
-        onExited: {
-            hoverOpenTimer.stop();
-            hoverCloseTimer.restart();
-        }
         onClicked: {
             let pt = windowTitleRoot.mapToItem(null, 0, 0);
-            winPopup.targetRelativeX = pt.x + (windowTitleRoot.width / 2);
+            winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
             winPopup.pinned = !winPopup.open;
             winPopup.open = !winPopup.open;
-        }
-    }
-
-    Connections {
-        target: winPopup
-        function onCardHoveredChanged() {
-            if (winPopup.cardHovered) {
-                hoverCloseTimer.stop();
-            } else if (!wtMouse.containsMouse) {
-                hoverCloseTimer.restart();
-            }
         }
     }
 
@@ -214,8 +171,21 @@ Rectangle {
             if (!windowTitleRoot.barScreen || Quickshell.screens.length <= 1 || (windowTitleRoot.barMonitor && Hyprland.focusedMonitor && windowTitleRoot.barMonitor.id === Hyprland.focusedMonitor.id)) {
                 let pt = windowTitleRoot.mapToItem(null, 0, 0);
                 winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
+                winPopup.pinned = !winPopup.open;
                 winPopup.open = !winPopup.open;
             }
+        }
+        function onRequestWindowTitleOpen() {
+            if (!windowTitleRoot.barScreen || Quickshell.screens.length <= 1 || (windowTitleRoot.barMonitor && Hyprland.focusedMonitor && windowTitleRoot.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                let pt = windowTitleRoot.mapToItem(null, 0, 0);
+                winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
+                winPopup.pinned = true;
+                winPopup.open = true;
+            }
+        }
+        function onRequestWindowTitleClose() {
+            winPopup.pinned = false;
+            winPopup.open = false;
         }
     }
 }

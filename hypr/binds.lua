@@ -1,65 +1,88 @@
 local home = os.getenv("HOME") or ""
-local mainMod = "WIN" -- calling it super is pure copium bill gates won anyway
+local mod = "WIN"
+local term = "uwsm app -- kitty"
 
--- the wiki thinks we are too fragile for uwsm so i run it out of spite
-local terminal = "uwsm app -- kitty"
+-- helpers to stop manual string concat abuse
+local function bind(keys, dsp, opts)
+	hl.bind(keys, dsp, opts)
+end
 
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd(terminal))
+local function mbind(key, dsp, opts)
+	hl.bind(mod .. " + " .. key, dsp, opts)
+end
 
-hl.bind(mainMod .. " + Q", hl.dsp.window.close())
-hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
-hl.bind(mainMod .. " + SPACE", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + SHIFT + SPACE", function()
-	-- closures turn dispatchers into inert garbage without hl.dispatch()
+local function qs(cmd)
+	return hl.dsp.exec_cmd("qs ipc call " .. cmd)
+end
+
+-- core window management
+mbind("T", hl.dsp.exec_cmd(term))
+mbind("Q", hl.dsp.window.close())
+mbind("F", hl.dsp.window.fullscreen())
+mbind("SPACE", hl.dsp.window.float({ action = "toggle" }))
+mbind("SHIFT + SPACE", function()
 	hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
 	hl.dispatch(hl.dsp.window.pin())
 end)
 
--- vaxry please look away
-hl.bind(mainMod .. " + SHIFT + END", hl.dsp.exec_cmd("uwsm stop || hyprctl dispatch exit"))
+-- session & quickshell controls
+mbind("SHIFT + END", hl.dsp.exec_cmd("uwsm stop"))
+mbind("END", qs("lock lock"))
+mbind("D", qs("launcher toggle"))
+bind("Print", qs("screenshot open"))
 
--- ijkl because hjkl was engineered by someone with mangled wrists
-hl.bind(mainMod .. " + I", hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "down" }))
-hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
+-- direction map (the anti-hjkl layout)
+local directions = {
+	I = "up",
+	J = "left",
+	K = "down",
+	L = "right",
+}
 
-hl.bind(mainMod .. " + SHIFT + I", hl.dsp.window.move({ direction = "up" }))
-hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "left" }))
-hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "down" }))
-hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+for key, dir in pairs(directions) do
+	mbind(key, hl.dsp.focus({ direction = dir }))
+	mbind("SHIFT + " .. key, hl.dsp.window.move({ direction = dir }))
+end
 
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+-- mouse bindings
+mbind("mouse:272", hl.dsp.window.drag(), { mouse = true })
+mbind("mouse:273", hl.dsp.window.resize(), { mouse = true })
 
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
+-- repeating audio / backlight keys
+local repeating_keys = {
+	XF86AudioRaiseVolume = "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
+	XF86AudioLowerVolume = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+	XF86MonBrightnessUp = "brightnessctl set +5%",
+	XF86MonBrightnessDown = "brightnessctl set 5%-",
+}
 
--- retina incinerator toggle
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { locked = true, repeating = true })
+for key, cmd in pairs(repeating_keys) do
+	bind(key, hl.dsp.exec_cmd(cmd), { locked = true, repeating = true })
+end
 
-hl.bind("XF86WLAN", hl.dsp.exec_cmd("nmcli radio wifi toggle"), { locked = true })
-hl.bind("XF86Display", hl.dsp.exec_cmd("hyprctl dispatch dpms toggle"), { locked = true })
+-- hardware toggles
+local single_toggles = {
+	XF86AudioMute = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+	XF86AudioMicMute = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+	XF86WLAN = "nmcli radio wifi toggle",
+	XF86Display = "hyprctl dispatch dpms toggle",
+	XF86Favorites = "qs ipc call lock lock",
+	XF86NotificationCenter = "qs ipc call notifs toggle",
+	XF86PickupPhone = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+	XF86HangupPhone = "playerctl play-pause",
+}
 
--- useless corporate lenovo keys hijacked into doing actual work
-hl.bind("XF86Favorites", hl.dsp.exec_cmd("qs ipc call lock lock"))
-hl.bind("XF86NotificationCenter", hl.dsp.exec_cmd("qs ipc call notifs toggle"))
-hl.bind("XF86PickupPhone", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-hl.bind("XF86HangupPhone", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+for key, cmd in pairs(single_toggles) do
+	bind(key, hl.dsp.exec_cmd(cmd), { locked = true })
+end
 
-hl.bind(mainMod .. " + END", hl.dsp.exec_cmd("qs ipc call lock lock"))
-hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("qs ipc call launcher toggle"))
+-- scripts using the resolved home path
+mbind("ALT + W", hl.dsp.exec_cmd("python3 " .. home .. "/.config/quickshell/scripts/wallpaper.py random all"))
+mbind("ALT + S", hl.dsp.exec_cmd(home .. "/.local/bin/qs-switch toggle"))
 
-hl.bind("Print", hl.dsp.exec_cmd("qs ipc call screenshot open"))
-
-hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd("python3 " .. home .. "/.config/quickshell/scripts/wallpaper.py random all"))
-hl.bind(mainMod .. " + ALT + S", hl.dsp.exec_cmd("/home/ashley/.local/bin/qs-switch toggle"))
-
-for i = 1, 9 do
-	local ws = tostring(i)
-	hl.bind(mainMod .. " + " .. i, hl.dsp.focus({ workspace = ws }))
-	hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = ws }))
+-- workspaces 1 to 10 (1-9, 0)
+for i = 1, 10 do
+	local key = tostring(i % 10)
+	mbind(key, hl.dsp.focus({ workspace = i }))
+	mbind("SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
 end

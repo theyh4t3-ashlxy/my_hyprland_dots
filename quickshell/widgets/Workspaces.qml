@@ -245,34 +245,37 @@ Rectangle {
         }
     }
 
-    Timer {
-        id: hoverOpenTimer
-        interval: Settings?.hoverDelay ?? 220
-        repeat: false
-        onTriggered: {
-            if (wsMouse.containsMouse && (Settings?.hoverToOpen ?? true)) {
-                if (Theme.isVertical) {
-                    popup.targetRelativeY = wsContainer.mapToItem(null, 0, 0).y + (wsContainer.height / 2);
-                } else {
-                    popup.targetRelativeX = wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2);
-                }
-                popup.open = true;
+    Connections {
+        target: Settings
+        function onRequestWorkspacesToggle() {
+            if (Theme.isVertical) {
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
+            } else {
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
             }
+            popup.pinned = !popup.open;
+            popup.open = !popup.open;
+        }
+        function onRequestWorkspacesOpen() {
+            if (Theme.isVertical) {
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
+            } else {
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
+            }
+            popup.pinned = true;
+            popup.open = true;
+        }
+        function onRequestWorkspacesClose() {
+            popup.pinned = false;
+            popup.open = false;
         }
     }
 
-    Timer {
-        id: hoverCloseTimer
-        interval: 350
-        repeat: false
-        onTriggered: {
-            if (!wsMouse.containsMouse && !popup.cardHovered && (Settings?.hoverAutoClose ?? true) && !popup.pinned) {
-                popup.open = false;
-            }
-        }
-    }
-
-    // click to open popup, scroll to cycle workspaces, hover to preview
+    // click to open popup, scroll to cycle workspaces
     MouseArea {
         id: wsMouse
         anchors.fill: parent
@@ -280,20 +283,13 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-        onEntered: {
-            hoverCloseTimer.stop();
-            hoverOpenTimer.restart();
-        }
-        onExited: {
-            hoverOpenTimer.stop();
-            hoverCloseTimer.restart();
-        }
-
         onClicked: (mouse) => {
             if (Theme.isVertical) {
-                popup.targetRelativeY = wsContainer.mapToItem(null, 0, 0).y + (wsContainer.height / 2);
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
             } else {
-                popup.targetRelativeX = wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2);
+                let pt = wsContainer.mapToItem(null, 0, 0);
+                popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
             }
             popup.pinned = !popup.open;
             popup.open = !popup.open;
@@ -308,17 +304,6 @@ Rectangle {
             } else if (delta > 0) {
                 // "r-1" scrolls backward relative on monitor with wrap
                 wsContainer.dispatchWs("r-1");
-            }
-        }
-    }
-
-    Connections {
-        target: popup
-        function onCardHoveredChanged() {
-            if (popup.cardHovered) {
-                hoverCloseTimer.stop();
-            } else if (!wsMouse.containsMouse) {
-                hoverCloseTimer.restart();
             }
         }
     }

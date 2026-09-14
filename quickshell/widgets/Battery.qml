@@ -85,82 +85,20 @@ Rectangle {
         device: container.device
     }
 
-    Timer {
-        id: hoverOpenTimer
-        interval: Settings?.hoverDelay ?? 220
-        repeat: false
-        onTriggered: {
-            if (bMouse.containsMouse && (Settings?.hoverToOpen ?? true)) {
-                let pt = container.mapToItem(null, 0, 0);
-                if (container.isVertical) {
-                    batPopup.targetRelativeY = pt.y + (container.height / 2);
-                } else {
-                    batPopup.targetRelativeX = pt.x + (container.width / 2);
-                }
-                batPopup.open = true;
-            }
-        }
-    }
-
-    readonly property bool isPillHovered: (bMouse.containsMouse || bHover.hovered)
-
-    Timer {
-        id: hoverCloseTimer
-        interval: 350
-        repeat: false
-        onTriggered: {
-            if (!container.isPillHovered && !batPopup.cardHovered && (Settings?.hoverAutoClose ?? true) && !batPopup.pinned) {
-                batPopup.open = false;
-            }
-        }
-    }
-
-    HoverHandler {
-        id: bHover
-        onHoveredChanged: {
-            if (hovered) {
-                hoverCloseTimer.stop();
-                hoverOpenTimer.restart();
-            } else {
-                hoverOpenTimer.stop();
-                hoverCloseTimer.restart();
-            }
-        }
-    }
-
     MouseArea {
         id: bMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onEntered: {
-            hoverCloseTimer.stop();
-            hoverOpenTimer.restart();
-        }
-        onExited: {
-            hoverOpenTimer.stop();
-            hoverCloseTimer.restart();
-        }
         onClicked: {
             let pt = container.mapToItem(null, 0, 0);
             if (container.isVertical) {
-                batPopup.targetRelativeY = pt.y + (container.height / 2);
+                batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
             } else {
-                batPopup.targetRelativeX = pt.x + (container.width / 2);
+                batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
             }
             batPopup.pinned = !batPopup.open;
             batPopup.open = !batPopup.open;
-        }
-    }
-
-    Connections {
-        target: batPopup
-        function onCardHoveredChanged() {
-            if (batPopup.cardHovered) {
-                hoverCloseTimer.stop();
-            } else if (!container.isPillHovered) {
-                hoverCloseTimer.restart();
-            }
         }
     }
 
@@ -174,8 +112,25 @@ Rectangle {
                 } else {
                     batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
                 }
+                batPopup.pinned = !batPopup.open;
                 batPopup.open = !batPopup.open;
             }
+        }
+        function onRequestBatteryOpen() {
+            if (!container.barScreen || Quickshell.screens.length <= 1 || (container.barMonitor && Hyprland.focusedMonitor && container.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                let pt = container.mapToItem(null, 0, 0);
+                if (container.isVertical) {
+                    batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
+                } else {
+                    batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+                }
+                batPopup.pinned = true;
+                batPopup.open = true;
+            }
+        }
+        function onRequestBatteryClose() {
+            batPopup.pinned = false;
+            batPopup.open = false;
         }
     }
 }

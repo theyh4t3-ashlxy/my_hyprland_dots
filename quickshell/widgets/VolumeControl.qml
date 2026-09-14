@@ -46,9 +46,9 @@ Rectangle {
             opacity: (vMouse.containsMouse || popup.open) ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
             text: {
-                if (volRoot.muted) return Theme.getVibe(Theme.kaoAnger + " shh", "󰝟 muted", "muted");
+                if (volRoot.muted) return Theme.getVibe(Theme.kaoAnger + " shh", "muted", "muted");
                 let pct = Math.round(volRoot.vol * 100);
-                if (pct > 100) return Theme.getVibe(Theme.kaoPanic + " " + pct + "%", "󰕾 " + pct + "%", pct + "%");
+                if (pct > 100) return Theme.getVibe(Theme.kaoPanic + " " + pct + "%", pct + "%", pct + "%");
                 return pct + "%";
             }
             font.family: Theme.fontFamily
@@ -94,6 +94,25 @@ Rectangle {
                     sink.audio.volume + (wheel.angleDelta.y > 0 ? step : -step)));
                 sink.audio.muted = false;
             }
+        }
+    }
+
+    Connections {
+        target: Settings
+        function onRequestVolumeToggle() {
+            let pt = volRoot.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (volRoot.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (volRoot.height / 2)) : 0;
+            popup.open = !popup.open;
+        }
+        function onRequestVolumeOpen() {
+            let pt = volRoot.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (volRoot.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (volRoot.height / 2)) : 0;
+            popup.open = true;
+        }
+        function onRequestVolumeClose() {
+            popup.open = false;
         }
     }
 

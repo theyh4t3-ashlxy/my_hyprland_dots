@@ -74,105 +74,17 @@ PanelWindow {
         width: 360
         height: Math.max(1, toastCol.implicitHeight)
 
-        x: isLeft ? Theme.barHeight
-         : isRight ? (root.width - Theme.barHeight - width)
-         : (root.width - width - root.scoopW - 20)
+        x: isLeft ? (Theme.barHeight + 16)
+         : isRight ? (root.width - Theme.barHeight - width - 16)
+         : (root.width - width - 16)
 
-        y: isBottom ? (root.height - Theme.barHeight - height)
-         : isTop ? Theme.barHeight
-         : (20 + root.scoopH)
+        y: isBottom ? (root.height - Theme.barHeight - height - 16)
+         : isTop ? (Theme.barHeight + 16)
+         : 16
 
         Behavior on x { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
         Behavior on height { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
-
-        // top bar welding scoops
-        ConcaveCorner {
-            x: -root.scoopW
-            y: 0
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: true
-            flipY: false
-            visible: root.isTop && root.toastList.length > 0
-        }
-        ConcaveCorner {
-            x: toastBox.width
-            y: 0
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: false
-            flipY: false
-            visible: root.isTop && root.toastList.length > 0
-        }
-
-        // bottom bar welding scoops
-        ConcaveCorner {
-            x: -root.scoopW
-            y: toastBox.height - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: true
-            flipY: true
-            visible: root.isBottom && root.toastList.length > 0
-        }
-        ConcaveCorner {
-            x: toastBox.width
-            y: toastBox.height - root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: false
-            flipY: true
-            visible: root.isBottom && root.toastList.length > 0
-        }
-
-        // left bar welding scoops
-        ConcaveCorner {
-            x: 0
-            y: -root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: false
-            flipY: true
-            visible: root.isLeft && root.toastList.length > 0
-        }
-        ConcaveCorner {
-            x: 0
-            y: toastBox.height
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: false
-            flipY: false
-            visible: root.isLeft && root.toastList.length > 0
-        }
-
-        // right bar welding scoops
-        ConcaveCorner {
-            x: toastBox.width - root.scoopW
-            y: -root.scoopH
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: true
-            flipY: true
-            visible: root.isRight && root.toastList.length > 0
-        }
-        ConcaveCorner {
-            x: toastBox.width - root.scoopW
-            y: toastBox.height
-            radiusX: root.scoopW
-            radiusY: root.scoopH
-            fillColor: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-            flipX: true
-            flipY: false
-            visible: root.isRight && root.toastList.length > 0
-        }
 
         ColumnLayout {
             id: toastCol
@@ -187,11 +99,6 @@ PanelWindow {
                     required property int index
                     notificationItem: modelData
                     Layout.fillWidth: true
-
-                    dockTop: root.isTop && index === 0
-                    dockBottom: root.isBottom && index === (root.toastList.length - 1)
-                    dockLeft: root.isLeft
-                    dockRight: root.isRight
 
                     onDismissed: {
                         root.removeToast(modelData);

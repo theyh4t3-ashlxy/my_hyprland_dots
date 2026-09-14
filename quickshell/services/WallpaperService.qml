@@ -66,7 +66,9 @@ QtObject {
         let mon = monitor || targetMonitor || "all";
         let panscan = "" + (Settings.mpvPanscan ?? 1.0);
         let audio = Settings.mpvAudio ? "true" : "false";
-        return [tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio];
+        let resize = Settings.awwwResize ?? "crop";
+        let pos = Settings.awwwTransitionPos ?? "center";
+        return [tType, tAngle, tStep, tDur, tFps, tFilter, mode, scheme, mon, panscan, audio, resize, pos];
     }
 
     function scanLocalWallpapers() {

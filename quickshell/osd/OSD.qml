@@ -27,9 +27,8 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
-    // pass-through clicks when hidden, capture when revealed
     mask: Region {
-        item: revealed ? osdCard : null
+        item: (revealed || osdCard.opacity > 0) ? osdCard : null
     }
 
     property bool _ready: false
@@ -44,9 +43,8 @@ PanelWindow {
 
     property var sink: Pipewire.defaultAudioSink
     property var source: Pipewire.defaultAudioSource
-    PwObjectTracker { objects: [osdRoot.sink, osdRoot.source].filter(Boolean) }
+    PwObjectTracker { objects: [osdRoot.sink, osdRoot.source] }
 
-    // initial quiet period so startup bindings don't flash the osd
     Timer {
         id: initTimer
         interval: 1200
@@ -55,7 +53,6 @@ PanelWindow {
         onTriggered: osdRoot._ready = true
     }
 
-    // auto-hide timeout
     Timer {
         id: dismissTimer
         interval: 1800
@@ -73,7 +70,6 @@ PanelWindow {
         dismissTimer.restart();
     }
 
-    // --- pipewire listeners ---
     Connections {
         target: osdRoot.sink?.audio ?? null
         function onVolumeChanged() {
@@ -114,7 +110,6 @@ PanelWindow {
         }
     }
 
-    // --- brightness listener ---
     Connections {
         target: BrightnessService
         function onBrightnessChanged(pct) {
@@ -123,10 +118,11 @@ PanelWindow {
         }
     }
 
-    // --- osd card item ---
     Rectangle {
         id: osdCard
         anchors.centerIn: parent
+        // verticalCenterOffset preserves anchors while letting us slide
+        anchors.verticalCenterOffset: osdRoot.revealed ? 0 : 14
         width: 250
         height: 52
         radius: Theme.radiusPill
@@ -134,29 +130,36 @@ PanelWindow {
         border.color: osdRoot.isOverAmp ? Theme.warn : Theme.widgetBorder
         border.width: 1
 
-        // physics: slide up and pop in on show, smoothly glide down on dismiss
         opacity: osdRoot.revealed ? 1.0 : 0.0
         scale: osdRoot.revealed ? 1.0 : 0.92
-        y: osdRoot.revealed ? 0 : 14
 
         Behavior on opacity { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
         Behavior on scale   { NumberAnimation { duration: Theme.animNormal; easing.type: osdRoot.revealed ? Easing.OutBack : Easing.InCubic } }
-        Behavior on y       { NumberAnimation { duration: Theme.animNormal; easing.type: osdRoot.revealed ? Easing.OutCubic : Easing.InCubic } }
+        Behavior on anchors.verticalCenterOffset {
+            NumberAnimation {
+                duration: Theme.animNormal
+                easing.type: osdRoot.revealed ? Easing.OutCubic : Easing.InCubic
+            }
+        }
 
-        // interactive fine-tuning: pause timer on hover, scroll to adjust value
         MouseArea {
+            id: cardMouseArea
             anchors.fill: parent
             hoverEnabled: true
             onEntered: dismissTimer.stop()
             onExited: if (osdRoot.revealed) dismissTimer.restart()
             onWheel: (wheel) => {
-                dismissTimer.restart();
+                if (wheel.angleDelta.y === 0) return;
+                // keep timer paused while cursor lingers
+                if (!cardMouseArea.containsMouse) dismissTimer.restart();
+
                 let delta = wheel.angleDelta.y > 0 ? 0.02 : -0.02;
 
                 if (osdRoot.osdType.startsWith("volume") && osdRoot.sink?.audio) {
-                    osdRoot.sink.audio.volume = Math.max(0, osdRoot.sink.audio.volume + delta);
+                    // clamp so you dont nuke your hardware
+                    osdRoot.sink.audio.volume = Math.min(1.5, Math.max(0, osdRoot.sink.audio.volume + delta));
                 } else if (osdRoot.osdType === "mic" && osdRoot.source?.audio) {
-                    osdRoot.source.audio.volume = Math.max(0, osdRoot.source.audio.volume + delta);
+                    osdRoot.source.audio.volume = Math.min(1.0, Math.max(0, osdRoot.source.audio.volume + delta));
                 }
             }
         }
@@ -166,7 +169,6 @@ PanelWindow {
             anchors.margins: 10
             spacing: 12
 
-            // icon container
             Rectangle {
                 width: 32
                 height: 32
@@ -186,7 +188,6 @@ PanelWindow {
                 }
             }
 
-            // text labels & progress bar
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 4
@@ -215,7 +216,6 @@ PanelWindow {
                     }
                 }
 
-                // progress track
                 Rectangle {
                     Layout.fillWidth: true
                     height: 6
@@ -223,11 +223,10 @@ PanelWindow {
                     color: Theme.surface_container_highest
                     clip: true
 
-                    // filled bar
                     Rectangle {
                         height: parent.height
-                        // handles up to 150% volume boost cleanly
-                        width: Math.round(parent.width * Math.min(1.0, Math.max(0.0, osdRoot.osdValue / (osdRoot.isOverAmp ? 150.0 : 100.0))))
+                        // static 150 cap for volume mode prevents the 100->101 shrink snap
+                        width: Math.round(parent.width * Math.min(1.0, Math.max(0.0, osdRoot.osdValue / (osdRoot.osdType.startsWith("volume") ? 150.0 : 100.0))))
                         radius: 3
                         color: osdRoot.isMuted
                             ? Theme.error
@@ -245,4 +244,3 @@ PanelWindow {
         }
     }
 }
-

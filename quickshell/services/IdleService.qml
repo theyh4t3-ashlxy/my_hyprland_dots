@@ -12,7 +12,7 @@ QtObject {
 
     // Must be assigned to a property inside QtObject!
     property IpcHandler ipc: IpcHandler {
-        target: "idle"
+        target: "idle_internal"
 
         function toggle(): bool {
             root.enabled = !root.enabled;

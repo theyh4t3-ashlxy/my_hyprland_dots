@@ -26,14 +26,11 @@ Rectangle {
 
     width: 360
     implicitHeight: col.implicitHeight + 24
-    readonly property real defaultRadius: Theme?.widgetRadius ?? 14
-    topLeftRadius: (dockTop || dockLeft) ? 0 : defaultRadius
-    topRightRadius: (dockTop || dockRight) ? 0 : defaultRadius
-    bottomLeftRadius: (dockBottom || dockLeft) ? 0 : defaultRadius
-    bottomRightRadius: (dockBottom || dockRight) ? 0 : defaultRadius
+    readonly property real defaultRadius: Theme?.popupRadius ?? Theme?.radiusMd ?? 14
+    radius: defaultRadius
     color: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-    border.color: notif?.urgency === 2 ? Theme.error : (Theme?.widgetBorder ?? "#33ffffff")
-    border.width: 1
+    border.color: notif?.urgency === 2 ? Theme.error : (Theme?.popupBorderColor ?? Theme?.widgetBorder ?? "#33ffffff")
+    border.width: Theme?.popupBorderWidth ?? 1
     clip: true
 
     // safely resolve icon path to prevent qrc missing-icon warnings

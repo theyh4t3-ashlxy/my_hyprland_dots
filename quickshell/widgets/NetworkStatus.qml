@@ -70,6 +70,27 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestNetworkToggle() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = !popup.open;
+            if (popup.open) NetworkService.rescan();
+        }
+        function onRequestNetworkOpen() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = true;
+            NetworkService.rescan();
+        }
+        function onRequestNetworkClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
         cardWidth: 420

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import ".."
 import Quickshell
 import Quickshell.Wayland
@@ -17,45 +18,75 @@ PanelWindow {
     property alias cardWidth: root.panelWidth
     property alias cardHeight: root.panelHeight
 
-    readonly property string pos: Settings?.barPosition ?? "up"
-    readonly property bool isTop: pos === "up" || pos === "top"
-    readonly property bool isBottom: pos === "down" || pos === "bottom"
+    readonly property string rawPos: Settings?.barPosition ?? "top"
+    readonly property string pos: (rawPos === "up" || rawPos === "top") ? "top" : ((rawPos === "down" || rawPos === "bottom") ? "bottom" : rawPos)
+    readonly property bool isTop: pos === "top"
+    readonly property bool isBottom: pos === "bottom"
     readonly property bool isLeft: pos === "left"
     readonly property bool isRight: pos === "right"
     readonly property bool isVertical: isLeft || isRight
 
-    readonly property real scoopW: Math.max(16, Theme?.scoopRadiusX ?? 16)
-    readonly property real scoopH: Math.max(16, Theme?.scoopRadiusY ?? 16)
-    readonly property real marginX: scoopW + 8
-    readonly property real marginY: scoopH + 8
+    readonly property bool isFloating: Settings?.barFloating ?? false
+
+    readonly property real scoopW: isFloating ? 0 : Math.max(8, Theme?.scoopRadiusX ?? Settings?.scoopRadius ?? 16)
+    readonly property real scoopH: isFloating ? 0 : Math.max(8, Theme?.scoopRadiusY ?? Settings?.scoopRadius ?? 16)
+    readonly property real screenMargin: 8
 
     readonly property real screenW: root.screen?.width ?? root.width
     readonly property real screenH: root.screen?.height ?? root.height
 
-    readonly property real maxAllowedWidth: Math.max(260, screenW - 32)
-    readonly property real maxAllowedHeight: Math.max(200, screenH - 32)
+    readonly property real barSize: Theme.barHeight ?? 32
+
+    readonly property real maxAllowedWidth: Math.max(260, (isVertical ? (screenW - barSize - 16) : (screenW - 32)))
+    readonly property real maxAllowedHeight: Math.max(200, (!isVertical ? (screenH - barSize - 16) : (screenH - 32)))
     readonly property real effectiveWidth: Math.min(panelWidth, maxAllowedWidth)
     readonly property real effectiveHeight: Math.min(panelHeight, maxAllowedHeight)
 
-    // animated expansion factor for smooth liquid welding
-    readonly property real scoopAnimFactor: Math.min(1.0, Math.max(0.20, root.morphProgress))
-    readonly property real curScoopW: root.scoopW * root.scoopAnimFactor
-    readonly property real curScoopH: root.scoopH * root.scoopAnimFactor
-
-    // clamped dock positioning
+    // clamped dock positioning (reserves margin for outward concave scoops)
     readonly property real desiredBodyX: isVertical
-        ? (isLeft ? 0 : (screenW - effectiveWidth))
-        : (targetRelativeX > 0 ? (targetRelativeX - (effectiveWidth / 2)) : ((screenW / 2) - (effectiveWidth / 2)))
+        ? (isLeft ? 0 : (root.width - effectiveWidth))
+        : (targetRelativeX > 0 ? (targetRelativeX - (effectiveWidth / 2)) : ((root.width / 2) - (effectiveWidth / 2)))
     readonly property real clampedBodyX: isVertical
         ? desiredBodyX
-        : Math.max(marginX, Math.min(screenW - marginX - effectiveWidth, desiredBodyX))
+        : Math.max(scoopW + screenMargin, Math.min(root.width - scoopW - screenMargin - effectiveWidth, desiredBodyX))
 
     readonly property real desiredBodyY: isVertical
-        ? (targetRelativeY > 0 ? targetRelativeY - (effectiveHeight / 2) : (screenH / 2) - (effectiveHeight / 2))
-        : (isTop ? 0 : (screenH - effectiveHeight))
+        ? (targetRelativeY > 0 ? (targetRelativeY - (effectiveHeight / 2)) : ((root.height / 2) - (effectiveHeight / 2)))
+        : (isTop ? 0 : (root.height - effectiveHeight))
     readonly property real clampedBodyY: isVertical
-        ? Math.max(marginY, Math.min(screenH - marginY - effectiveHeight, desiredBodyY))
+        ? Math.max(scoopH + screenMargin, Math.min(root.height - scoopH - screenMargin - effectiveHeight, desiredBodyY))
         : desiredBodyY
+
+    // fluid animation & curvature metrics
+    readonly property real morphT: Math.max(0.0001, root.morphProgress)
+    readonly property real curBodyW: isVertical ? Math.max(1, morphT * effectiveWidth) : effectiveWidth
+    readonly property real curBodyH: isVertical ? effectiveHeight : Math.max(1, morphT * effectiveHeight)
+
+    readonly property real curScoopW: isVertical
+        ? Math.max(0, Math.min(scoopW * morphT, curBodyW * 0.40))
+        : Math.max(0, scoopW * Math.min(1.0, morphT * 1.5))
+    readonly property real curScoopH: isVertical
+        ? Math.max(0, scoopH * Math.min(1.0, morphT * 1.5))
+        : Math.max(0, Math.min(scoopH * morphT, curBodyH * 0.40))
+    readonly property real curRadius: Math.max(0, Math.min((Theme?.popupRadius ?? 16), (isVertical ? curBodyW : curBodyH) * 0.40))
+
+    readonly property real tension: {
+        let cs = Settings?.cornerStyle ?? "cubic";
+        if (cs === "squircle") return 0.65;
+        if (cs === "flared") return 0.44;
+        if (cs === "continuous-bezier" || cs === "g2") return 0.58;
+        return Settings?.scoopTension ?? 0.55228475;
+    }
+
+    // coordinate shorthands for the welded vector contour
+    readonly property real bx: isVertical ? (isLeft ? 0 : (root.width - curBodyW)) : clampedBodyX
+    readonly property real by: isVertical ? clampedBodyY : (isTop ? 0 : (root.height - curBodyH))
+    readonly property real bw: curBodyW
+    readonly property real bh: curBodyH
+    readonly property real sw: curScoopW
+    readonly property real sh: curScoopH
+    readonly property real br: curRadius
+    readonly property real k: tension
 
     default property alias content: contentItem.data
 
@@ -72,33 +103,26 @@ PanelWindow {
         right: true
     }
 
-    // Keep popup panel window outside the bar so the bar never loses mouse hover
+    // Dock window precisely against the bar edge
     margins {
-        top: root.isTop ? (Theme.barHeight ?? 32) : 0
-        bottom: root.isBottom ? (Theme.barHeight ?? 32) : 0
-        left: root.isLeft ? (Theme.barHeight ?? 32) : 0
-        right: root.isRight ? (Theme.barHeight ?? 32) : 0
+        top: root.isTop ? root.barSize : 0
+        bottom: root.isBottom ? root.barSize : 0
+        left: root.isLeft ? root.barSize : 0
+        right: root.isRight ? root.barSize : 0
     }
 
     property bool wantsFocus: false
+    property int keyboardFocusMode: WlrKeyboardFocus.OnDemand
     exclusionMode: ExclusionMode.Ignore
     focusable: wantsFocus
 
     WlrLayershell.namespace: "quickshell:popup"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: (open && wantsFocus) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (open && wantsFocus) ? keyboardFocusMode : WlrKeyboardFocus.None
 
     mask: Region {
-        Region { item: popupBody }
-        Region { item: scoopTopL.visible ? scoopTopL : null }
-        Region { item: scoopTopR.visible ? scoopTopR : null }
-        Region { item: scoopBottomL.visible ? scoopBottomL : null }
-        Region { item: scoopBottomR.visible ? scoopBottomR : null }
-        Region { item: scoopLeftT.visible ? scoopLeftT : null }
-        Region { item: scoopLeftB.visible ? scoopLeftB : null }
-        Region { item: scoopRightT.visible ? scoopRightT : null }
-        Region { item: scoopRightB.visible ? scoopRightB : null }
-        Region { item: root.pinned ? dismissArea : null }
+        Region { item: dockedHullItem }
+        Region { item: root.open ? dismissArea : null }
     }
 
     property real morphProgress: 0.0
@@ -119,7 +143,7 @@ PanelWindow {
         morphAnim.restart();
     }
 
-    // click outside dismiss (only active when pinned via input mask)
+    // click outside dismiss (active whenever open)
     MouseArea {
         id: dismissArea
         anchors.fill: parent
@@ -135,167 +159,646 @@ PanelWindow {
         id: morphContainer
         anchors.fill: parent
 
-        // Ambient soft drop-shadow / elevation glow
-        Rectangle {
-            visible: root.morphProgress > 0.1 && (Theme.barStyle === "glass" || Theme.barStyle === "glass-frost" || Theme.barStyle === "bento-floating" || Theme.barStyle === "cyber-neon")
-            x: popupBody.x - 3
-            y: popupBody.y - 3
-            width: popupBody.width + 6
-            height: popupBody.height + 6
-            radius: (Theme.popupRadius ?? 16) + 3
-            color: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.40 * root.morphProgress)
+        // ==========================================
+        // AMBIENT ELEVATION DROP SHADOWS
+        // ==========================================
+
+        // Shadow: Top Docked
+        Shape {
+            id: shadowTop
+            anchors.fill: parent
+            visible: !root.isFloating && root.isTop && root.morphProgress > 0.05
+            preferredRendererType: Shape.CurveRenderer
+            y: 2
+            opacity: root.morphProgress * 0.75
             z: 0
-            opacity: root.morphProgress * 0.85
+
+            ShapePath {
+                fillColor: Qt.rgba(0, 0, 0, 0.28 * root.morphProgress)
+                strokeColor: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.20 * root.morphProgress)
+                strokeWidth: Theme.barStyle === "cyber-neon" ? 4 : 3
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx - root.sw; startY: 0
+                PathCubic {
+                    x: root.bx; y: root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: 0
+                    control2X: root.bx; control2Y: root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.bh
+                    control1X: root.bx; control1Y: root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.bh
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.bh }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.bh - root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.bh
+                    control2X: root.bx + root.bw; control2Y: root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: 0
+                    control1X: root.bx + root.bw; control1Y: root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: 0
+                }
+                PathLine { x: root.bx - root.sw; y: 0 }
+            }
         }
 
-        // top bar welding scoops
-        ConcaveCorner {
-            id: scoopTopL
-            x: popupBody.x - root.curScoopW
-            y: 0
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: true
-            flipY: false
-            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
-        }
-        ConcaveCorner {
-            id: scoopTopR
-            x: popupBody.x + popupBody.width
-            y: 0
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: false
-            flipY: false
-            visible: root.isTop && root.scoopW > 0 && root.morphProgress > 0.20
+        // Shadow: Bottom Docked
+        Shape {
+            id: shadowBottom
+            anchors.fill: parent
+            visible: !root.isFloating && root.isBottom && root.morphProgress > 0.05
+            preferredRendererType: Shape.CurveRenderer
+            y: -2
+            opacity: root.morphProgress * 0.75
+            z: 0
+
+            readonly property real botY: root.by + root.bh
+
+            ShapePath {
+                fillColor: Qt.rgba(0, 0, 0, 0.28 * root.morphProgress)
+                strokeColor: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.20 * root.morphProgress)
+                strokeWidth: Theme.barStyle === "cyber-neon" ? 4 : 3
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx - root.sw; startY: shadowBottom.botY
+                PathCubic {
+                    x: root.bx; y: shadowBottom.botY - root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: shadowBottom.botY
+                    control2X: root.bx; control2Y: shadowBottom.botY - root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: shadowBottom.botY - root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: shadowBottom.botY
+                    control1X: root.bx + root.bw; control1Y: shadowBottom.botY - root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: shadowBottom.botY
+                }
+                PathLine { x: root.bx - root.sw; y: shadowBottom.botY }
+            }
         }
 
-        // bottom bar welding scoops
-        ConcaveCorner {
-            id: scoopBottomL
-            x: popupBody.x - root.curScoopW
-            y: root.height - root.curScoopH
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: true
-            flipY: true
-            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
-        }
-        ConcaveCorner {
-            id: scoopBottomR
-            x: popupBody.x + popupBody.width
-            y: root.height - root.curScoopH
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: false
-            flipY: true
-            visible: root.isBottom && root.scoopW > 0 && root.morphProgress > 0.20
+        // Shadow: Left Docked
+        Shape {
+            id: shadowLeft
+            anchors.fill: parent
+            visible: !root.isFloating && root.isLeft && root.morphProgress > 0.05
+            preferredRendererType: Shape.CurveRenderer
+            x: 2
+            opacity: root.morphProgress * 0.75
+            z: 0
+
+            ShapePath {
+                fillColor: Qt.rgba(0, 0, 0, 0.28 * root.morphProgress)
+                strokeColor: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.20 * root.morphProgress)
+                strokeWidth: Theme.barStyle === "cyber-neon" ? 4 : 3
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: 0; startY: root.by - root.sh
+                PathCubic {
+                    x: root.sw; y: root.by
+                    control1X: 0; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bw; y: root.by + root.br
+                    control1X: root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: 0; y: root.by + root.bh + root.sh
+                    control1X: root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: 0; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+                PathLine { x: 0; y: root.by - root.sh }
+            }
         }
 
-        // left bar welding scoops
-        ConcaveCorner {
-            id: scoopLeftT
-            x: 0
-            y: popupBody.y - root.curScoopH
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: false
-            flipY: true
-            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
-        }
-        ConcaveCorner {
-            id: scoopLeftB
-            x: 0
-            y: popupBody.y + popupBody.height
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: false
-            flipY: false
-            visible: root.isLeft && root.scoopW > 0 && root.morphProgress > 0.20
+        // Shadow: Right Docked
+        Shape {
+            id: shadowRight
+            anchors.fill: parent
+            visible: !root.isFloating && root.isRight && root.morphProgress > 0.05
+            preferredRendererType: Shape.CurveRenderer
+            x: -2
+            opacity: root.morphProgress * 0.75
+            z: 0
+
+            readonly property real rx: root.bx + root.bw
+
+            ShapePath {
+                fillColor: Qt.rgba(0, 0, 0, 0.28 * root.morphProgress)
+                strokeColor: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.20 * root.morphProgress)
+                strokeWidth: Theme.barStyle === "cyber-neon" ? 4 : 3
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: shadowRight.rx; startY: root.by - root.sh
+                PathCubic {
+                    x: shadowRight.rx - root.sw; y: root.by
+                    control1X: shadowRight.rx; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: shadowRight.rx - root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.br; y: root.by }
+                PathCubic {
+                    x: root.bx; y: root.by + root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by + root.bh
+                    control1X: root.bx; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: shadowRight.rx - root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: shadowRight.rx; y: root.by + root.bh + root.sh
+                    control1X: shadowRight.rx - root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: shadowRight.rx; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+                PathLine { x: shadowRight.rx; y: root.by - root.sh }
+            }
         }
 
-        // right bar welding scoops
-        ConcaveCorner {
-            id: scoopRightT
-            x: root.width - root.curScoopW
-            y: popupBody.y - root.curScoopH
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: true
-            flipY: true
-            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
-        }
-        ConcaveCorner {
-            id: scoopRightB
-            x: root.width - root.curScoopW
-            y: popupBody.y + popupBody.height
-            radiusX: root.curScoopW
-            radiusY: root.curScoopH
-            fillColor: Theme.popupBg
-            showBorder: Theme.scoopBorderEnabled && Theme.popupBorderWidth > 0
-            borderWidth: Theme.popupBorderWidth
-            borderColor: Theme.popupBorderColor
-            flipX: true
-            flipY: false
-            visible: root.isRight && root.scoopW > 0 && root.morphProgress > 0.20
+        // Shadow: Floating Card
+        Shape {
+            id: shadowFloating
+            anchors.fill: parent
+            visible: root.isFloating && root.morphProgress > 0.05
+            preferredRendererType: Shape.CurveRenderer
+            y: 3
+            opacity: root.morphProgress * 0.75
+            z: 0
+
+            ShapePath {
+                fillColor: Qt.rgba(0, 0, 0, 0.28 * root.morphProgress)
+                strokeColor: Theme.barStyle === "cyber-neon" ? Theme.glassGlow : Qt.rgba(0, 0, 0, 0.20 * root.morphProgress)
+                strokeWidth: Theme.barStyle === "cyber-neon" ? 4 : 3
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx + root.br; startY: root.by
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bx + root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.bx + root.br; y: root.by + root.bh }
+                PathCubic {
+                    x: root.bx; y: root.by + root.bh - root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: root.bx; control2Y: root.by + root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+            }
         }
 
-        // physical expanding popup body
-        Rectangle {
-            id: popupBody
-            x: root.isRight ? (root.width - popupBody.width) : (root.isLeft ? 0 : root.clampedBodyX)
-            y: root.isBottom ? (root.height - popupBody.height) : (root.isTop ? 0 : root.clampedBodyY)
-            width: root.isVertical ? Math.max(1, root.morphProgress * root.effectiveWidth) : root.effectiveWidth
-            height: root.isVertical ? root.effectiveHeight : Math.max(1, root.morphProgress * root.effectiveHeight)
-            color: Theme.popupBg
-            border.width: Theme.popupBorderWidth ?? 1
-            border.color: Theme.popupBorderColor
-            clip: true
+        // ==========================================
+        // WELDED HULLS & OPEN PERIMETER BORDERS
+        // ==========================================
+
+        // Hull: Top Docked
+        Shape {
+            id: hullTop
+            anchors.fill: parent
+            visible: !root.isFloating && root.isTop && root.morphProgress > 0.01
+            preferredRendererType: Shape.CurveRenderer
             z: 1
 
-            topLeftRadius: (root.isTop || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
-            topRightRadius: (root.isTop || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
-            bottomLeftRadius: (root.isBottom || root.isLeft) ? 0 : (Theme.popupRadius ?? 16)
-            bottomRightRadius: (root.isBottom || root.isRight) ? 0 : (Theme.popupRadius ?? 16)
+            // Unified Solid Fill
+            ShapePath {
+                fillColor: Theme.popupBg
+                strokeColor: "transparent"
+                strokeWidth: 0
 
-            // Specular top highlight line for glass depth
-            Rectangle {
-                visible: (Settings?.popupGlassHighlight ?? true) && (Theme.barStyle === "glass" || Theme.barStyle === "glass-frost" || Theme.barStyle === "bento-floating")
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 1
-                color: Theme.glassHighlight
-                opacity: root.morphProgress
+                startX: root.bx - root.sw; startY: 0
+                PathCubic {
+                    x: root.bx; y: root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: 0
+                    control2X: root.bx; control2Y: root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.bh
+                    control1X: root.bx; control1Y: root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.bh
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.bh }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.bh - root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.bh
+                    control2X: root.bx + root.bw; control2Y: root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: 0
+                    control1X: root.bx + root.bw; control1Y: root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: 0
+                }
+                PathLine { x: root.bx - root.sw; y: 0 }
             }
+
+            // Continuous Perimeter Border (open at top boundary, zero seam)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: (Theme.popupBorderWidth > 0) ? Theme.popupBorderColor : "transparent"
+                strokeWidth: Theme.popupBorderWidth ?? 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx - root.sw; startY: 0
+                PathCubic {
+                    x: root.bx; y: root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: 0
+                    control2X: root.bx; control2Y: root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.bh
+                    control1X: root.bx; control1Y: root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.bh
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.bh }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.bh - root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.bh
+                    control2X: root.bx + root.bw; control2Y: root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: 0
+                    control1X: root.bx + root.bw; control1Y: root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: 0
+                }
+            }
+        }
+
+        // Hull: Bottom Docked
+        Shape {
+            id: hullBottom
+            anchors.fill: parent
+            visible: !root.isFloating && root.isBottom && root.morphProgress > 0.01
+            preferredRendererType: Shape.CurveRenderer
+            z: 1
+
+            readonly property real botY: root.by + root.bh
+
+            // Unified Solid Fill
+            ShapePath {
+                fillColor: Theme.popupBg
+                strokeColor: "transparent"
+                strokeWidth: 0
+
+                startX: root.bx - root.sw; startY: hullBottom.botY
+                PathCubic {
+                    x: root.bx; y: hullBottom.botY - root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: hullBottom.botY
+                    control2X: root.bx; control2Y: hullBottom.botY - root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: hullBottom.botY - root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: hullBottom.botY
+                    control1X: root.bx + root.bw; control1Y: hullBottom.botY - root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: hullBottom.botY
+                }
+                PathLine { x: root.bx - root.sw; y: hullBottom.botY }
+            }
+
+            // Continuous Perimeter Border (open at bottom boundary, zero seam)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: (Theme.popupBorderWidth > 0) ? Theme.popupBorderColor : "transparent"
+                strokeWidth: Theme.popupBorderWidth ?? 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx - root.sw; startY: hullBottom.botY
+                PathCubic {
+                    x: root.bx; y: hullBottom.botY - root.sh
+                    control1X: root.bx - root.sw * (1.0 - root.k); control1Y: hullBottom.botY
+                    control2X: root.bx; control2Y: hullBottom.botY - root.sh * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: hullBottom.botY - root.sh }
+                PathCubic {
+                    x: root.bx + root.bw + root.sw; y: hullBottom.botY
+                    control1X: root.bx + root.bw; control1Y: hullBottom.botY - root.sh * (1.0 - root.k)
+                    control2X: root.bx + root.bw + root.sw * (1.0 - root.k); control2Y: hullBottom.botY
+                }
+            }
+        }
+
+        // Hull: Left Docked
+        Shape {
+            id: hullLeft
+            anchors.fill: parent
+            visible: !root.isFloating && root.isLeft && root.morphProgress > 0.01
+            preferredRendererType: Shape.CurveRenderer
+            z: 1
+
+            // Unified Solid Fill
+            ShapePath {
+                fillColor: Theme.popupBg
+                strokeColor: "transparent"
+                strokeWidth: 0
+
+                startX: 0; startY: root.by - root.sh
+                PathCubic {
+                    x: root.sw; y: root.by
+                    control1X: 0; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bw; y: root.by + root.br
+                    control1X: root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: 0; y: root.by + root.bh + root.sh
+                    control1X: root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: 0; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+                PathLine { x: 0; y: root.by - root.sh }
+            }
+
+            // Continuous Perimeter Border (open at left boundary, zero seam)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: (Theme.popupBorderWidth > 0) ? Theme.popupBorderColor : "transparent"
+                strokeWidth: Theme.popupBorderWidth ?? 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: 0; startY: root.by - root.sh
+                PathCubic {
+                    x: root.sw; y: root.by
+                    control1X: 0; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bw; y: root.by + root.br
+                    control1X: root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: 0; y: root.by + root.bh + root.sh
+                    control1X: root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: 0; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+            }
+        }
+
+        // Hull: Right Docked
+        Shape {
+            id: hullRight
+            anchors.fill: parent
+            visible: !root.isFloating && root.isRight && root.morphProgress > 0.01
+            preferredRendererType: Shape.CurveRenderer
+            z: 1
+
+            readonly property real rx: root.bx + root.bw
+
+            // Unified Solid Fill
+            ShapePath {
+                fillColor: Theme.popupBg
+                strokeColor: "transparent"
+                strokeWidth: 0
+
+                startX: hullRight.rx; startY: root.by - root.sh
+                PathCubic {
+                    x: hullRight.rx - root.sw; y: root.by
+                    control1X: hullRight.rx; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: hullRight.rx - root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.br; y: root.by }
+                PathCubic {
+                    x: root.bx; y: root.by + root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by + root.bh
+                    control1X: root.bx; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: hullRight.rx - root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: hullRight.rx; y: root.by + root.bh + root.sh
+                    control1X: hullRight.rx - root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: hullRight.rx; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+                PathLine { x: hullRight.rx; y: root.by - root.sh }
+            }
+
+            // Continuous Perimeter Border (open at right boundary, zero seam)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: (Theme.popupBorderWidth > 0) ? Theme.popupBorderColor : "transparent"
+                strokeWidth: Theme.popupBorderWidth ?? 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: hullRight.rx; startY: root.by - root.sh
+                PathCubic {
+                    x: hullRight.rx - root.sw; y: root.by
+                    control1X: hullRight.rx; control1Y: root.by - root.sh * (1.0 - root.k)
+                    control2X: hullRight.rx - root.sw * (1.0 - root.k); control2Y: root.by
+                }
+                PathLine { x: root.bx + root.br; y: root.by }
+                PathCubic {
+                    x: root.bx; y: root.by + root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by + root.bh
+                    control1X: root.bx; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: hullRight.rx - root.sw; y: root.by + root.bh }
+                PathCubic {
+                    x: hullRight.rx; y: root.by + root.bh + root.sh
+                    control1X: hullRight.rx - root.sw * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: hullRight.rx; control2Y: root.by + root.bh + root.sh * (1.0 - root.k)
+                }
+            }
+        }
+
+        // Hull: Floating Card
+        Shape {
+            id: hullFloating
+            anchors.fill: parent
+            visible: root.isFloating && root.morphProgress > 0.01
+            preferredRendererType: Shape.CurveRenderer
+            z: 1
+
+            // Solid Fill
+            ShapePath {
+                fillColor: Theme.popupBg
+                strokeColor: "transparent"
+                strokeWidth: 0
+
+                startX: root.bx + root.br; startY: root.by
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bx + root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.bx + root.br; y: root.by + root.bh }
+                PathCubic {
+                    x: root.bx; y: root.by + root.bh - root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: root.bx; control2Y: root.by + root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+            }
+
+            // Continuous Perimeter Border (full perimeter)
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: (Theme.popupBorderWidth > 0) ? Theme.popupBorderColor : "transparent"
+                strokeWidth: Theme.popupBorderWidth ?? 1
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                startX: root.bx + root.br; startY: root.by
+                PathLine { x: root.bx + root.bw - root.br; y: root.by }
+                PathCubic {
+                    x: root.bx + root.bw; y: root.by + root.br
+                    control1X: root.bx + root.bw - root.br * (1.0 - root.k); control1Y: root.by
+                    control2X: root.bx + root.bw; control2Y: root.by + root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx + root.bw; y: root.by + root.bh - root.br }
+                PathCubic {
+                    x: root.bx + root.bw - root.br; y: root.by + root.bh
+                    control1X: root.bx + root.bw; control1Y: root.by + root.bh - root.br * (1.0 - root.k)
+                    control2X: root.bx + root.bw - root.br * (1.0 - root.k); control2Y: root.by + root.bh
+                }
+                PathLine { x: root.bx + root.br; y: root.by + root.bh }
+                PathCubic {
+                    x: root.bx; y: root.by + root.bh - root.br
+                    control1X: root.bx + root.br * (1.0 - root.k); control1Y: root.by + root.bh
+                    control2X: root.bx; control2Y: root.by + root.bh - root.br * (1.0 - root.k)
+                }
+                PathLine { x: root.bx; y: root.by + root.br }
+                PathCubic {
+                    x: root.bx + root.br; y: root.by
+                    control1X: root.bx; control1Y: root.by + root.br * (1.0 - root.k)
+                    control2X: root.bx + root.br * (1.0 - root.k); control2Y: root.by
+                }
+            }
+        }
+
+        // Hit-test item covering body and scoops for input masking
+        Item {
+            id: dockedHullItem
+            x: root.isVertical ? root.bx : Math.max(0, root.bx - root.sw)
+            y: root.isVertical ? Math.max(0, root.by - root.sh) : root.by
+            width: root.isVertical ? root.bw : (root.bw + (root.sw * 2))
+            height: root.isVertical ? (root.bh + (root.sh * 2)) : root.bh
+        }
+
+        // Interactive content container (clips content smoothly during emergence)
+        Item {
+            id: popupBody
+            x: root.bx
+            y: root.by
+            width: root.bw
+            height: root.bh
+            clip: true
+            z: 2
 
             MouseArea {
                 id: cardHoverArea
@@ -313,12 +816,12 @@ PanelWindow {
                 id: contentWrapper
                 width: root.effectiveWidth
                 height: root.effectiveHeight
-                y: root.isTop ? (root.morphProgress - 1.0) * 16
-                 : root.isBottom ? (1.0 - root.morphProgress) * 16
-                 : 0
-                x: root.isLeft ? (root.morphProgress - 1.0) * 16
-                 : root.isRight ? (1.0 - root.morphProgress) * 16
-                 : 0
+                x: root.isLeft
+                    ? (root.morphProgress - 1.0) * 16
+                    : (root.isRight ? (root.curBodyW - root.effectiveWidth) + (1.0 - root.morphProgress) * 16 : 0)
+                y: root.isTop
+                    ? (root.morphProgress - 1.0) * 16
+                    : (root.isBottom ? (root.curBodyH - root.effectiveHeight) + (1.0 - root.morphProgress) * 16 : 0)
                 opacity: Math.max(0.0, (root.morphProgress - 0.2) / 0.8)
 
                 Item {

@@ -2,59 +2,72 @@
 
 nuke() {
     local target="${1:-}"
+    local pids=()
 
-    # if specific process name or pid is passed directly
+    # resolve target pids
     if [[ -n "$target" && "$target" != "-i" ]]; then
-        local pids=()
         if [[ "$target" =~ ^[0-9]+$ ]]; then
             pids=( "$target" )
         else
-            pids=( ${(f)"$(pgrep -f "$target" 2>/dev/null || true)"} )
+            # strip empty lines so array length is accurate
+            pids=( ${(f)"$(pgrep -f -- "$target" 2>/dev/null)"} )
+            pids=( ${pids:#} )
         fi
 
         if (( ${#pids[@]} == 0 )); then
             print -P "%F{yellow}󰀦 no processes found matching '$target'%f"
             return 1
         fi
+    else
+        if ! (( $+commands[fzf] )); then
+            print "usage: nuke <process_name | pid>"
+            return 1
+        fi
 
-        print -P "%F{red}󰅚 nuking ${#pids[@]} process(es) matching '$target'...%f"
-        for p in "${pids[@]}"; do
-            if kill -9 "$p" 2>/dev/null; then
-                print -P "  %F{green}󰄲 terminated pid $p%f"
-            else
-                print -P "  %F{yellow}󰀦 permission denied for pid $p, escalating to sudo...%f"
-                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated pid $p (via sudo)%f"
-            fi
-        done
-        return 0
+        local selected
+        selected=$(ps -eo pid,user,%cpu,%mem,comm,args --sort=-%cpu | sed 1d | \
+            fzf -m --header="[󰅚 nuke process - tab to multi-select, enter to kill]" \
+                --header-first \
+                --prompt="nuke ❯ " \
+                --preview="ps -u -p {1} 2>/dev/null || echo {6..}" \
+                --preview-window=down:4:wrap \
+                --reverse --height=50%)
+
+        [[ -z "$selected" ]] && return 0
+
+        pids=( ${(f)"$(print -r -- "$selected" | awk '{print $1}')"} )
+        pids=( ${pids:#} )
     fi
 
-    # interactive fzf process sniper
-    if ! (( $+commands[fzf] )); then
-        print "usage: nuke <process_name | pid>"
-        return 1
-    fi
+    (( ${#pids[@]} == 0 )) && return 0
 
-    local selected=$(ps -eo pid,user,%cpu,%mem,comm,args --sort=-%cpu | sed 1d | \
-        fzf -m --header="[󰅚 nuke process - tab to multi-select, enter to kill]" \
-            --header-first \
-            --prompt="nuke ❯ " \
-            --preview="echo {} | awk '{print \$6}'" \
-            --preview-window=down:3:wrap \
-            --reverse --height=50%)
+    print -P "%F{red}󰅚 targeting ${#pids[@]} process(es)...%f"
 
-    [[ -z "$selected" ]] && return 0
+    local need_sudo=()
+    for p in "${pids[@]}"; do
+        # check if process actually exists before trying to kill it
+        if ! kill -0 "$p" 2>/dev/null; then
+            print -P "  %F{yellow}󰀦 pid $p no longer exists%f"
+            continue
+        fi
 
-    local kill_pids=( $(echo "$selected" | awk '{print $1}') )
-    if (( ${#kill_pids[@]} > 0 )); then
-        print -P "%F{red}󰅚 executing lethal force on ${#kill_pids[@]} process(es)...%f"
-        for p in "${kill_pids[@]}"; do
-            if kill -9 "$p" 2>/dev/null; then
-                print -P "  %F{green}󰄲 terminated pid $p%f"
-            else
-                print -P "  %F{yellow}󰀦 permission denied on pid $p, requesting sudo...%f"
-                sudo kill -9 "$p" && print -P "  %F{green}󰄲 terminated pid $p (via sudo)%f"
-            fi
-        done
+        if kill -9 "$p" 2>/dev/null; then
+            print -P "  %F{green}󰄲 terminated pid $p%f"
+        else
+            need_sudo+=( "$p" )
+        fi
+    done
+
+    # batch sudo execution instead of prompting inside a loop
+    if (( ${#need_sudo[@]} > 0 )); then
+        print -P "  %F{yellow}󰀦 permission denied for ${#need_sudo[@]} pid(s), escalating to sudo...%f"
+        if sudo kill -9 "${need_sudo[@]}" 2>/dev/null; then
+            for p in "${need_sudo[@]}"; do
+                print -P "  %F{green}󰄲 terminated pid $p (via sudo)%f"
+            done
+        else
+            print -P "  %F{red}󰅚 failed to terminate pid(s): ${need_sudo[*]}%f"
+            return 1
+        fi
     fi
 }

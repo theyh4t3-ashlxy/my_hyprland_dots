@@ -350,6 +350,10 @@ QtObject {
 
     // font family resolution
     readonly property string iconSet:               Settings?.iconSet ?? "material"
+    readonly property string fontMaterialRounded:  "Material Symbols Rounded"
+    readonly property string fontMaterialOutlined: "Material Symbols Outlined"
+    readonly property string fontMaterialSharp:    "Material Symbols Sharp"
+    readonly property string fontSegoe:            Settings?.fontWindows ?? "Segoe Fluent Icons"
     readonly property string fontIcon: {
         if (iconSet === "kaomoji" || iconSet === "text") return fontFamily;
         if (iconSet === "nerd") {
@@ -359,21 +363,30 @@ QtObject {
             if (families.indexOf("JetBrainsMono NF") >= 0) return "JetBrainsMono NF";
             return "JetBrainsMono Nerd Font";
         }
-        if (iconSet === "windows") return Settings?.fontWindows ?? "Segoe Fluent Icons";
+        if (iconSet === "windows") return fontSegoe;
         if (iconSet === "awesome") {
             let families = Qt.fontFamilies();
             let target = Settings?.fontAwesome ?? "Font Awesome 6 Free";
             if (families.indexOf(target) >= 0) return target;
-            return fontMono;
+            if (families.indexOf("Font Awesome 6 Free Solid") >= 0) return "Font Awesome 6 Free Solid";
+            if (families.indexOf("Font Awesome 5 Free") >= 0) return "Font Awesome 5 Free";
+            if (families.indexOf("FontAwesome") >= 0) return "FontAwesome";
+            let nerdTarget = Settings?.fontNerd ?? "JetBrainsMono Nerd Font";
+            if (families.indexOf(nerdTarget) >= 0) return nerdTarget;
+            return "JetBrainsMono Nerd Font";
         }
 
         let fams = Qt.fontFamilies();
-        let chosen = Settings?.fontMaterial ?? "Material Symbols Rounded";
-        if (fams.indexOf(chosen) >= 0) return chosen;
-        if (fams.indexOf("Material Symbols Rounded") >= 0) return "Material Symbols Rounded";
-        if (fams.indexOf("Material Symbols Outlined") >= 0) return "Material Symbols Outlined";
-        if (fams.indexOf("Material Symbols Sharp") >= 0) return "Material Symbols Sharp";
-        return iconSet === "material" ? "Material Symbols Rounded" : fontMono;
+        let targetStyle = (iconSet === "material-outlined" || iconSet === "outlined") ? fontMaterialOutlined
+                        : (iconSet === "material-sharp" || iconSet === "sharp") ? fontMaterialSharp
+                        : (iconSet === "material-rounded" || iconSet === "rounded") ? fontMaterialRounded
+                        : (Settings?.fontMaterial ?? fontMaterialRounded);
+        if (fams.indexOf(targetStyle) >= 0) return targetStyle;
+        if (fams.indexOf(fontMaterialRounded) >= 0) return fontMaterialRounded;
+        if (fams.indexOf(fontMaterialOutlined) >= 0) return fontMaterialOutlined;
+        if (fams.indexOf(fontMaterialSharp) >= 0) return fontMaterialSharp;
+        let fallbackNerd = Settings?.fontNerd ?? "JetBrainsMono Nerd Font";
+        return (iconSet === "material" || iconSet.startsWith("material")) ? fontMaterialRounded : fallbackNerd;
     }
 
     // kaomoji dictionary
@@ -763,12 +776,12 @@ QtObject {
             return "";
         }
 
-        if (lvl < 0) return "\uE19C";
+        if (lvl < 0) return "\uE1A6";
         if (isCharging) {
             const matCharging = ["\uF0A2", "\uF0A2", "\uF0A3", "\uF0A3", "\uF0A4", "\uF0A4", "\uF0A5", "\uF0A6", "\uF0A6", "\uF0A7", "\uE1A3"];
             return matCharging[lvl];
         }
-        const matDischarging = ["\uE19C", "\uF09C", "\uF09D", "\uF09D", "\uF09E", "\uF09E", "\uF09F", "\uF0A0", "\uF0A0", "\uF0A1", "\uE1A5"];
+        const matDischarging = ["\uEBDC", "\uF09C", "\uF09D", "\uF09D", "\uF09E", "\uF09E", "\uF09F", "\uF0A0", "\uF0A0", "\uF0A1", "\uE1A5"];
         return matDischarging[lvl];
     }
 
@@ -800,7 +813,7 @@ QtObject {
             if (pct <= 66) return "";
             return "";
         }
-        if (pct <= 33) return "\uE04D";
+        if (pct <= 33) return "\uE04E";
         if (pct <= 66) return "\uE04D";
         return "\uE050";
     }
@@ -841,7 +854,7 @@ QtObject {
     // static icon index
     readonly property string iconArch:              getIcon("\uE5C3", "\uE71D", "", "arch")
     readonly property string iconAppLauncher:       getIcon("\uE5C3", "\uE71D", "", "appLauncher")
-    readonly property string iconWorkspaces:        getIcon("\uE871", "\uE7C4", "", "workspaces")
+    readonly property string iconWorkspaces:        getIcon("\uE1A0", "\uE7C4", "", "workspaces")
     readonly property string iconSearch:            getIcon("\uE8B6", "\uE721", "", "search")
     readonly property string iconClose:             getIcon("\uE5CD", "\uE711", "", "close")
     readonly property string iconCheck:             getIcon("\uE5CA", "\uE73E", "", "check")
@@ -853,13 +866,13 @@ QtObject {
     readonly property string iconTrash:             getIcon("\uE92E", "\uE74D", "", "trash")
     readonly property string iconClipboard:         getIcon("\uE14F", "\uF0E3", "", "clipboard")
     readonly property string iconTray:              getIcon("\uE5CE", "\uE971", "", "tray")
-    readonly property string iconGrid:              getIcon("\uE9B0", "\uE74C", "", "grid")
+    readonly property string iconGrid:              getIcon("\uE9B0", "\uF0E2", "", "grid")
     readonly property string iconNote:              getIcon("\uF097", "\uE70F", "", "note")
     readonly property string iconEdit:              iconNote
     readonly property string iconCoffee:            getIcon("\uEFEF", "\uEC32", "", "coffee")
     readonly property string iconClock:             getIcon("\uEFD6", "\uE823", "", "clock")
     readonly property string iconCpu:               getIcon("\uE322", "\uEEA1", "", "cpu")
-    readonly property string iconMem:               getIcon("\uE322", "\uEEA0", "", "mem")
+    readonly property string iconMem:               getIcon("\uF7A3", "\uEEA0", "", "mem")
     readonly property string iconThermo:            getIcon("\uF076", "\uE9CA", "", "thermo")
     readonly property string iconEye:               getIcon("\uE8F4", "\uE7B3", "", "eye")
     readonly property string iconEyeOff:            getIcon("\uE8F5", "\uED1A", "", "eyeOff")
@@ -872,7 +885,7 @@ QtObject {
     readonly property string iconScreenshot:        iconCamera
 
     readonly property string iconVolMute:           getIcon("\uE04F", "\uE74F", "", "volMute")
-    readonly property string iconVolLow:            getIcon("\uE04D", "\uE993", "", "volLow")
+    readonly property string iconVolLow:            getIcon("\uE04E", "\uE993", "", "volLow")
     readonly property string iconVolMid:            getIcon("\uE04D", "\uE994", "", "volMid")
     readonly property string iconVolHigh:           getIcon("\uE050", "\uE995", "", "volHigh")
     readonly property string iconMic:               getIcon("\uE31D", "\uE720", "", "mic")
@@ -882,9 +895,9 @@ QtObject {
     readonly property string iconEqualizer:         getIcon("\uE01D", "\uE9E9", "", "equalizer")
 
     readonly property string iconBatFull:           getIcon("\uE1A5", "\uE83F", "", "batFull")
-    readonly property string iconBatHalf:           getIcon("\uF0A0", "\uE855", "", "batHalf")
+    readonly property string iconBatHalf:           getIcon("\uF09E", "\uE855", "", "batHalf")
     readonly property string iconBatQuarter:        getIcon("\uF09D", "\uE852", "", "batQuarter")
-    readonly property string iconBatEmpty:          getIcon("\uE19C", "\uE850", "", "batEmpty")
+    readonly property string iconBatEmpty:          getIcon("\uEBDC", "\uE850", "", "batEmpty")
     readonly property string iconBatCharge:         getIcon("\uE1A3", "\uE83E", "", "batCharge")
     readonly property string iconBatCharging:       iconBatCharge
 
@@ -914,8 +927,8 @@ QtObject {
     readonly property string iconWifiLow:           getIcon("\uE4CA", "\uE872", "", "wifiLow")
     readonly property string iconWifiOff:           getIcon("\uE648", "\uE998", "", "wifiOff")
     readonly property string iconBluetooth:         getIcon("\uE1A7", "\uE702", "", "bluetooth")
-    readonly property string iconBluetoothConnected:getIcon("\uE1A8", "\uF5B8", "", "bluetoothConnected")
-    readonly property string iconBluetoothOff:      getIcon("\uE1A9", "\uF5B7", "", "bluetoothOff")
+    readonly property string iconBluetoothConnected:getIcon("\uE1A8", "\uE702", "", "bluetoothConnected")
+    readonly property string iconBluetoothOff:      getIcon("\uE1A9", "\uE702", "", "bluetoothOff")
 
     readonly property string iconPower:             getIcon("\uF8C7", "\uE7E8", "", "power")
     readonly property string iconShutdown:          iconPower
@@ -923,15 +936,15 @@ QtObject {
     readonly property string iconLogout:            getIcon("\uE9BA", "\uF3B1", "", "logout")
     readonly property string iconReboot:            getIcon("\uF053", "\uE777", "", "reboot")
     readonly property string iconSuspend:           getIcon("\uF159", "\uE708", "", "suspend")
-    readonly property string iconHibernate:         getIcon("\uEB3B", "\uEC55", "", "hibernate")
+    readonly property string iconHibernate:         getIcon("\uEB3B", "\uE9CA", "", "hibernate")
 
     readonly property string iconChevronRight:      getIcon("\uE5CC", "\uE974", "", "chevronRight")
     readonly property string iconChevronLeft:       getIcon("\uE5CB", "\uE973", "", "chevronLeft")
     readonly property string iconChevronDown:       getIcon("\uE5CF", "\uE972", "", "chevronDown")
     readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE971", "", "chevronUp")
-    readonly property string iconFlame:             getIcon("\uEF55", "\uE814", "", "flame")
-    readonly property string iconSparkles:          getIcon("\uE65F", "\uE7C5", "", "sparkles")
-    readonly property string iconRadio:             getIcon("\uE03E", "\uEC18", "📻", "radio")
+    readonly property string iconFlame:             getIcon("\uEF55", "\uE945", "", "flame")
+    readonly property string iconSparkles:          getIcon("\uE65F", "\uE794", "", "sparkles")
+    readonly property string iconRadio:             getIcon("\uE03E", "\uE93E", "📻", "radio")
     readonly property string iconSliders:           getIcon("\uE429", "\uE9E9", "", "sliders")
     readonly property string iconTerminal:          getIcon("\uEB8E", "\uE756", "", "terminal")
     readonly property string iconCalendar:          getIcon("\uE935", "\uE787", "", "calendar")

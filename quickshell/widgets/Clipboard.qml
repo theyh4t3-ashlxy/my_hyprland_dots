@@ -96,8 +96,38 @@ Rectangle {
         }
     }
 
+    Connections {
+        target: Settings
+        function onRequestClipboardToggle() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = !popup.open;
+            if (popup.open) {
+                syncCurrentClip();
+                root.searchFilter = "";
+                clipInput.text = "";
+                clipInput.forceActiveFocus();
+            }
+        }
+        function onRequestClipboardOpen() {
+            let pt = root.mapToItem(null, 0, 0);
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            popup.open = true;
+            syncCurrentClip();
+            root.searchFilter = "";
+            clipInput.text = "";
+            clipInput.forceActiveFocus();
+        }
+        function onRequestClipboardClose() {
+            popup.open = false;
+        }
+    }
+
     PopupPanel {
         id: popup
+        wantsFocus: true
 
         content: ColumnLayout {
             anchors.fill: parent

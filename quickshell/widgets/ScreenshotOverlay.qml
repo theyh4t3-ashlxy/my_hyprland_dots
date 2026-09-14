@@ -36,6 +36,7 @@ PanelWindow {
     property real currY: 0
     property var hoveredClient: null
     property string pendingAction: "both"
+    property bool isCapturing: false
 
     readonly property real selX: Math.min(startX, currX)
     readonly property real selY: Math.min(startY, currY)
@@ -61,7 +62,7 @@ PanelWindow {
         let list = ScreenshotService.clients || [];
         for (let i = 0; i < list.length; i++) {
             let c = list[i];
-            if (!c.at || !c.size) continue;
+            if (!c || !c.at || !c.size) continue;
             let cx = c.at[0];
             let cy = c.at[1];
             let cw = c.size[0];
@@ -75,48 +76,93 @@ PanelWindow {
     }
 
     Timer {
-        id: grabTimer
-        interval: 60
+        id: pendingGrabTimer
+        interval: 40
         repeat: false
-        onTriggered: overlayRoot.processGrab()
+        property int retries: 0
+        property real grabX: 0
+        property real grabY: 0
+        property real grabW: 0
+        property real grabH: 0
+        property string action: "both"
+        onTriggered: {
+            if (retries > 8) {
+                // stop spinning forever if screencopy bails
+                retries = 0;
+                overlayRoot.isCapturing = false;
+                ScreenshotService.close();
+                return;
+            }
+            retries++;
+            overlayRoot.executeNativeGrab(grabX, grabY, grabW, grabH, action);
+        }
     }
 
     function executeNativeGrab(x: real, y: real, w: real, h: real, action: string): void {
+        if (overlayRoot.isCapturing && !pendingGrabTimer.running) return;
+
         let grabX = Math.max(0, Math.round(x));
         let grabY = Math.max(0, Math.round(y));
         let grabW = Math.min(screen.width - grabX, Math.round(w));
         let grabH = Math.min(screen.height - grabY, Math.round(h));
 
-        if (grabW <= 2 || grabH <= 2) return;
+        if (grabW <= 2 || grabH <= 2) {
+            grabX = 0;
+            grabY = 0;
+            grabW = screen.width;
+            grabH = screen.height;
+        }
 
-        pendingAction = action || Settings.screenshotDefaultAction || "both";
+        overlayRoot.isCapturing = true;
+
+        if (!frozenScreencopy.hasContent) {
+            if (Settings.screenshotFreeze) {
+                frozenScreencopy.captureFrame();
+            }
+            pendingGrabTimer.grabX = grabX;
+            pendingGrabTimer.grabY = grabY;
+            pendingGrabTimer.grabW = grabW;
+            pendingGrabTimer.grabH = grabH;
+            pendingGrabTimer.action = action;
+            pendingGrabTimer.restart();
+            return;
+        }
+
+        pendingGrabTimer.retries = 0;
+        let act = action || Settings.screenshotDefaultAction || "both";
+
         cropExporter.x = grabX;
         cropExporter.y = grabY;
         cropExporter.width = grabW;
         cropExporter.height = grabH;
-        innerScreencopy.x = -grabX;
-        innerScreencopy.y = -grabY;
+        frozenScreencopy.x = -grabX;
+        frozenScreencopy.y = -grabY;
 
         if (Settings.screenshotFlash) {
             flashAnim.restart();
         }
 
-        grabTimer.restart();
-    }
-
-    function processGrab(): void {
         let rawDir = Settings.screenshotDir || "~/Pictures/Screenshots";
-        let dir = rawDir.replace(/^~/, Quickshell.env("HOME"));
-        let timestamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd_hh-mm-ss");
+        let dir = rawDir.replace(/^~/, Quickshell.env("HOME") || "");
+        let scrSuffix = overlayRoot.screen.name ? ("_" + overlayRoot.screen.name) : "";
+        let timestamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd_hh-mm-ss") + scrSuffix;
         let filePath = dir + "/Screenshot_" + timestamp + ".png";
 
-        Quickshell.execDetached(["mkdir", "-p", dir]);
-
         cropExporter.grabToImage(function(result) {
-            let saved = result.saveToFile(filePath);
-            let act = overlayRoot.pendingAction;
-            let scriptPath = Quickshell.env("HOME") + "/.config/quickshell/scripts/screenshot.py";
+            if (!result) {
+                overlayRoot.isCapturing = false;
+                ScreenshotService.close();
+                return;
+            }
 
+            let saved = result.saveToFile(filePath);
+            if (!saved) {
+                // save failed because directory was missing, dump into /tmp
+                filePath = "/tmp/Screenshot_" + timestamp + ".png";
+                result.saveToFile(filePath);
+            }
+
+            let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/screenshot.py";
             Quickshell.execDetached([
                 "python3",
                 scriptPath,
@@ -125,6 +171,14 @@ PanelWindow {
                 filePath,
                 Settings.screenshotNotify ? "1" : "0"
             ]);
+
+            cropExporter.x = 0;
+            cropExporter.y = 0;
+            cropExporter.width = overlayRoot.screen.width;
+            cropExporter.height = overlayRoot.screen.height;
+            frozenScreencopy.x = 0;
+            frozenScreencopy.y = 0;
+            overlayRoot.isCapturing = false;
 
             ScreenshotService.close();
         });
@@ -141,12 +195,19 @@ PanelWindow {
                 overlayRoot.startY = 0;
                 overlayRoot.currX = 0;
                 overlayRoot.currY = 0;
-                grabTimer.stop();
+                overlayRoot.isCapturing = false;
+                pendingGrabTimer.stop();
+                pendingGrabTimer.retries = 0;
             } else {
+                let rawDir = Settings.screenshotDir || "~/Pictures/Screenshots";
+                let dir = rawDir.replace(/^~/, Quickshell.env("HOME") || "");
+                Quickshell.execDetached(["mkdir", "-p", dir]);
+
                 actionsBar.randomizeQuote();
                 if (Settings.screenshotFreeze) {
                     frozenScreencopy.captureFrame();
                 }
+                keyHandler.forceActiveFocus();
             }
         }
 
@@ -161,38 +222,27 @@ PanelWindow {
         }
     }
 
-    // Native Wayland background Screencopy (Freeze frame support)
-    ScreencopyView {
-        id: frozenScreencopy
-        anchors.fill: parent
-        captureSource: overlayRoot.screen
-        live: !Settings.screenshotFreeze
-        visible: Settings.screenshotFreeze
-        z: 0
-    }
-
-    // Native Offscreen/Scene-Graph Crop Exporter (100% native QtQuick grab)
     Item {
         id: cropExporter
-        x: overlayRoot.activeX
-        y: overlayRoot.activeY
-        width: Math.max(1, overlayRoot.activeW)
-        height: Math.max(1, overlayRoot.activeH)
+        x: 0
+        y: 0
+        width: overlayRoot.screen.width
+        height: overlayRoot.screen.height
         clip: true
-        z: -1
+        z: 0
 
         ScreencopyView {
-            id: innerScreencopy
-            x: -overlayRoot.activeX
-            y: -overlayRoot.activeY
+            id: frozenScreencopy
+            x: 0
+            y: 0
             width: overlayRoot.screen.width
             height: overlayRoot.screen.height
             captureSource: overlayRoot.screen
-            live: false
+            live: !Settings.screenshotFreeze
+            visible: Settings.screenshotFreeze || overlayRoot.isCapturing
         }
     }
 
-    // Keyboard navigation
     Item {
         id: keyHandler
         anchors.fill: parent
@@ -216,7 +266,6 @@ PanelWindow {
         }
     }
 
-    // Granular dimming backdrop: full screen when no selection
     Rectangle {
         anchors.fill: parent
         color: Theme.alpha("#000000", Settings.screenshotDimOpacity)
@@ -224,7 +273,6 @@ PanelWindow {
         z: 2
     }
 
-    // 4-Rect Cutout Dimming when selection active
     Item {
         anchors.fill: parent
         visible: overlayRoot.hasActiveRegion
@@ -232,7 +280,6 @@ PanelWindow {
 
         readonly property color dimColor: Theme.alpha("#000000", Settings.screenshotDimOpacity)
 
-        // Top
         Rectangle {
             x: 0
             y: 0
@@ -240,7 +287,6 @@ PanelWindow {
             height: Math.max(0, overlayRoot.activeY)
             color: parent.dimColor
         }
-        // Bottom
         Rectangle {
             x: 0
             y: overlayRoot.activeY + overlayRoot.activeH
@@ -248,7 +294,6 @@ PanelWindow {
             height: Math.max(0, overlayRoot.height - (overlayRoot.activeY + overlayRoot.activeH))
             color: parent.dimColor
         }
-        // Left
         Rectangle {
             x: 0
             y: overlayRoot.activeY
@@ -256,7 +301,6 @@ PanelWindow {
             height: overlayRoot.activeH
             color: parent.dimColor
         }
-        // Right
         Rectangle {
             x: overlayRoot.activeX + overlayRoot.activeW
             y: overlayRoot.activeY
@@ -266,7 +310,6 @@ PanelWindow {
         }
     }
 
-    // Hairline Crosshairs
     Item {
         anchors.fill: parent
         visible: Settings.screenshotShowCrosshair && !overlayRoot.hasSelection && !overlayRoot.isDragging && !overlayRoot.clientSnapped
@@ -288,7 +331,6 @@ PanelWindow {
         }
     }
 
-    // Interactive mouse capture layer (Placed at z: 5, below selection badges and actionsBar)
     MouseArea {
         id: mouseCapture
         anchors.fill: parent
@@ -299,14 +341,17 @@ PanelWindow {
         function isOverActions(mx: real, my: real): bool {
             if (!actionsBar.visible) return false;
             let pad = 8;
+            let actW = actionsBar.width > 0 ? actionsBar.width : actionsBar.implicitWidth;
+            let actH = actionsBar.height > 0 ? actionsBar.height : actionsBar.implicitHeight;
             let bx = actionsBar.x - pad;
-            let by = actionsBar.y - 32; // includes unhinged header tab!
-            let bw = actionsBar.width + pad * 2;
-            let bh = actionsBar.height + 32 + pad * 2;
+            let by = actionsBar.y - 32;
+            let bw = actW + pad * 2;
+            let bh = actH + 32 + pad * 2;
             return (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh);
         }
 
         onPressed: (mouse) => {
+            keyHandler.forceActiveFocus();
             if (isOverActions(mouse.x, mouse.y)) {
                 mouse.accepted = false;
                 return;
@@ -328,15 +373,22 @@ PanelWindow {
         }
 
         onReleased: (mouse) => {
+            if (overlayRoot.isDragging) {
+                overlayRoot.isDragging = false;
+                if (overlayRoot.selW > 15 && overlayRoot.selH > 15) {
+                    overlayRoot.hasSelection = true;
+                } else {
+                    overlayRoot.hasSelection = false;
+                }
+                return;
+            }
+
             if (isOverActions(mouse.x, mouse.y)) {
                 mouse.accepted = false;
                 return;
             }
-            overlayRoot.isDragging = false;
-            if (overlayRoot.selW > 15 && overlayRoot.selH > 15) {
-                overlayRoot.hasSelection = true;
-            } else if (overlayRoot.hoveredClient) {
-                // Clicked an active client window: snap exact bounds
+
+            if (overlayRoot.hoveredClient) {
                 overlayRoot.hasSelection = true;
                 let relX = Math.max(0, overlayRoot.hoveredClient.at[0] - screen.x);
                 let relY = Math.max(0, overlayRoot.hoveredClient.at[1] - screen.y);
@@ -352,7 +404,6 @@ PanelWindow {
         }
     }
 
-    // Granular Selection Frame (z: 10)
     Rectangle {
         id: selectionBox
         visible: overlayRoot.hasActiveRegion
@@ -366,7 +417,6 @@ PanelWindow {
         border.color: Theme.primary
         z: 10
 
-        // Corner accent handles
         Item {
             anchors.fill: parent
             visible: Settings.screenshotShowHandles
@@ -378,7 +428,6 @@ PanelWindow {
         }
     }
 
-    // Granular Geometry & Metadata Badge (z: 20)
     Rectangle {
         id: dimBadge
         visible: Settings.screenshotShowBadge && overlayRoot.hasActiveRegion
@@ -417,7 +466,6 @@ PanelWindow {
         }
     }
 
-    // Floating Action Toolbar with unhinged concave header (z: 100, highest priority)
     ScreenshotActions {
         id: actionsBar
         visible: !overlayRoot.isDragging
@@ -449,6 +497,7 @@ PanelWindow {
             overlayRoot.currY = 0;
         }
         onWindowClicked: {
+            let clients = ScreenshotService.clients || [];
             if (overlayRoot.hoveredClient) {
                 overlayRoot.hasSelection = true;
                 let relX = Math.max(0, overlayRoot.hoveredClient.at[0] - screen.x);
@@ -459,8 +508,9 @@ PanelWindow {
                 overlayRoot.startY = relY;
                 overlayRoot.currX = relX + relW;
                 overlayRoot.currY = relY + relH;
-            } else if (ScreenshotService.clients.length > 0) {
-                let first = ScreenshotService.clients[0];
+            } else if (clients.length > 0) {
+                let first = clients[0];
+                if (!first || !first.at || !first.size) return;
                 overlayRoot.hasSelection = true;
                 let relX = Math.max(0, first.at[0] - screen.x);
                 let relY = Math.max(0, first.at[1] - screen.y);
@@ -493,7 +543,6 @@ PanelWindow {
         }
     }
 
-    // Visual Flash Animation upon capture (z: 200)
     Rectangle {
         id: flashRect
         anchors.fill: parent

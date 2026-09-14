@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 import Quickshell.Widgets
 import Quickshell.Hyprland
 import ".."
@@ -8,6 +9,9 @@ import "../controls"
 
 PopupPanel {
     id: root
+
+    wantsFocus: true
+    keyboardFocusMode: WlrKeyboardFocus.Exclusive
 
     cardWidth: 460
     cardHeight: 560

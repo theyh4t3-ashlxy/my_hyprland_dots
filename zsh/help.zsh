@@ -1,68 +1,99 @@
-# help: cheatsheet for dots, shell shortcuts, and desktop controls
+# cheatsheet: dots, shell shortcuts, and desktop controls
+# warning: reading this will not make your rice look like unixporn
 
-help() {
-    local c_pri="%F{141}"
-    local c_sec="%F{117}"
-    local c_ter="%F{221}"
-    local c_cmd="%F{120}"
-    local c_dim="%F{244}"
-    local c_rst="%f"
+dots_help() {
+    # 8-bit colors because truecolor in a tty is pure vanity
+    local c_pri="%F{141}" c_sec="%F{117}" c_ter="%F{221}"
+    local c_cmd="%F{120}" c_dim="%F{244}" c_rst="%f"
 
     print -P "${c_pri}󰄛 hyprland + quickshell + zsh cheat sheet${c_rst}"
     print -P "${c_dim}dont panic. here is everything wired into this rice.${c_rst}\n"
 
-    print -P "${c_sec}󰞷 zsh & terminal${c_rst}"
-    print -P "  ${c_cmd}settings${c_rst} / ${c_cmd}rice-settings${c_rst}   ${c_dim}customize prompt style, symbol, accent color & roasts${c_rst}"
-    print -P "  ${c_cmd}help${c_rst} / ${c_cmd}dots-help${c_rst}             ${c_dim}display this cheat sheet${c_rst}"
-    print -P "  ${c_cmd}c <dir>${c_rst}                     ${c_dim}smart cd with automatic eza listing${c_rst}"
-    print -P "  ${c_cmd}ll${c_rst} / ${c_cmd}la${c_rst} / ${c_cmd}tree${c_rst}            ${c_dim}eza file listings with git status & icons${c_rst}"
-    print -P "  ${c_cmd}cat <file>${c_rst}                 ${c_dim}bat with syntax highlighting and line numbers${c_rst}"
-    print -P "  ${c_cmd}find <query>${c_rst}               ${c_dim}fd fast search${c_rst}"
-    print -P "  ${c_cmd}grep <pattern>${c_rst}             ${c_dim}ripgrep file search${c_rst}"
-    print -P "  ${c_cmd}yz${c_rst} / ${c_cmd}yazi${c_rst}                  ${c_dim}terminal file manager with cwd sync on exit${c_rst}"
-    print -P "  ${c_cmd}mc <file>${c_rst}                  ${c_dim}micro editor${c_rst}"
-    print -P "  ${c_cmd}zrecompile${c_rst} / ${c_cmd}zclean${c_rst}       ${c_dim}compile / clean .zwc bytecode caches${c_rst}"
-    print ""
+    # data table because hardcoded spacebar art is for barbarians
+    local -a entries=(
+        "HEADER:󰞷 zsh & terminal"
+        "settings / rice-settings | customize prompt style, accent color & roasts"
+        "help / dots-help         | display this cheat sheet"
+        "c <dir>                  | smart cd with automatic eza listing"
+        "ll / la / tree           | eza file listings with git status & icons"
+        "cat <file>               | bat with syntax highlighting and line numbers"
+        "find <query>             | fd fast search"
+        "grep <pattern>           | ripgrep file search"
+        "yz / yazi                | terminal file manager with cwd sync on exit"
+        "mc <file>                | micro editor for when vim refuses to let you leave"
+        "zrecompile / zclean      | compile / clean .zwc bytecode caches"
+        "GAP:"
+        "HEADER:󰏘 wallpaper & matugen"
+        "wp random [category]     | roll random wallpaper + matugen color refresh"
+        "wp select                | interactive wallpaper chooser via fzf"
+        "wp fetch <query>         | download live wallpaper loop from giphy"
+        "wp color <hex>           | set custom hex color scheme"
+        "wp scan                  | rescan ~/.wallpapers directory"
+        "color                    | hyprpicker screen hex color dropper"
+        "dnd toggle               | toggle do not disturb (silence toasts)"
+        "GAP:"
+        "HEADER:󰄲 quickshell & session"
+        "qs -d                    | launch quickshell background daemon"
+        "quickshell kill          | murder running quickshell instance"
+        "quickshell log -t 30     | tail live quickshell logs before it crashes"
+        "nuke                     | interactive process sniper & auto-sudo guillotine"
+        "GAP:"
+        "HEADER: git shortcuts"
+        "gs (status -sb)          | ga (add)          | gaa (add all)"
+        "gc (commit -m)           | gp (push)         | gl (log graph)"
+        "gd (diff)                | gco (checkout)    | gcb (checkout -b)"
+        "GAP:"
+        "HEADER:󰌌 hyprland hotkeys (binds.lua)"
+        "Win + T                  | open kitty terminal (uwsm)"
+        "Win + Q                  | close active window"
+        "Win + F                  | toggle fullscreen"
+        "Win + Space              | toggle floating window"
+        "Win + Shift + Space      | toggle float and pin window"
+        "Win + I / J / K / L      | focus window (the wrist-sparing layout)"
+        "Win + Shift + IJKL       | move window (same layout, more adrenaline)"
+        "Win + 1..9, 0            | switch to workspace 1..10"
+        "Win + Alt + W            | roll random wallpaper on the fly"
+        "Win + End                | lock screen (quickshell / hyprlock)"
+        "Win + Shift + End        | exit session (graceful uwsm stop)"
+        "Print                    | quickshell screenshot tool"
+    )
 
-    print -P "${c_sec}󰏘 wallpaper & matugen${c_rst}"
-    print -P "  ${c_cmd}wp random [category]${c_rst}       ${c_dim}roll random wallpaper + matugen color refresh${c_rst}"
-    print -P "  ${c_cmd}wp select${c_rst}                  ${c_dim}interactive wallpaper chooser via fzf${c_rst}"
-    print -P "  ${c_cmd}wp fetch <query>${c_rst}           ${c_dim}download live wallpaper loop from giphy${c_rst}"
-    print -P "  ${c_cmd}wp color <hex>${c_rst}             ${c_dim}set custom hex color scheme${c_rst}"
-    print -P "  ${c_cmd}wp scan${c_rst}                    ${c_dim}rescan ~/.wallpapers directory${c_rst}"
-    print -P "  ${c_cmd}color${c_rst}                      ${c_dim}hyprpicker screen hex color dropper${c_rst}"
-    print -P "  ${c_cmd}dnd toggle${c_rst}                 ${c_dim}toggle do not disturb (silence toasts)${c_rst}"
-    print ""
+    local line cmd desc
+    for line in "${entries[@]}"; do
+        if [[ "$line" == "GAP:" ]]; then
+            print ""
+            continue
+        fi
 
-    print -P "${c_sec}󰄲 quickshell & session${c_rst}"
-    print -P "  ${c_cmd}qs -d${c_rst}                      ${c_dim}launch quickshell background daemon${c_rst}"
-    print -P "  ${c_cmd}quickshell kill${c_rst}            ${c_dim}kill running quickshell instance${c_rst}"
-    print -P "  ${c_cmd}quickshell log -t 30${c_rst}       ${c_dim}tail live quickshell logs${c_rst}"
-    print -P "  ${c_cmd}nuke${c_rst}                       ${c_dim}emergency reset (restarts quickshell, hyprland, pipewire)${c_rst}"
-    print ""
+        if [[ "$line" == HEADER:* ]]; then
+            # section headers for humans with decaying dopamine receptors
+            print -P "${c_sec}${line#HEADER:}${c_rst}"
+            continue
+        fi
 
-    print -P "${c_sec} git shortcuts${c_rst}"
-    print -P "  ${c_cmd}gs${c_rst}    ${c_dim}status -sb${c_rst}           ${c_cmd}ga${c_rst}    ${c_dim}add${c_rst}           ${c_cmd}gaa${c_rst}   ${c_dim}add all${c_rst}"
-    print -P "  ${c_cmd}gc${c_rst}    ${c_dim}commit -m${c_rst}            ${c_cmd}gp${c_rst}    ${c_dim}push${c_rst}          ${c_cmd}gl${c_rst}    ${c_dim}log oneline graph${c_rst}"
-    print -P "  ${c_cmd}gd${c_rst}    ${c_dim}diff${c_rst}                 ${c_cmd}gco${c_rst}   ${c_dim}checkout${c_rst}      ${c_cmd}gcb${c_rst}   ${c_dim}checkout -b${c_rst}"
-    print ""
+        # split on pipe delimiter
+        cmd="${line%% | *}"
+        desc="${line#* | }"
 
-    print -P "${c_sec}󰌌 hyprland hotkeys (from binds.lua)${c_rst}"
-    print -P "  ${c_ter}Super + T${c_rst}              ${c_dim}open kitty terminal (uwsm)${c_rst}"
-    print -P "  ${c_ter}Super + Q${c_rst}              ${c_dim}close active window${c_rst}"
-    print -P "  ${c_ter}Super + F${c_rst}              ${c_dim}toggle fullscreen${c_rst}"
-    print -P "  ${c_ter}Super + Space${c_rst}          ${c_dim}toggle floating window${c_rst}"
-    print -P "  ${c_ter}Super + Shift + Space${c_rst}  ${c_dim}pin floating window${c_rst}"
-    print -P "  ${c_ter}Super + I / J / K / L${c_rst}  ${c_dim}focus window (up / left / down / right)${c_rst}"
-    print -P "  ${c_ter}Super + Shift + IJKL${c_rst}   ${c_dim}move window (up / left / down / right)${c_rst}"
-    print -P "  ${c_ter}Super + 1..9${c_rst}           ${c_dim}switch to workspace 1..9${c_rst}"
-    print -P "  ${c_ter}Super + Alt + W${c_rst}        ${c_dim}roll random wallpaper on the fly${c_rst}"
-    print -P "  ${c_ter}Super + End${c_rst}            ${c_dim}lock screen (quickshell / hyprlock)${c_rst}"
-    print -P "  ${c_ter}Super + Shift + End${c_rst}    ${c_dim}exit session (uwsm end)${c_rst}"
-    print -P "  ${c_ter}Print / Super+Print${c_rst}    ${c_dim}screenshot (region / window / full)${c_rst}"
-    print ""
-    print -P "${c_dim}type 'settings' to tweak your prompt and shell vibe.${c_rst}"
+        # ${(r:24:)cmd} is native zsh string padding
+        # because printf choked on prompt colors like a toddler on a battery
+        if [[ "$cmd" == "Win "* ]]; then
+            print -P "  ${c_ter}${(r:24:)cmd}${c_rst} ${c_dim}${desc}${c_rst}"
+        elif [[ "$cmd" == "gs "* || "$cmd" == "gc "* || "$cmd" == "gd "* ]]; then
+            # multi-column layout for git commands to avoid three feet of empty whitespace
+            local col1="${cmd}"
+            local col2="${desc%% | *}"
+            local col3="${desc#* | }"
+            print -P "  ${c_cmd}${(r:24:)col1}${c_rst} ${c_cmd}${(r:20:)col2}${c_rst} ${c_cmd}${col3}${c_rst}"
+        else
+            print -P "  ${c_cmd}${(r:24:)cmd}${c_rst} ${c_dim}${desc}${c_rst}"
+        fi
+    done
+
+    # reminder that tweaking configs is not the same as getting work done
+    print -P "\n${c_dim}type 'settings' to tweak your prompt and shell vibe.${c_rst}"
 }
 
-alias dots-help="help"
-alias cheatsheet="help"
+alias dots-help="dots_help"
+alias cheatsheet="dots_help"
+alias help="dots_help"

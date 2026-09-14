@@ -43,15 +43,15 @@ Rectangle {
     }
 
     function getClockMoodIcon(hrs) {
-        if (!Theme?.getIcon) return Theme?.iconClock ?? "\uEFD6";
+        if (!Theme) return "";
         if (hrs < 6) {
-            return Theme.getIcon("\uF159", "\uE708", "", "moon", Theme?.kaoSleepy ?? "(u_u)", "night");
+            return Theme.iconMoon;
         } else if (hrs < 12) {
-            return Theme.getIcon("\uEFEF", "\uE706", "", "coffee", Theme?.kaoCoffee ?? "[_]~", "morn");
+            return Theme.iconCoffee;
         } else if (hrs < 18) {
-            return Theme.getIcon("\uE518", "\uE706", "", "sun", Theme?.kaoCool ?? "(^o^)", "day");
+            return Theme.iconSun;
         } else {
-            return Theme.getIcon("\uE405", "\uE708", "", "music", Theme?.kaoMusic ?? "♫", "eve");
+            return Theme.iconMusic;
         }
     }
 
@@ -119,6 +119,31 @@ Rectangle {
                 clockRoot.selectedYear = clockRoot.todayYear;
                 clockRoot.selectedMonth = clockRoot.todayMonth;
             }
+        }
+    }
+
+    Connections {
+        target: Settings
+        function onRequestClockToggle() {
+            let pos = clockRoot.mapToItem(null, 0, 0);
+            calPopup.targetRelativeX = pos ? (pos.x + (clockRoot.width / 2)) : 0;
+            calPopup.targetRelativeY = pos ? (pos.y + (clockRoot.height / 2)) : 0;
+            calPopup.open = !calPopup.open;
+            if (calPopup.open) {
+                clockRoot.selectedYear = clockRoot.todayYear;
+                clockRoot.selectedMonth = clockRoot.todayMonth;
+            }
+        }
+        function onRequestClockOpen() {
+            let pos = clockRoot.mapToItem(null, 0, 0);
+            calPopup.targetRelativeX = pos ? (pos.x + (clockRoot.width / 2)) : 0;
+            calPopup.targetRelativeY = pos ? (pos.y + (clockRoot.height / 2)) : 0;
+            calPopup.open = true;
+            clockRoot.selectedYear = clockRoot.todayYear;
+            clockRoot.selectedMonth = clockRoot.todayMonth;
+        }
+        function onRequestClockClose() {
+            calPopup.open = false;
         }
     }
 
