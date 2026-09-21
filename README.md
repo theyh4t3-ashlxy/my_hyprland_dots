@@ -1,4 +1,4 @@
-# hyprland dots: the hallucination edition
+# hyprland dots: the hallucination edition (nixos lobotomy)
 
 >[!WARNING]
 > this repo is 90% autonomous ai slop, 9% sleep deprivation, and 1% quickshell negotiating terms of surrender with wlroots. deploy at your own psychological peril.
@@ -12,35 +12,27 @@ the development stack:
 
 it runs on my machine. if your compositor kernel panics on boot, that is fundamentally a skill issue.
 
-# new shit
+# fuck arch
 
-- material symbols: burned legacy nerd font mdi glyphs in a dumpster. switched to official google material symbols with runtime switching between rounded, outlined, and sharp because misaligned glyphs gave me psychic damage.
-- wallpaper browser loop massacre: killed 50+ recursive qml binding loops so your cpu doesn't turn into an air fryer every time you open the wallpaper grid.
-- bar layout studio: live interactive widget drag and drop (left, center, right) with liquid concave scoops. zero restarts, infinite hubris. spend three hours moving a clock two pixels to the left instead of doing homework.
-- app launcher: no longer renders at 0x0 invisible ghost pixels in the shadow realm while swallowing your keystrokes.
-- python script unification: deleted fragmented shell forks in favor of unified python scripts (wallpaper.py, session.py, clipboard.py) because writing bash arrays feels like being hexed by a medieval peasant.
-- absolute #000000 black: pitch black across the bar, cards, pills, and screen scoops. no washed-out dark grey fraud. discord dark theme could never.
-- glass split: real frosted blur via layer-shell rules instead of broken opacity hacks that look like grease on a screen.
-- continuous screen borders: corner scoops now connect with continuous pixel-perfect borders wrapping the monitor like an ankle monitor.
-- top bar clipping dead: eradicated nested animations and width clipping so hovering over one icon doesn't eat adjacent widgets alive.
-- schema-driven settings: murdered manual serialization boilerplate. dynamic schema or bust.
-- flatpak sandbox containment: gtk-3.0 and gtk-4.0 configs are synced as physical directories instead of symlinks because bubblewrap throws a tantrum if it encounters symlinks across container boundaries.
-- curl pipe installer fixed: install.zsh reads directly from /dev/tty so piping remote curl commands doesn't immediately choke on eof like a coward.
-- zsh prompt customizer: live interactive customizer with prompt styles (two-line, single-line, minimal, bracket, full mental breakdown), custom symbols, and colors for artificial dopamine when code won't compile.
-- help cheatsheet: instant colorized keybind cheat sheet so you remember what keys you remapped while dissociated at 4 am.
-- unhinged readme overhaul: purged sanitized corporate chatbot drivel from every single file here.
+arch is dead to me. the imperative nightmare is officially over.
+
+- the atomic arch incident: i got bored, ran `npm install atomic-lockfile` on bare metal just to feel something, and handed my system to an aur supply chain infostealer. nuked the entire drive to the bedrock.
+- the mutable crime scene: arch is just an untracked history of sins committed in a terminal at 2 am. one day mesa updates ten minutes before qt6 and your entire compositor becomes modern art.
+- gentoo pit stop: hopped to gentoo for approximately four hours before realizing compiling llvm and rust on a laptop battery is just paying your power company to turn lithium into toxic vapor.
+- enter nixos: declarative or death. my entire machine is defined in one file. if an update breaks anything, i reboot and pick the previous generation from the boot menu. arch users are out here playing jenga with pacman while nixos users just rebuild the universe.
 
 # how to nuke wayland
 
-prerequisites: an arch-based distro, zsh, and a complete lack of regard for your system stability.
+prerequisites: your sanity, a working nixos installation, and `programs.hyprland.enable = true;` with `withUWSM = true;` declared in `/etc/nixos/configuration.nix`.
 
 do not run this script as root. if you run `sudo ./install.zsh`, the script detects your hubris, roasts you in bold red ansi, and terminates immediately before you chmod your entire life into 000.
 
-clone the repo:
+clone the repo into xdg data storage (because cluttering ~ is a crime):
 
 ```zsh
-git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git ~/my-hyprland-dots
-cd ~/my-hyprland-dots
+mkdir -p ~/.local/share
+git clone https://github.com/theyh4t3-ashlxy/my_hyprland_dots.git ~/.local/share/dotfiles
+cd ~/.local/share/dotfiles
 ```
 
 run the harness:
@@ -54,18 +46,17 @@ if fzf is installed, it spawns an interactive multi-select menu. if fzf is missi
 
 # flags for people who hate interactive menus
 
-- `./install.zsh --all`: full send. archives existing configs into `~/.cache/dotfiles-backups/backup_<timestamp>.tar.gz`, pulls packages, symlinks everything, compiles zsh bytecode, runs matugen, starts quickshell via uwsm, offers zero apologies.
-- `./install.zsh --doctor`: runs a diagnostic scan on your machine. checks for missing binaries (hyprland, uwsm, matugen, awww, mpvpaper, quickshell), inspects typography (jetbrainsmono nerd font, noto sans), validates symlinks, and tells you why your desktop is held together by spit and duct tape.
-- `./install.zsh --update`: pulls latest commits from git, fixes permission bits on python helper scripts, resyncs links, samples wallpaper palette, and reloads without nuking your local changes.
-- `./install.zsh --reload`: signals hyprctl reload and restarts quickshell (`qs -d`) inside your uwsm session so it doesn't linger as an orphaned background zombie.
-- `./install.zsh --links`: symlinks dotfiles into `~/.config` without touching system packages.
-- `./install.zsh --deps`: installs dependencies without touching your existing dotfiles.
-- `./install.zsh --aur`: bootstraps `paru-bin` via makepkg if you are on arch without an aur helper. arch without the aur is just debian with anxiety.
+- `./install.zsh --all`: full send. triggers nixos-rebuild, archives existing unlinked configs into `~/.cache/dotfiles-backups/backup_<timestamp>.tar.gz`, symlinks everything, extracts wallpaper palette via matugen, reloads quickshell inside uwsm, offers zero apologies.
+- `./install.zsh --rebuild` or `-r`: runs `sudo nixos-rebuild switch` directly so you don't have to leave the script like a peasant.
+- `./install.zsh --doctor`: runs a diagnostic scan on your nixos environment. checks if packages exist in `environment.systemPackages` (hyprland, uwsm, matugen, awww, mpvpaper, quickshell), inspects typography (jetbrainsmono nerd font, noto sans), validates symlinks, and tells you why your desktop is held together by spit and duct tape.
+- `./install.zsh --update` or `-u`: pulls latest commits from git, fixes permission bits on python helper scripts, resyncs links, samples wallpaper palette, and reloads without nuking your local changes.
+- `./install.zsh --reload`: signals hyprctl reload and restarts quickshell (`uwsm app -- qs -d`) inside your uwsm session so it doesn't linger as an orphaned background zombie.
+- `./install.zsh --links` or `-l`: symlinks dotfiles into `~/.config` without triggering a nix rebuild.
 - `./install.zsh --fetch-wp`: downloads a clean catppuccin landscape wallpaper into `~/.wallpapers/downloaded/` so your desktop doesn't look like an abandoned void.
-- `./install.zsh --pkgs=desktop,terminal,media`: install specific package categories only. options: desktop, terminal, tools, editors, media, fonts, system.
 - `./install.zsh --dots=quickshell,hypr,kitty`: symlink specific configs only. options: quickshell, hypr, matugen, kitty, zsh, fastfetch, yazi, nvim, gtk-3.0, gtk-4.0.
 - `./install.zsh --no-theme`: skip wallpaper palette extraction via matugen.
 - `./install.zsh --no-backup`: live dangerously and skip tarball generation.
+- `./install.zsh --no-reload`: update files without poking the running compositor.
 
 # the fun route
 
