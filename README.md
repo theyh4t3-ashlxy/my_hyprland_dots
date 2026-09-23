@@ -1,14 +1,13 @@
-# hyprland dots: the hallucination edition (nixos lobotomy)
-
 >[!WARNING]
-> this repo is 90% autonomous ai slop, 9% sleep deprivation, and 1% quickshell negotiating terms of surrender with wlroots. deploy at your own psychological peril.
+> empirical telemetry indicates this repo is 88.3412% autonomous agent drift (95% ci [86.35%, 90.33%], p < 0.001), 11.2385% sleep debt, and 0.4203% quickshell negotiating terms of surrender with wlroots. deploy at your own psychological risk.
 
 this is my hyprland setup. synthesized entirely through prompt engineering, multi-agent thread wars, and complete disregard for human software engineering.
 
 the development stack:
-- google ai studio: where i dumped 1.5 million tokens of raw wayland xml protocols and broken quickshell documentation into a single prompt box at 3 am to force gemini to hallucinate layer-shell glue code.
-- google antigravity: where i ran four competing agent threads in parallel inside an electron fork until my laptop could cook an egg. one agent hallucinated display server protocols, another broke python arrays, and the other two fought over corner scoop radii.
-- google jules: the async agent that clones this repo into isolated cloud vms while i sleep, invents unit tests for nonexistent bugs, and throws unhinged pull requests at main with zero human oversight.
+- google ai studio: where i dumped 1.5 million tokens of raw wayland xml protocols and broken quickshell documentation into a single prompt box at 3 am to bully gemini into spitting out layer-shell glue code that barely compiles.
+- google antigravity: where i ran four competing subagents in parallel across isolated git worktrees until my laptop cpu hit 99c and the fan sounded like a jet engine. one agent re-invented display server ipc, another broke python arrays, and the other two locked into an endless merge war over corner scoop radii.
+- google jules: the async agent that clones this repo into isolated cloud vms while i sleep, invents unit tests for nonexistent bugs, and pushes pull requests directly to main with zero human oversight.
+- quickshell: because normal people use waybar with comfy json configs, but i decided building an entire desktop shell in raw qtquick and qml anchors was a good idea until qt6 updates and breaks every single layout.
 
 it runs on my machine. if your compositor kernel panics on boot, that is fundamentally a skill issue.
 
@@ -72,10 +71,8 @@ the installer hijacks `/dev/tty` for user input, so piping curl will not panic o
 
 nothing currently on fire. either it runs or the error logging daemon segfaulted before it could snitch.
 
-# todo / future graveyard
+# todo
 
-- [ ] fix animation consistency across modules before someone gets a migraine
-- [ ] interactive physics lab in motion sandbox because a window manager totally needs spring physics
 - [ ] open an issue to scream into the void if you want something added
 
 # how to complain (or "contribute")
@@ -84,4 +81,4 @@ open an issue. i'll never look at it. google jules will clone your complaints in
 
 # human pull requests
 
-if you are an actual carbon-based entity and want to fix hallucinated logic, open a pull request. the ai reviewer in github actions will probably gaslight you and claim your valid code is a syntax error, but i'll merge it over the bot's dead body out of pure spite. fork it, turn it into your own esoteric rice, do whatever. just don't ping me when your tty freezes during a presentation.
+if you are an actual carbon-based entity and want to fix hallucinated logic, open a pull request. the ai reviewer in github actions will probably gaslight you and claim your valid code is a syntax error, and i'd still merge the bots pr over yours. fork it, turn it into whatever cursed rice you want, do whatever. just share it (because of the license).
