@@ -1,5 +1,5 @@
 # nixos system rebuild & package management
-alias rebuild="sudo nixos-rebuild switch"
+alias rebuild="sudo nixos-rebuild switch" 
 alias test-build="sudo nixos-rebuild test"
 alias boot-build="sudo nixos-rebuild boot"
 alias nsearch="nix search nixpkgs"
@@ -7,17 +7,16 @@ alias nshell="nix-shell -p"
 alias nrun="nix run nixpkgs#"
 alias nix-gens="nixos-rebuild list-generations"
 
-# purge old generations and dead nix store paths
+# purge old dead nix store paths while keeping 7 days of rollbacks
 cleanup() {
-    print -P "%F{cyan}󰄛 purging user generations & store garbage...%f"
-    nix-collect-garbage -d
+    print -P "%F{cyan}󰄛 killing my own generations because i want my 512gb back ..%f"
+    nix-collect-garbage --delete-older-than 7d
     if (( $+commands[sudo] )); then
-        print -P "%F{cyan}󰄛 purging system-wide nix generations & store garbage...%f"
+        print -P "%F{cyan}󰄛 purging whatever it is in there. idgaf if it dies%f"
         sudo nix-collect-garbage -d
     fi
     print -P "%F{green}󰄲 nix store cleanup complete%f"
 }
-
 
 # text editor escape hatch
 alias mc="micro"
@@ -85,11 +84,11 @@ hash -d nix="/etc/nixos"
 hash -d wp="$HOME/.wallpapers"
 hash -d conf="$HOME/.config"
 
-# nmtui with dark aesthetic palette
-alias nmtui="NEWT_COLORS=\"\$NEWT_COLORS\" command nmtui"
+# nmtui with an actual dark aesthetic palette
+alias nmtui='NEWT_COLORS="root=black,black:border=gray,black:window=black,black:title=lightgray,black:button=black,cyan:actbutton=cyan,black:compactbutton=black,gray:checkbox=black,gray:actcheckbox=cyan,black:entry=white,black:label=gray,black:listbox=lightgray,black:actlistbox=black,cyan:textbox=lightgray,black:acttextbox=black,cyan:helpline=gray,black:roottext=gray,black" command nmtui'
 
-# it looks like i need agy as a run
-alias agy="nix run github:jacopone/antigravity-nix"
+# fixed alias spacing and quoting for antigravity cli
+alias agy="nix run 'github:jacopone/antigravity-nix#google-antigravity-cli'"
 
-# ok so i want mixtapes to work
+# mixtapes flatpak exports
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS"
