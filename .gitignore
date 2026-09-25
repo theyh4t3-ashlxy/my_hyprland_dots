@@ -20,3 +20,10 @@ quickshell/launcher-frecency.json
 *.zwc
 .DS_Store
 __pycache__/
+
+# agent / AI scratch files
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md

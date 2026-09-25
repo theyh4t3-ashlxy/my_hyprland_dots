@@ -32,7 +32,7 @@
   "modules": [
     { "type": "title" },
     "separator",
-    { "type": "os", "key": " os" },
+    { "type": "os", "key": " os" },
     { "type": "host", "key": "󰌢 host", "format": "{version}" },
     { "type": "kernel", "key": "󰌽 kernel" },
     { "type": "uptime", "key": "󰅐 uptime" },

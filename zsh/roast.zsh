@@ -109,33 +109,8 @@ command_not_found_handler() {
         print -P "\n%F{red}󰅚%f %F{244}command not found: %F{white}${cmd}%f"
     fi
     
-    # package lookup
-    local pkg=""
-    local helper="sudo pacman -S"
-    
-    if (( $+commands[paru] )); then
-        helper="paru -S"
-    elif (( $+commands[yay] )); then
-        helper="yay -S"
-    elif (( $+commands[pacman] )); then
-        helper="sudo pacman -S"
-    elif (( $+commands[dnf] )); then
-        helper="sudo dnf install"
-    elif (( $+commands[apt] )); then
-        helper="sudo apt install"
-    fi
-
-    if (( $+commands[pkgfile] )); then
-        pkg=$(pkgfile -b -q "$cmd" 2>/dev/null | head -n 1)
-    elif (( $+commands[pacman] )); then
-        pkg=$(pacman -Fq "usr/bin/$cmd" 2>/dev/null | head -n 1)
-    fi
-
-    if [[ -n "$pkg" ]]; then
-        print -P "  %F{cyan}󰄛 copium:%f you can download more distraction via %F{green}%B${pkg}%b%f (run: %F{magenta}${helper} ${pkg}%f)\n"
-    else
-        print ""
-    fi
+    # NixOS suggestion
+    print -P "  %F{cyan}󰄛 copium:%f try running it ephemerally via %F{green}%Bnix-shell -p ${cmd}%b%f or %F{magenta}nix run nixpkgs#${cmd}%f\n"
     
     _IN_CNF=0
     return 127

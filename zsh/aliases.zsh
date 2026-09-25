@@ -1,25 +1,36 @@
-# shortcuts because my fingers are lazy
-alias p="paru"
-alias update="paru -Syu"
-alias install="paru -S"
-alias remove="paru -Rns"
+# nixos system rebuild & package management
+alias rebuild="sudo nixos-rebuild switch"
+alias test-build="sudo nixos-rebuild test"
+alias boot-build="sudo nixos-rebuild boot"
+alias nsearch="nix search nixpkgs"
+alias nshell="nix-shell -p"
+alias nrun="nix run nixpkgs#"
+alias nix-gens="nixos-rebuild list-generations"
 
-# purge orphaned packages safely without crying on empty lists
+# purge old generations and dead nix store paths
 cleanup() {
-    local orphans=($(pacman -Qtdq 2>/dev/null))
-    if (( ${#orphans[@]} > 0 )); then
-        paru -Rns "${orphans[@]}"
-    else
-        print -P "%F{green}󰄲 no orphaned packages to clean%f"
+    print -P "%F{cyan}󰄛 purging user generations & store garbage...%f"
+    nix-collect-garbage -d
+    if (( $+commands[sudo] )); then
+        print -P "%F{cyan}󰄛 purging system-wide nix generations & store garbage...%f"
+        sudo nix-collect-garbage -d
     fi
+    print -P "%F{green}󰄲 nix store cleanup complete%f"
 }
+
 
 # text editor escape hatch
 alias mc="micro"
 
-# launch nautilus without hijacking stdout or locking directory
+# launch GUI file manager without hijacking stdout or locking directory
 fm() {
-    nautilus "${1:-.}" >/dev/null 2>&1 &!
+    if (( $+commands[dolphin] )); then
+        dolphin "${1:-.}" >/dev/null 2>&1 &!
+    elif (( $+commands[nautilus] )); then
+        nautilus "${1:-.}" >/dev/null 2>&1 &!
+    else
+        yz "${1:-.}"
+    fi
 }
 
 # yazi wrapper so exiting drops me in the current folder
@@ -67,12 +78,18 @@ alias .....='cd ../../../..'
 alias -- -='cd -'
 
 # directory warps
-hash -d dots="$HOME/my-hyprland-dots"
-hash -d hypr="$HOME/my-hyprland-dots/hypr"
-hash -d qs="$HOME/my-hyprland-dots/quickshell"
+hash -d dots="$HOME/.local/share/dotfiles"
+hash -d hypr="$HOME/.local/share/dotfiles/hypr"
+hash -d qs="$HOME/.local/share/dotfiles/quickshell"
+hash -d nix="/etc/nixos"
 hash -d wp="$HOME/.wallpapers"
 hash -d conf="$HOME/.config"
 
 # nmtui with dark aesthetic palette
 alias nmtui="NEWT_COLORS=\"\$NEWT_COLORS\" command nmtui"
 
+# it looks like i need agy as a run
+alias agy="nix run github:jacopone/antigravity-nix"
+
+# ok so i want mixtapes to work
+export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS"

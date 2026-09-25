@@ -237,7 +237,7 @@ PanelWindow {
             y: 0
             width: overlayRoot.screen.width
             height: overlayRoot.screen.height
-            captureSource: overlayRoot.screen
+            captureSource: (ScreenshotService.isOpen || overlayRoot.isCapturing) ? overlayRoot.screen : null
             live: !Settings.screenshotFreeze
             visible: Settings.screenshotFreeze || overlayRoot.isCapturing
         }
@@ -307,6 +307,20 @@ PanelWindow {
             width: Math.max(0, overlayRoot.width - (overlayRoot.activeX + overlayRoot.activeW))
             height: overlayRoot.activeH
             color: parent.dimColor
+        }
+    }
+
+    // Selection Canvas for region framing and coordinate guides
+    Canvas {
+        id: selectionCanvas
+        anchors.fill: parent
+        visible: overlayRoot.hasActiveRegion && (overlayRoot.activeW > 0 && overlayRoot.activeH > 0)
+        z: 4
+        onPaint: {
+            let ctx = getContext("2d");
+            if (!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            if (overlayRoot.activeW <= 0 || overlayRoot.activeH <= 0) return;
         }
     }
 

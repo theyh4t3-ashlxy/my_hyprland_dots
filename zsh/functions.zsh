@@ -38,23 +38,21 @@ fif() {
 # fkill aliases directly to the process sniper in nuke.zsh
 alias fkill="nuke"
 
-# fuzzy interactive package install
-in() {
-    if (( $+commands[paru] )); then
-        local pkgs
-        pkgs=$(paru -Slq | fzf --multi --preview 'paru -Si {1}' --preview-window=right:60%:wrap --header="[󰏤 install package]")
-        [[ -n "$pkgs" ]] && echo "$pkgs" | xargs -ro paru -S
+# ephemeral nix-shell environment
+try() {
+    if [[ -z "$1" ]]; then
+        print -P "%F{yellow}󰀦 usage: try <package ...>%f"
+        return 1
     fi
+    print -P "%F{cyan}󰄛 entering ephemeral nix environment for: %F{green}$*%f"
+    nix-shell -p "$@"
 }
-alias fin="in"
+alias in="try"
+alias fin="try"
 
-# fuzzy interactive package remove
+# package removal reminder for declarative system
 un() {
-    if (( $+commands[paru] )); then
-        local pkgs
-        pkgs=$(paru -Qq | fzf --multi --preview 'paru -Qi {1}' --preview-window=right:60%:wrap --header="[󰀦 remove package]")
-        [[ -n "$pkgs" ]] && echo "$pkgs" | xargs -ro paru -Rns
-    fi
+    print -P "%F{yellow}󰀦 NixOS packages are declarative! Remove the package from ~nix/configuration.nix and run 'rebuild'.%f"
 }
 alias fun="un"
 
@@ -65,26 +63,12 @@ fe() {
     [[ -n "$file" ]] && ${EDITOR:-micro} "$file"
 }
 
-# btrfs manual snapshot helper for root and home
-snap() {
-    local desc="${1:-manual backup $(date +'%Y-%m-%d %H:%M')}"
-    if sudo snapper -c root create --description "$desc" && \
-       sudo snapper -c home create --description "$desc"; then
-        print -P "%F{green}󰄲 snapshot created: %F{cyan}${desc}%f"
-    else
-        print -P "%F{red}󰅚 failed to create snapshots%f"
-        return 1
-    fi
+# list nixos system generations
+gens() {
+    print -P "%F{cyan}󰋊 [nixos system generations]%f"
+    nixos-rebuild list-generations
 }
-alias snapshot="snap"
-alias bsnap="snap"
+alias generations="gens"
+alias snaps="gens"
 
-# list btrfs snapshots
-snaps() {
-    print -P "%F{cyan}󰋊 [root snapshots]%f"
-    sudo snapper -c root list
-    print -P "\n%F{cyan}󰋊 [home snapshots]%f"
-    sudo snapper -c home list
-}
-alias snapshots="snaps"
 

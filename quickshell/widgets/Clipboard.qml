@@ -21,6 +21,38 @@ Rectangle {
     }
 
     property string searchFilter: ""
+    property int selectedIndex: 0
+
+    function getFilteredIndices() {
+        let res = [];
+        for (let i = 0; i < clipModel.count; i++) {
+            let item = clipModel.get(i);
+            if (!item || !item.text) continue;
+            if (root.searchFilter === "" || item.text.toLowerCase().includes(root.searchFilter)) {
+                res.push(i);
+            }
+        }
+        return res;
+    }
+
+    readonly property var filteredIndices: getFilteredIndices()
+
+    onSearchFilterChanged: {
+        let matches = getFilteredIndices();
+        selectedIndex = matches.length > 0 ? matches[0] : 0;
+    }
+
+    function removeItem(idx) {
+        if (idx >= 0 && idx < clipModel.count) {
+            clipModel.remove(idx);
+            let matches = getFilteredIndices();
+            if (matches.length === 0) {
+                selectedIndex = 0;
+            } else if (matches.indexOf(selectedIndex) === -1) {
+                selectedIndex = matches[0];
+            }
+        }
+    }
 
     property FileView clipFile: FileView {
         path: "/tmp/qs_curclip.txt"
@@ -82,14 +114,15 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+                popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
             } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
             }
             popup.open = !popup.open;
             if (popup.open) {
                 syncCurrentClip();
                 root.searchFilter = "";
+                root.selectedIndex = 0;
                 clipInput.text = "";
                 clipInput.forceActiveFocus();
             }
@@ -106,6 +139,7 @@ Rectangle {
             if (popup.open) {
                 syncCurrentClip();
                 root.searchFilter = "";
+                root.selectedIndex = 0;
                 clipInput.text = "";
                 clipInput.forceActiveFocus();
             }
@@ -117,6 +151,7 @@ Rectangle {
             popup.open = true;
             syncCurrentClip();
             root.searchFilter = "";
+            root.selectedIndex = 0;
             clipInput.text = "";
             clipInput.forceActiveFocus();
         }
@@ -128,6 +163,12 @@ Rectangle {
     PopupPanel {
         id: popup
         wantsFocus: true
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Escape) {
+                popup.open = false;
+                event.accepted = true;
+            }
+        }
 
         content: ColumnLayout {
             anchors.fill: parent
@@ -194,6 +235,42 @@ Rectangle {
                         color: Theme.on_surface
                         focus: popup.open
                         onTextChanged: root.searchFilter = text.toLowerCase()
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Escape) {
+                                popup.open = false;
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Down || (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier))) {
+                                let matches = root.filteredIndices;
+                                if (matches.length > 0) {
+                                    let curPos = matches.indexOf(root.selectedIndex);
+                                    if (curPos === -1) curPos = 0;
+                                    let nextPos = Math.min(matches.length - 1, curPos + 1);
+                                    root.selectedIndex = matches[nextPos];
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
+                                let matches = root.filteredIndices;
+                                if (matches.length > 0) {
+                                    let curPos = matches.indexOf(root.selectedIndex);
+                                    if (curPos === -1) curPos = 0;
+                                    let prevPos = Math.max(0, curPos - 1);
+                                    root.selectedIndex = matches[prevPos];
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                let matches = root.filteredIndices;
+                                if (matches.length > 0) {
+                                    if (matches.indexOf(root.selectedIndex) === -1) {
+                                        root.selectedIndex = matches[0];
+                                    }
+                                    let item = clipModel.get(root.selectedIndex);
+                                    if (item && item.text) {
+                                        root.copyToClipboard(item.text);
+                                    }
+                                }
+                                event.accepted = true;
+                            }
+                        }
                     }
                 }
             }
@@ -214,14 +291,19 @@ Rectangle {
                         required property string timestamp
                         required property int index
 
+                        readonly property bool isSelected: index === root.selectedIndex && root.filteredIndices.indexOf(index) !== -1
+
                         visible: root.searchFilter === "" || text.toLowerCase().includes(root.searchFilter)
                         width: parent.width
                         implicitHeight: visible ? (col.implicitHeight + Theme.widgetPaddingH * 2) : 0
                         height: visible ? implicitHeight : 0
-                        color: cMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
+                        color: isSelected ? Theme.primary_overlay : (cMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
                         radius: Theme.widgetRadius
+                        border.color: isSelected ? Theme.primary : "transparent"
+                        border.width: 1
 
                         Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                         ColumnLayout {
                             id: col
@@ -243,7 +325,23 @@ Rectangle {
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeXs
                                     color: Theme.primary
-                                    visible: cMouse.containsMouse
+                                    visible: cMouse.containsMouse && !clipDelegate.isSelected
+                                }
+                                Rectangle {
+                                    visible: clipDelegate.isSelected
+                                    implicitWidth: 18
+                                    implicitHeight: 18
+                                    radius: Theme?.radiusSm ?? 4
+                                    color: Theme.primary
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "↵"
+                                        font.family: Theme?.fontMono ?? "monospace"
+                                        font.pixelSize: 10
+                                        font.weight: Font.Bold
+                                        color: Theme?.on_primary ?? "#ffffff"
+                                    }
                                 }
                             }
 
@@ -251,11 +349,13 @@ Rectangle {
                                 text: clipDelegate.text
                                 font.family: Theme.fontMono
                                 font.pixelSize: Theme.fontSizeSm
-                                color: Theme.on_surface
+                                color: clipDelegate.isSelected ? Theme.primary : Theme.on_surface
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 3
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
                             }
                         }
 
@@ -263,8 +363,16 @@ Rectangle {
                             id: cMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.copyToClipboard(clipDelegate.text)
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.LeftButton) {
+                                    root.selectedIndex = clipDelegate.index;
+                                    root.copyToClipboard(clipDelegate.text);
+                                } else if (mouse.button === Qt.RightButton) {
+                                    root.removeItem(clipDelegate.index);
+                                }
+                            }
                         }
                     }
                 }

@@ -30,9 +30,9 @@ Rectangle {
     border.color: isLow ? Theme.error : (Theme?.pillBorder ?? "transparent")
     border.width: (isLow || (Theme?.pillBorder ?? "transparent") !== "transparent") ? 1 : 0
 
-    Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-    Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
-    Behavior on implicitWidth { NumberAnimation { duration: Theme?.animFast ?? 150; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
+    Behavior on color { ColorAnimation { duration: Theme.animFast ?? 150 } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast ?? 150 } }
+    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast ?? 150; easing.type: Theme.animEasing ?? Easing.OutQuad } }
 
     Row {
         id: contentRow
@@ -89,16 +89,34 @@ Rectangle {
         id: bMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            let pt = container.mapToItem(null, 0, 0);
-            if (container.isVertical) {
-                batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
-            } else {
-                batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton) {
+                let pt = container.mapToItem(null, 0, 0);
+                if (container.isVertical) {
+                    batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
+                } else {
+                    batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+                }
+                batPopup.pinned = !batPopup.open;
+                batPopup.open = !batPopup.open;
+            } else if (mouse.button === Qt.MiddleButton) {
+                if (typeof IdleService !== "undefined" && IdleService) {
+                    IdleService.enabled = !IdleService.enabled;
+                }
+            } else if (mouse.button === Qt.RightButton) {
+                if (Settings) {
+                    Settings.requestPowerMenuToggle();
+                }
             }
-            batPopup.pinned = !batPopup.open;
-            batPopup.open = !batPopup.open;
+        }
+
+        onWheel: (wheel) => {
+            if (wheel.angleDelta.y === 0) return;
+            if (typeof BrightnessService !== "undefined" && BrightnessService?.step) {
+                BrightnessService.step(wheel.angleDelta.y > 0 ? 5 : -5);
+            }
         }
     }
 

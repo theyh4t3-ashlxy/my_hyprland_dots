@@ -16,6 +16,6 @@ hl.config({
     },
     general = {
         allow_tearing = false,
-        layout = "master",
+        layout = "dwindle",
     },
 })

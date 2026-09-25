@@ -3,5 +3,5 @@
 local wp = "awww-daemon --format argb"
 hl.on("hyprland.start", function()
 	hl.exec_cmd(wp)
-	hl.exec_cmd("/home/ashley/.local/bin/qs-switch restore")
+	hl.exec_cmd("qs -d")
 end)

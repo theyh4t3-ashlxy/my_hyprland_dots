@@ -9,10 +9,10 @@ hl.monitor({
 })
 
 hl.monitor({
-    output = "phone",
+    output = "HDMI-A-1",
     disabled = false,
-    mode = "3120x1440@120",
-    position = "auto-right",
+    mode = "1920x1080@60",
+    position = "auto-left",
     scale = 1,
     transform = 0,
     cm = "srgb",

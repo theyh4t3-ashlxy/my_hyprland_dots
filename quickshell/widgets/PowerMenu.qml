@@ -39,9 +39,9 @@ Rectangle {
         onClicked: {
             let pos = root.mapToItem(null, 0, 0);
             if (Theme?.isVertical) {
-                popup.targetRelativeY = pos.y + (root.height / 2);
+                popup.targetRelativeY = (pos?.y ?? 0) + (root.height / 2);
             } else {
-                popup.targetRelativeX = pos.x + (root.width / 2);
+                popup.targetRelativeX = (pos?.x ?? 0) + (root.width / 2);
             }
             popup.open = !popup.open;
         }

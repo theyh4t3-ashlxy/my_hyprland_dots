@@ -20,7 +20,7 @@ QtObject {
     property bool screenFrameDocked: true
     property string screenCornerMode: "all"
     property string cornerStyle: "cubic"
-    property string cornerColorMode: "theme"
+    property string cornerColorMode: "bar"
     property bool scoopBorderEnabled: true
     property int scoopBorderWidth: 2
     property string scoopBorderColor: "auto"
@@ -146,6 +146,7 @@ QtObject {
     property int workspaceCount: 10
     property string iconSet: "material"
     property string fontFamily: "Noto Sans"
+    property string fontSans: fontFamily
     property string fontMono: "JetBrainsMono Nerd Font"
     property string fontWindows: "Segoe Fluent Icons"
     property string fontAwesome: "Font Awesome 6 Free"
@@ -180,6 +181,7 @@ QtObject {
 
     property bool clockShowSeconds: false
     property bool clockMilitary: true
+    property bool clock24h: clockMilitary
 
     property int notificationTimeout: 5000
 
@@ -339,7 +341,7 @@ QtObject {
         { key: "screenFrameDocked", type: "bool", def: true },
         { key: "screenCornerMode", type: "string", def: "all" },
         { key: "cornerStyle", type: "string", def: "cubic" },
-        { key: "cornerColorMode", type: "string", def: "theme" },
+        { key: "cornerColorMode", type: "string", def: "bar" },
         { key: "currentWallpaper", type: "string", def: "/home/ashley/.wallpapers/hyprland/hypr.png" },
         { key: "matugenMode", type: "string", def: "dark" },
         { key: "matugenScheme", type: "string", def: "scheme-tonal-spot" },
@@ -621,7 +623,7 @@ QtObject {
     }
 
     function dispatchCloseWindow() {
-        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.close()" : "killactive");
+        Hyprland.dispatch(hyprlandLua ? "hl.dsp.window.close()" : "closewindow");
     }
 
     function dispatchToggleFloat() {

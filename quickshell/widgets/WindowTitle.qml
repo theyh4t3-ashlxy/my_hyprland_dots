@@ -25,9 +25,9 @@ Rectangle {
     }
     readonly property bool isDesktop: !activeTop || rawTitle.length === 0
     readonly property string fallbackText: Theme?.getFlavor
-        ? Theme.getFlavor("system", (Theme?.getVibe ? Theme.getVibe(Theme?.kaoEmpty, Theme?.iconArch ?? "desktop", "desktop") : "desktop"))
+        ? Theme.getFlavor("system", (Theme?.getVibe ? Theme.getVibe(Theme?.kaoEmpty, Theme?.iconDistro ?? Theme?.iconArch ?? "desktop", "desktop") : "desktop"))
         : "desktop"
-    readonly property string displayTitle: !isDesktop ? rawTitle : fallbackText
+    readonly property string displayTitle: (!isDesktop ? rawTitle : fallbackText).toLowerCase()
 
     // dynamic app icon resolution
     readonly property string resolvedIcon: {
@@ -52,12 +52,14 @@ Rectangle {
         }
 
         let candidates = [
-            base + "-browser",
             base,
             base.replace(/-/g, ""),
             base.replace(/_bin$/, ""),
             base.replace(/-bin$/, "")
         ];
+        if (Quickshell?.hasThemeIcon && Quickshell.hasThemeIcon(base + "-browser")) {
+            candidates.unshift(base + "-browser");
+        }
         let parts = base.split(".");
         if (parts.length > 1) {
             candidates.push(parts[parts.length - 1]);
@@ -70,6 +72,7 @@ Rectangle {
     }
     readonly property bool showAppIcon: (Settings?.windowTitleShowIcon ?? true)
     readonly property bool hasAppIcon: showAppIcon && resolvedIcon !== ""
+    readonly property string iconName: resolvedIcon
 
     // measurement element for unconstrained text width
     Text {
@@ -120,6 +123,8 @@ Rectangle {
             id: appIcon
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
+            width: 16
+            height: 16
             Layout.alignment: Qt.AlignVCenter
             source: windowTitleRoot.resolvedIcon
             visible: windowTitleRoot.hasAppIcon
@@ -128,7 +133,7 @@ Rectangle {
         Text {
             id: fallbackIcon
             Layout.alignment: Qt.AlignVCenter
-            text: windowTitleRoot.isDesktop ? (Theme.iconArch ?? "") : (Theme.iconTerminal ?? "")
+            text: windowTitleRoot.isDesktop ? (Theme.iconDistro ?? Theme.iconArch ?? "") : (Theme.iconTerminal ?? "")
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeSm
             color: Theme.primary
@@ -155,13 +160,20 @@ Rectangle {
         id: wtMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
         z: 10
-        onClicked: {
-            let pt = windowTitleRoot.mapToItem(null, 0, 0);
-            winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
-            winPopup.pinned = !winPopup.open;
-            winPopup.open = !winPopup.open;
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton) {
+                let pt = windowTitleRoot.mapToItem(null, 0, 0);
+                winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
+                winPopup.pinned = !winPopup.open;
+                winPopup.open = !winPopup.open;
+            } else if (mouse.button === Qt.RightButton) {
+                if (Settings) Settings.dispatchCloseWindow();
+            } else if (mouse.button === Qt.MiddleButton) {
+                if (Settings) Settings.dispatchToggleFloat();
+            }
         }
     }
 

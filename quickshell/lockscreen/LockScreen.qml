@@ -178,9 +178,9 @@ Scope {
                                 color: (NetworkService?.isConnected ?? false) ? Theme.primary : Theme.on_surface_variant
                             }
                             Text {
-                                text: (NetworkService?.isWiredConnected ?? false)
+                                text: ((NetworkService?.isWiredConnected ?? false)
                                     ? "wired"
-                                    : (NetworkService?.activeSsid || ((NetworkService?.isConnected ?? false) ? "connected" : "offline"))
+                                    : (NetworkService?.activeSsid || ((NetworkService?.isConnected ?? false) ? "connected" : "offline"))).toLowerCase()
                                 font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: Theme?.fontSizeSm ?? 12
                                 font.weight: Font.Medium
@@ -227,7 +227,7 @@ Scope {
                             spacing: 4
 
                             Text {
-                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clockFormat ?? (Settings?.clock24h ? "HH:mm" : "hh:mm A"))
+                                text: Qt.formatDateTime(lockRoot.currentTime, Settings?.clockFormat ?? (Settings?.clock24h ? "HH:mm" : "hh:mm ap")).toLowerCase()
                                 font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: 84
                                 font.weight: Font.Bold
@@ -236,7 +236,7 @@ Scope {
                             }
 
                             Text {
-                                text: Qt.formatDateTime(lockRoot.currentTime, "dddd, MMMM d")
+                                text: Qt.formatDateTime(lockRoot.currentTime, "dddd, MMMM d").toLowerCase()
                                 font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: Theme?.fontSizeMd ?? 14
                                 font.weight: Font.Medium
@@ -288,7 +288,7 @@ Scope {
                                     spacing: 2
 
                                     Text {
-                                        text: surface.activePlayer?.trackTitle || "no track playing"
+                                        text: (surface.activePlayer?.trackTitle || "no track playing").toLowerCase()
                                         font.family: Theme?.fontFamily ?? "sans-serif"
                                         font.pixelSize: Theme?.fontSizeSm ?? 12
                                         font.weight: Font.Bold
@@ -298,7 +298,7 @@ Scope {
                                     }
 
                                     Text {
-                                        text: surface.activePlayer?.trackArtist || "unknown artist"
+                                        text: (surface.activePlayer?.trackArtist || "unknown artist").toLowerCase()
                                         font.family: Theme?.fontFamily ?? "sans-serif"
                                         font.pixelSize: Theme?.fontSizeXs ?? 10
                                         color: Theme.on_surface_variant

@@ -42,9 +42,9 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+                popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
             } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
             }
             popup.open = !popup.open
         }
@@ -160,7 +160,7 @@ Rectangle {
                                 spacing: 1
 
                                 Text {
-                                    text: modelData.name || modelData.address || "Unknown Device"
+                                    text: (modelData.name || modelData.address || "unknown device").toLowerCase()
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
                                     font.weight: modelData.connected ? Font.Bold : Font.Normal
@@ -170,7 +170,7 @@ Rectangle {
                                 }
 
                                 Text {
-                                    text: modelData.connected ? (modelData.battery !== undefined ? (modelData.battery + "% battery") : "Connected") : (modelData.paired ? "Paired" : "Available")
+                                    text: modelData.connected ? (modelData.battery !== undefined ? (modelData.battery + "% battery") : "connected") : (modelData.paired ? "paired" : "available")
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeXs
                                     color: Theme.on_surface_variant
@@ -181,7 +181,7 @@ Rectangle {
                             IconButton {
                                 icon: modelData.connected ? Theme.iconClose : Theme.iconCheckCircle
                                 iconSize: Theme.fontSizeSm
-                                tooltip: modelData.connected ? "Disconnect" : "Connect"
+                                tooltip: modelData.connected ? "disconnect" : "connect"
                                 onClicked: {
                                     if (modelData.connected) {
                                         if (modelData.disconnect) modelData.disconnect();

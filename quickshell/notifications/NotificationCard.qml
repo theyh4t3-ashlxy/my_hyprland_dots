@@ -186,7 +186,9 @@ Rectangle {
                 tooltip: "dismiss"
                 onClicked: {
                     root.dismissToast();
-                    if (root.notif && typeof root.notif.dismiss === "function") {
+                    if (root.notif?.id !== undefined && root.notif?.id !== null) {
+                        NotificationService.dismiss(root.notif.id);
+                    } else if (root.notif && typeof root.notif.dismiss === "function") {
                         try { root.notif.dismiss(); } catch (e) {}
                     }
                 }
@@ -194,7 +196,7 @@ Rectangle {
         }
 
         Text {
-            text: root.notif?.summary ?? ""
+            text: (root.notif?.summary ?? "").toLowerCase()
             font.family: Theme?.fontFamily ?? "sans-serif"
             font.pixelSize: Theme?.fontSizeMd ?? 14
             font.weight: Font.DemiBold
@@ -205,7 +207,7 @@ Rectangle {
         }
 
         Text {
-            text: root.notif?.body ?? ""
+            text: (root.notif?.body ?? "").toLowerCase()
             font.family: Theme?.fontFamily ?? "sans-serif"
             font.pixelSize: Theme?.fontSizeSm ?? 12
             color: Theme?.on_surface_variant ?? "#a6adc8"
@@ -254,7 +256,7 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: (modelData.text || modelData.id || "action").toLowerCase()
+                        text: (modelData?.text || modelData?.id || "action").toLowerCase()
                         font.family: Theme?.fontFamily ?? "sans-serif"
                         font.pixelSize: Theme?.fontSizeXs ?? 11
                         font.weight: Font.Medium

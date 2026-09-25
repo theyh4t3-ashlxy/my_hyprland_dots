@@ -32,10 +32,10 @@ def lock_session() -> bool:
     run([
         "notify-send",
         "-u", "critical",
-        "-a", "Session Manager",
+        "-a", "session manager",
         "-i", "system-lock-screen",
-        "Screen Lock Failed",
-        "Quickshell lock IPC did not respond!"
+        "screen lock failed",
+        "quickshell lock ipc did not respond!"
     ])
     return False
 
@@ -53,16 +53,16 @@ def toggle_caffeine():
             icon = "caffeine" if "inhibited" in new_state else "preferences-desktop-screensaver"
             run([
                 "notify-send",
-                "-a", "Idle Monitor",
+                "-a", "idle monitor",
                 "-i", icon,
-                "Idle Timeout Changed",
-                f"Quickshell idle is now {new_state}"
+                "idle timeout changed",
+                f"quickshell idle is now {new_state}"
             ])
             return True
     except Exception:
         pass
 
-    run(["notify-send", "-u", "critical", "Idle Monitor", "Failed to communicate with Quickshell idle service!"])
+    run(["notify-send", "-u", "critical", "idle monitor", "failed to communicate with quickshell idle service!"])
     return False
 
 def logout_session() -> bool:

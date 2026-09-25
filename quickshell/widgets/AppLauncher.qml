@@ -12,6 +12,7 @@ PopupPanel {
 
     wantsFocus: true
     keyboardFocusMode: WlrKeyboardFocus.Exclusive
+    Keys.forwardTo: [searchInput]
 
     cardWidth: 460
     cardHeight: 560
@@ -20,7 +21,7 @@ PopupPanel {
     property string activeCategory: "all" // "all", "internet", "dev", "media", "games", "system"
 
     readonly property string cleanQuery: query.trim()
-    readonly property bool isCommand: (cleanQuery.startsWith(">") || cleanQuery.startsWith("$")) && (Settings?.launcherCommandEnabled ?? true)
+    readonly property bool isCommand: (cleanQuery.startsWith(">") || cleanQuery.startsWith("$") || cleanQuery.startsWith(":")) && (Settings?.launcherCommandEnabled ?? true)
     readonly property string cleanCommand: isCommand ? cleanQuery.slice(1).trim() : ""
     readonly property var calcResult: (Settings?.launcherCalcEnabled ?? true) && !isCommand ? evaluateMath(cleanQuery) : null
 
@@ -144,7 +145,13 @@ PopupPanel {
                                 return;
                             }
                             if (root.calcResult !== null) {
-                                Quickshell.execDetached(["wl-copy", root.calcResult]);
+                                Quickshell.execDetached(["wl-copy", "--", root.calcResult]);
+                                root.open = false;
+                                event.accepted = true;
+                                return;
+                            }
+                            if (appList.count === 0 && root.cleanQuery.length > 0 && (Settings?.launcherCommandEnabled ?? true)) {
+                                Quickshell.execDetached(["sh", "-c", root.cleanQuery]);
                                 root.open = false;
                                 event.accepted = true;
                                 return;
@@ -310,7 +317,7 @@ PopupPanel {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    Quickshell.execDetached(["wl-copy", root.calcResult]);
+                    Quickshell.execDetached(["wl-copy", "--", root.calcResult]);
                     root.open = false;
                 }
             }
@@ -319,7 +326,7 @@ PopupPanel {
         // Inline Shell Command Runner Card
         Rectangle {
             id: cmdCard
-            visible: root.isCommand && root.cleanCommand.length > 0
+            visible: (root.isCommand && root.cleanCommand.length > 0) || (appList.count === 0 && root.calcResult === null && root.cleanQuery.length > 0 && (Settings?.launcherCommandEnabled ?? true))
             Layout.fillWidth: true
             Layout.preferredHeight: 48
             radius: Theme.radiusMd
@@ -353,7 +360,7 @@ PopupPanel {
                     spacing: 1
 
                     Text {
-                        text: root.cleanCommand
+                        text: root.isCommand ? root.cleanCommand : root.cleanQuery
                         font.family: Theme.fontMono
                         font.pixelSize: Theme.fontSizeSm
                         font.weight: Font.DemiBold
@@ -375,7 +382,8 @@ PopupPanel {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    Quickshell.execDetached(["sh", "-c", root.cleanCommand]);
+                    let cmd = root.isCommand ? root.cleanCommand : root.cleanQuery;
+                    Quickshell.execDetached(["sh", "-c", cmd]);
                     root.open = false;
                 }
             }
@@ -501,7 +509,7 @@ PopupPanel {
                             spacing: 1
 
                             Text {
-                                text: modelData?.name ?? ""
+                                text: (modelData?.name ?? "").toLowerCase()
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSm
                                 font.weight: Font.Medium
@@ -513,7 +521,7 @@ PopupPanel {
                             }
 
                             Text {
-                                text: modelData?.genericName || modelData?.comment || ""
+                                text: (modelData?.genericName || modelData?.comment || "").toLowerCase()
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeXs
                                 color: Theme.on_surface_variant
@@ -557,7 +565,7 @@ PopupPanel {
             // Empty state
             Item {
                 anchors.fill: parent
-                visible: appList.count === 0
+                visible: appList.count === 0 && root.calcResult === null && !cmdCard.visible
 
                 ColumnLayout {
                     anchors.centerIn: parent

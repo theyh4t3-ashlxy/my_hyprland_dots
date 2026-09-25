@@ -11,6 +11,8 @@ PopupPanel {
 
     cardWidth: 380
     cardHeight: 280
+    property alias contentWidth: root.cardWidth
+    property alias contentHeight: root.cardHeight
 
     readonly property var activeTop: Hyprland.activeToplevel
     readonly property string winTitle: (activeTop?.title ?? "").trim()
@@ -24,7 +26,7 @@ PopupPanel {
         if (!c && activeTop.appId) c = activeTop.appId;
         return (c || "").trim();
     }
-    readonly property bool isFloating: Boolean(activeTop?.floating ?? (activeTop?.lastIpcObject ? activeTop.lastIpcObject.floating : false))
+    readonly property bool isWindowFloating: Boolean(activeTop?.floating ?? (activeTop?.lastIpcObject ? activeTop.lastIpcObject.floating : false))
     readonly property bool isFullscreen: Boolean(activeTop?.fullscreen ?? (activeTop?.lastIpcObject ? activeTop.lastIpcObject.fullscreen : false))
 
     content: ColumnLayout {
@@ -70,12 +72,14 @@ PopupPanel {
                         }
 
                         let candidates = [
-                            base + "-browser",
                             base,
                             base.replace(/-/g, ""),
                             base.replace(/_bin$/, ""),
                             base.replace(/-bin$/, "")
                         ];
+                        if (Quickshell?.hasThemeIcon && Quickshell.hasThemeIcon(base + "-browser")) {
+                            candidates.unshift(base + "-browser");
+                        }
                         let parts = base.split(".");
                         if (parts.length > 1) {
                             candidates.push(parts[parts.length - 1]);
@@ -91,7 +95,7 @@ PopupPanel {
 
                 Text {
                     anchors.centerIn: parent
-                    text: root.activeTop ? (Theme.iconTerminal ?? "") : (Theme.iconArch ?? "desktop")
+                    text: root.activeTop ? (Theme.iconTerminal ?? "") : (Theme.iconDistro ?? Theme.iconArch ?? "desktop")
                     font.family: Theme.fontIcon
                     font.pixelSize: Theme.fontSizeMd
                     color: Theme.primary
@@ -104,7 +108,7 @@ PopupPanel {
                 spacing: 2
 
                 Text {
-                    text: root.winClass.length > 0 ? root.winClass : "desktop"
+                    text: (root.winClass.length > 0 ? root.winClass : "desktop").toLowerCase()
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     font.weight: Font.Bold
@@ -125,16 +129,16 @@ PopupPanel {
                 height: 22
                 implicitWidth: statusText.implicitWidth + 14
                 radius: Theme.radiusPill
-                color: root.isFloating ? Theme.secondary_container : Theme.surface_container_highest
+                color: root.isWindowFloating ? Theme.secondary_container : Theme.surface_container_highest
 
                 Text {
                     id: statusText
                     anchors.centerIn: parent
-                    text: root.isFloating ? "floating" : "tiled"
+                    text: root.isWindowFloating ? "floating" : "tiled"
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
                     font.weight: Font.Medium
-                    color: root.isFloating ? Theme.on_secondary_container : Theme.on_surface_variant
+                    color: root.isWindowFloating ? Theme.on_secondary_container : Theme.on_surface_variant
                 }
             }
         }
@@ -162,7 +166,7 @@ PopupPanel {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.winTitle.length > 0 ? root.winTitle : "no window focused"
+                    text: (root.winTitle.length > 0 ? root.winTitle : "no window focused").toLowerCase()
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSm
                     font.weight: Font.Medium
@@ -183,7 +187,7 @@ PopupPanel {
                 Layout.fillWidth: true
                 height: 36
                 radius: Theme.radiusSm
-                color: root.isFloating ? Theme.primary : Theme.surface_container_high
+                color: root.isWindowFloating ? Theme.primary : Theme.surface_container_high
                 border.color: Theme.glassBorder
                 border.width: 1
 
@@ -195,14 +199,14 @@ PopupPanel {
                         text: Theme.iconCrop
                         font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeSm
-                        color: root.isFloating ? Theme.on_primary : Theme.on_surface
+                        color: root.isWindowFloating ? Theme.on_primary : Theme.on_surface
                     }
 
                     Text {
                         text: "float"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
-                        color: root.isFloating ? Theme.on_primary : Theme.on_surface
+                        color: root.isWindowFloating ? Theme.on_primary : Theme.on_surface
                     }
                 }
 

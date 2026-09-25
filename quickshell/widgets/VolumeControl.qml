@@ -78,7 +78,7 @@ Rectangle {
                 volRoot.syncAnchor();
                 popup.open = !popup.open;
             } else if (mouse.button === Qt.RightButton) {
-                Quickshell.execDetached(["pipewire-control-center"]);
+                Quickshell.execDetached(["sh", "-c", "pavucontrol || pwcc || pipewire-control-center || easyeffects || helvum"]);
             } else if (mouse.button === Qt.MiddleButton) {
                 if (source && source.audio) {
                     source.audio.muted = !source.audio.muted;
@@ -142,8 +142,8 @@ Rectangle {
                 IconButton {
                     icon: Theme.iconSliders
                     iconSize: Theme.fontSizeMd
-                    tooltip: "open pipewire control center"
-                    onClicked: Quickshell.execDetached(["pipewire-control-center"])
+                    tooltip: "open audio mixer"
+                    onClicked: Quickshell.execDetached(["sh", "-c", "pavucontrol || pwcc || pipewire-control-center || easyeffects || helvum"])
                 }
             }
 
@@ -171,7 +171,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: (volRoot.sink?.description || volRoot.sink?.name || "default playback")
+                        text: ((volRoot.sink?.description || volRoot.sink?.name || "default playback")).toLowerCase()
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -323,7 +323,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: (volRoot.source?.description || volRoot.source?.name || "default recording")
+                        text: ((volRoot.source?.description || volRoot.source?.name || "default recording")).toLowerCase()
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.on_surface_variant
@@ -456,7 +456,7 @@ Rectangle {
                                     }
 
                                     Text {
-                                        text: modelData.description || modelData.name || "audio device"
+                                        text: ((modelData.description || modelData.name || "audio device")).toLowerCase()
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: isCurrent ? Theme.primary : Theme.on_surface

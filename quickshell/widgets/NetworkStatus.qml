@@ -41,7 +41,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             visible: !Theme.isVertical && netMouse.containsMouse
-            text: NetworkService.activeSsid
+            text: (NetworkService.activeSsid || "").toLowerCase()
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeXs
             font.weight: Font.Medium
@@ -59,9 +59,9 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             if (Theme.isVertical) {
-                popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+                popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
             } else {
-                popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
+                popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
             }
             popup.open = !popup.open;
             if (popup.open) {
@@ -183,7 +183,7 @@ Rectangle {
                             Layout.fillWidth: true
 
                             Text {
-                                text: NetworkService.activeSsid
+                                text: (NetworkService.activeSsid || "").toLowerCase()
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeSm
                                 font.weight: Font.Bold
@@ -396,7 +396,7 @@ Rectangle {
 
                                 Text {
                                     readonly property string aliasName: Settings.getNetworkAlias(netItem.networkName)
-                                    text: aliasName !== "" ? aliasName : (netItem.networkName !== "" ? netItem.networkName : "hidden network")
+                                    text: (aliasName !== "" ? aliasName : (netItem.networkName !== "" ? netItem.networkName : "hidden network")).toLowerCase()
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
                                     font.weight: netItem.isItemConnected ? Font.Bold : Font.Medium
@@ -409,7 +409,7 @@ Rectangle {
                                     spacing: 4
                                     Text {
                                         readonly property string aliasName: Settings.getNetworkAlias(netItem.networkName)
-                                        readonly property string rawHint: (aliasName !== "" && aliasName !== netItem.networkName) ? ("raw: " + netItem.networkName + " • ") : ""
+                                        readonly property string rawHint: (aliasName !== "" && aliasName !== netItem.networkName) ? ("raw: " + netItem.networkName.toLowerCase() + " • ") : ""
                                         text: rawHint + (netItem.isItemConnected ? "active connection" : (Math.round(netItem.signal <= 1.0 ? netItem.signal * 100 : netItem.signal) + "% signal"))
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10

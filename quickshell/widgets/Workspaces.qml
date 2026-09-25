@@ -312,7 +312,7 @@ Rectangle {
         id: popup
         cardWidth: 440
         cardHeight: 420
-        targetRelativeX: wsContainer.mapToItem(null, 0, 0).x + (wsContainer.width / 2)
+        targetRelativeX: (wsContainer.mapToItem(null, 0, 0)?.x ?? 0) + (wsContainer.width / 2)
 
         content: ColumnLayout {
             anchors.fill: parent

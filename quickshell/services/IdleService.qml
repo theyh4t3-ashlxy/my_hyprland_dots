@@ -10,6 +10,12 @@ QtObject {
 
     property bool enabled: true
 
+    onEnabledChanged: {
+        if (!root.enabled) {
+            Quickshell.execDetached(["brightnessctl", "-r"]);
+        }
+    }
+
     // Must be assigned to a property inside QtObject!
     property IpcHandler ipc: IpcHandler {
         target: "idle_internal"

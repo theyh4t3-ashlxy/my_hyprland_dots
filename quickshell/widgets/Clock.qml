@@ -81,16 +81,19 @@ Rectangle {
             lineHeight: 0.9
             text: {
                 if (Theme?.isVertical ?? false) {
-                    return Qt.formatDateTime(clockRoot.now, "HH\nmm");
+                    return Qt.formatDateTime(clockRoot.now, "HH\nmm").toLowerCase();
                 }
-                let military = Settings?.clockMilitary ?? true;
+                let military = (Settings?.clock24h !== undefined ? Settings.clock24h : (Settings?.clockMilitary ?? true));
                 let showSec = Settings?.clockShowSeconds ?? false;
-                let defaultFmt = military ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "hh:mm:ss ap" : "hh:mm ap");
-                let timeFmt = Settings?.clockFormat || defaultFmt;
-                let timeStr = Qt.formatDateTime(clockRoot.now, timeFmt);
+                let defaultFmt = military ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "h:mm:ss ap" : "h:mm ap");
+                let timeFmt = Settings?.clockFormat;
+                if (!timeFmt || (military && /ap/i.test(timeFmt)) || (!military && !/ap/i.test(timeFmt))) {
+                    timeFmt = defaultFmt;
+                }
+                let timeStr = Qt.formatDateTime(clockRoot.now, timeFmt).toLowerCase();
                 let dateFmt = (Settings?.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
                 let showDate = (Settings?.showBarDate ?? false) && dateFmt !== "";
-                let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt) : "";
+                let dateStr = showDate ? Qt.formatDateTime(clockRoot.now, dateFmt).toLowerCase() : "";
                 return (dateStr !== "") ? (dateStr + "  " + timeStr) : timeStr;
             }
             font.family: Theme?.fontFamily ?? "sans-serif"
@@ -104,21 +107,55 @@ Rectangle {
         id: clkMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            let pt = clockRoot.mapToItem(null, 0, 0);
-            if (pt) {
-                if (Theme?.isVertical ?? false) {
-                    calPopup.targetRelativeY = pt.y + (clockRoot.height / 2);
-                } else {
-                    calPopup.targetRelativeX = pt.x + (clockRoot.width / 2);
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton) {
+                let pt = clockRoot.mapToItem(null, 0, 0);
+                if (pt) {
+                    if (Theme?.isVertical ?? false) {
+                        calPopup.targetRelativeY = pt.y + (clockRoot.height / 2);
+                    } else {
+                        calPopup.targetRelativeX = pt.x + (clockRoot.width / 2);
+                    }
+                }
+                calPopup.open = !calPopup.open;
+                if (calPopup.open) {
+                    clockRoot.selectedYear = clockRoot.todayYear;
+                    clockRoot.selectedMonth = clockRoot.todayMonth;
+                }
+            } else if (mouse.button === Qt.RightButton) {
+                if (Settings) {
+                    Settings.showBarDate = !Settings.showBarDate;
+                    if (Settings.showBarDate && (!Settings.dateFormat || Settings.dateFormat === "none")) {
+                        Settings.dateFormat = "ddd, MMM d";
+                    }
+                }
+            } else if (mouse.button === Qt.MiddleButton) {
+                if (Settings) {
+                    let cur = Settings.clock24h !== undefined ? Settings.clock24h : (Settings.clockMilitary ?? true);
+                    let next = !cur;
+                    Settings.clockMilitary = next;
+                    Settings.clock24h = next;
+                    let showSec = Settings?.clockShowSeconds ?? false;
+                    Settings.clockFormat = next ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "h:mm:ss ap" : "h:mm ap");
                 }
             }
-            calPopup.open = !calPopup.open;
-            if (calPopup.open) {
-                clockRoot.selectedYear = clockRoot.todayYear;
-                clockRoot.selectedMonth = clockRoot.todayMonth;
+        }
+
+        onWheel: (wheel) => {
+            if (wheel.angleDelta.y === 0) return;
+            if (!Settings) return;
+            const formats = ["ddd, MMM d", "MMM d, yyyy", "yyyy-MM-dd", "ddd, d MMM", "MM/dd"];
+            let idx = formats.indexOf(Settings.dateFormat);
+            if (idx === -1) idx = 0;
+            if (wheel.angleDelta.y > 0) {
+                idx = (idx + 1) % formats.length;
+            } else {
+                idx = (idx - 1 + formats.length) % formats.length;
             }
+            Settings.dateFormat = formats[idx];
+            Settings.showBarDate = true;
         }
     }
 
@@ -180,7 +217,7 @@ Rectangle {
                                 let dFmt = (Settings?.dateFormat && Settings.dateFormat !== "none" && Settings.dateFormat !== "")
                                     ? Settings.dateFormat
                                     : "dddd, MMMM d, yyyy";
-                                return Qt.formatDateTime(clockRoot.now, dFmt);
+                                return Qt.formatDateTime(clockRoot.now, dFmt).toLowerCase();
                             }
                             font.family: Theme?.fontFamily ?? "sans-serif"
                             font.pixelSize: Theme?.fontSizeSm ?? 12
@@ -201,7 +238,7 @@ Rectangle {
                         Layout.alignment: Qt.AlignRight
 
                         Text {
-                            text: Qt.formatDateTime(clockRoot.now, "HH:mm:ss")
+                            text: Qt.formatDateTime(clockRoot.now, "HH:mm:ss").toLowerCase()
                             font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: Theme?.fontSizeLg ?? 16
                             font.weight: Font.Bold
@@ -229,7 +266,7 @@ Rectangle {
                     id: monthTitle
                     text: {
                         let d = new Date(clockRoot.selectedYear, clockRoot.selectedMonth, 1);
-                        return Qt.formatDate(d, "MMMM yyyy");
+                        return Qt.formatDate(d, "MMMM yyyy").toLowerCase();
                     }
                     font.family: Theme?.fontFamily ?? "sans-serif"
                     font.pixelSize: Theme?.fontSizeMd ?? 14
@@ -299,7 +336,7 @@ Rectangle {
                 spacing: 4
 
                 Repeater {
-                    model: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+                    model: ["mo", "tu", "we", "th", "fr", "sa", "su"]
 
                     delegate: Item {
                         required property string modelData

@@ -253,12 +253,8 @@ def stream_download(url: str, dest_path: Path, timeout: int = 30) -> bool:
         return False
 
 def reload_quickshell():
-    shell_qml = XDG_CONFIG_HOME / "quickshell" / "shell.qml"
-    if shell_qml.exists():
-        try:
-            shell_qml.touch()
-        except Exception:
-            pass
+    # Quickshell monitors Theme.qml and settings.conf automatically without shell.qml touch churn
+    pass
 
 def ensure_awww_daemon() -> bool:
     try:

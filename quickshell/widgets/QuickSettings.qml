@@ -26,8 +26,10 @@ Rectangle {
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
 
+    // Scope signal safety & file watcher
     FileView {
         id: shellWatcher
+        printErrors: false
         path: (Quickshell.env("XDG_CACHE_HOME") || ((Quickshell.env("HOME") || "/home/ashley") + "/.cache")) + "/current_shell"
         watchChanges: true
         // disk writes dont notify without a reload kick
@@ -535,10 +537,16 @@ Rectangle {
 
                         delegate: Rectangle {
                             required property var modelData
-                            height: 32
+                            height: 30
                             width: tabItemRow.implicitWidth + 20
-                            radius: Theme.widgetRadius
-                            color: root.activeTab === modelData.id ? Theme.primary : (tabMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest)
+                            radius: Theme.radiusPill
+                            readonly property bool isSelected: root.activeTab === modelData.id
+
+                            color: isSelected
+                                ? (Theme.surface_container_high ?? Theme.primary_container)
+                                : (tabMouse.containsMouse ? Theme.surface_container_low : Theme.surface_container_lowest)
+                            border.color: isSelected ? (Theme.outline_variant ?? Theme.primary) : "transparent"
+                            border.width: isSelected ? 1 : 0
 
                             Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -550,16 +558,16 @@ Rectangle {
                                 Text {
                                     text: modelData.icon
                                     font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: root.activeTab === modelData.id ? Theme.on_primary : Theme.on_surface
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: isSelected ? Theme.primary : Theme.on_surface_variant
                                 }
 
                                 Text {
                                     text: modelData.label
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
-                                    font.weight: Font.Medium
-                                    color: root.activeTab === modelData.id ? Theme.on_primary : Theme.on_surface
+                                    font.weight: isSelected ? Font.DemiBold : Font.Medium
+                                    color: isSelected ? Theme.on_surface : Theme.on_surface_variant
                                 }
                             }
 
@@ -666,7 +674,7 @@ Rectangle {
                         ChoiceRow {
                             title: "corner curvature style"
                             model: [
-                                { label: "G2 continuous", value: "continuous-bezier" },
+                                { label: "g2 continuous", value: "continuous-bezier" },
                                 { label: "cubic", value: "cubic" },
                                 { label: "squircle", value: "squircle" },
                                 { label: "hyperbolic", value: "hyperbolic" },
@@ -1325,7 +1333,7 @@ Rectangle {
                                         }
 
                                         Text {
-                                            text: isCurrent ? (Theme.iconCheck + " active") : "The quick brown fox 123"
+                                            text: isCurrent ? (Theme.iconCheck + " active") : "the quick brown fox 123"
                                             font.family: modelData
                                             font.pixelSize: 10
                                             color: isCurrent ? Theme.on_primary : Theme.on_surface_variant
@@ -1413,7 +1421,7 @@ Rectangle {
 
                                 Text {
                                     Layout.fillWidth: true
-                                    text: "The quick brown fox jumps over the lazy dog 0123456789"
+                                    text: "the quick brown fox jumps over the lazy dog 0123456789"
                                     font.family: root.fontTarget === "sans" ? Settings.fontFamily : Settings.fontMono
                                     font.pixelSize: Theme.fontSizeMd
                                     font.weight: Theme.getFontWeight ? Theme.getFontWeight(Settings.fontWeight) : Font.Normal
@@ -1807,8 +1815,8 @@ Rectangle {
                             columns: 2
                             model: [
                                 { label: "hidden (time only)", value: "none" },
-                                { label: "short (Mon, Sep 1)", value: "ddd, MMM d" },
-                                { label: "standard (Sep 1)", value: "MMM d, yyyy" },
+                                { label: "short (mon, sep 1)", value: "ddd, MMM d" },
+                                { label: "standard (sep 1)", value: "MMM d, yyyy" },
                                 { label: "iso (2026-09-01)", value: "yyyy-MM-dd" }
                             ]
                             currentValue: !Settings.showBarDate ? "none" : Settings.dateFormat
@@ -2252,7 +2260,7 @@ Rectangle {
                             ToggleRow {
                                 icon: Theme.iconWorkspaces
                                 title: "window snapping"
-                                subtitle: "hover over any Hyprland client to auto-detect its geometry"
+                                subtitle: "hover over any hyprland client to auto-detect its geometry"
                                 checked: Settings.screenshotWindowSnapping
                                 onToggled: Settings.screenshotWindowSnapping = !Settings.screenshotWindowSnapping
                             }

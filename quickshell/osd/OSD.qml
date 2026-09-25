@@ -12,6 +12,10 @@ PanelWindow {
     screen: modelData
     color: "transparent"
 
+    readonly property var root: osdRoot
+    readonly property bool showing: revealed || osdCard.opacity > 0
+    visible: root.showing
+
     anchors {
         bottom: true
     }

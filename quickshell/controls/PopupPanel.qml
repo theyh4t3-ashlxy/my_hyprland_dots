@@ -68,7 +68,7 @@ PanelWindow {
     readonly property real curScoopH: isVertical
         ? Math.max(0, scoopH * Math.min(1.0, morphT * 1.5))
         : Math.max(0, Math.min(scoopH * morphT, curBodyH * 0.40))
-    readonly property real curRadius: Math.max(0, Math.min((Theme?.popupRadius ?? 16), (isVertical ? curBodyW : curBodyH) * 0.40))
+    readonly property real curRadius: Math.max(0, Math.min((Theme.popupRadius ?? 16), (isVertical ? curBodyW : curBodyH) * 0.40))
 
     readonly property real tension: {
         let cs = Settings?.cornerStyle ?? "cubic";

@@ -119,8 +119,8 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            popup.targetRelativeX = root.mapToItem(null, 0, 0).x + (root.width / 2);
-            popup.targetRelativeY = root.mapToItem(null, 0, 0).y + (root.height / 2);
+            popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
+            popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
             popup.open = !popup.open;
         }
     }
@@ -155,8 +155,8 @@ Rectangle {
         wantsFocus: true
         cardWidth: 460
         cardHeight: 560
-        targetRelativeX: root.mapToItem(null, 0, 0).x + (root.width / 2)
-        targetRelativeY: root.mapToItem(null, 0, 0).y + (root.height / 2)
+        targetRelativeX: (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2)
+        targetRelativeY: (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2)
 
         content: ColumnLayout {
             anchors.fill: parent

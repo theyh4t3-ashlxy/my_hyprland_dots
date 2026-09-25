@@ -334,22 +334,22 @@ Rectangle {
         id: chipRoot
         property bool selected: false
         property string label: ""
-        property real chipHeight: 28
+        property real chipHeight: 26
         property real chipRadius: Theme?.radiusPill ?? 999
         property int fontSize: Theme?.fontSizeXs ?? 10
         property bool fillWidth: false
-        property color activeBg: Theme.primary
-        property color inactiveBg: Theme.surface_container_highest
-        property color activeFg: Theme.on_primary ?? "#ffffff"
-        property color inactiveFg: Theme.on_surface
+        property color activeBg: Theme.surface_container_highest ?? Theme.primary_container
+        property color inactiveBg: "transparent"
+        property color activeFg: Theme.primary
+        property color inactiveFg: Theme.on_surface_variant
         signal clicked()
 
         Layout.fillWidth: fillWidth
         Layout.preferredHeight: chipHeight
-        Layout.preferredWidth: fillWidth ? -1 : (chipText.implicitWidth + 18)
+        Layout.preferredWidth: fillWidth ? -1 : (chipText.implicitWidth + 20)
         radius: chipRadius
         color: selected ? activeBg : (chipMouse.containsMouse ? Theme.surface_container_high : inactiveBg)
-        border.color: selected ? Theme.primary : (Theme?.cardBorder ?? Theme?.widgetBorder ?? "transparent")
+        border.color: selected ? Theme.primary : (chipMouse.containsMouse ? Theme.outline : (Theme.outline_variant ?? Theme.widgetBorder))
         border.width: 1
 
         Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
@@ -361,7 +361,7 @@ Rectangle {
             text: chipRoot.label
             font.family: Theme?.fontFamily ?? "sans-serif"
             font.pixelSize: chipRoot.fontSize
-            font.weight: chipRoot.selected ? Font.Bold : Font.Medium
+            font.weight: chipRoot.selected ? Font.DemiBold : Font.Normal
             color: chipRoot.selected ? chipRoot.activeFg : chipRoot.inactiveFg
         }
 
@@ -576,8 +576,15 @@ Rectangle {
         id: wpMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.RightButton) {
+                if (typeof WallpaperService !== "undefined" && WallpaperService?.applyRandomWallpaper) {
+                    WallpaperService.applyRandomWallpaper("all");
+                }
+                return;
+            }
             const p = root.mapToItem(null, 0, 0);
             if (p) {
                 popup.targetRelativeX = p.x + (root.width / 2);
@@ -633,126 +640,152 @@ Rectangle {
             // 1. Unified Window Header
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 12
 
-                Text {
-                    text: Theme?.iconWallpaper ?? "󰸉"
-                    font.family: Theme?.fontIcon ?? "sans-serif"
-                    font.pixelSize: Theme?.fontSizeLg ?? 16
-                    color: Theme.primary
-                }
+                RowLayout {
+                    spacing: 10
+                    Layout.alignment: Qt.AlignVCenter
 
-                ColumnLayout {
-                    spacing: 1
-                    Layout.fillWidth: true
-
-                    Text {
-                        text: "wallpapers & aesthetics"
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeMd ?? 14
-                        font.weight: Font.Bold
-                        color: Theme.on_surface
-                    }
-
-                    Text {
-                        text: {
-                            if (root.activeTab === "local") return (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers in gallery";
-                            if (root.activeTab === "online") return (onlineWpModel.count > 0 ? (onlineWpModel.count + " wallhaven wallpapers loaded") : "explore wallhaven community gallery");
-                            if (root.activeTab === "live") return (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) + " animated & video streams";
-                            return "matugen color schemes & awww engine";
-                        }
-                        font.family: Theme?.fontFamily ?? "sans-serif"
-                        font.pixelSize: Theme?.fontSizeXs ?? 10
-                        color: Theme.on_surface_variant
-                    }
-                }
-
-                // Batch download action
-                Rectangle {
-                    Layout.preferredHeight: 32
-                    Layout.preferredWidth: dlAllRow.implicitWidth + 20
-                    radius: Theme?.radiusPill ?? 999
-                    color: dlAllMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
-                    border.color: Theme.widgetBorder
-                    border.width: 1
-                    visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && ((root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) > 0))
-                    opacity: root.isBatchDownloading ? 0.6 : 1.0
-
-                    RowLayout {
-                        id: dlAllRow
-                        anchors.centerIn: parent
-                        spacing: 6
+                    Rectangle {
+                        width: 36
+                        height: 36
+                        radius: Theme.radiusMd ?? 8
+                        color: Theme.primary_container ?? Theme.surface_container_high
+                        border.color: Theme.outline_variant ?? Theme.widgetBorder
+                        border.width: 1
 
                         Text {
-                            text: root.isBatchDownloading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconDownload ?? "󰇚")
+                            anchors.centerIn: parent
+                            text: Theme?.iconWallpaper ?? "󰸉"
                             font.family: Theme?.fontIcon ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            font.pixelSize: Theme?.fontSizeLg ?? 16
                             color: Theme.primary
                         }
+                    }
+
+                    ColumnLayout {
+                        spacing: 2
 
                         Text {
-                            text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count)) + ")")
+                            text: "wallpapers & aesthetics"
                             font.family: Theme?.fontFamily ?? "sans-serif"
-                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            font.pixelSize: Theme?.fontSizeMd ?? 14
                             font.weight: Font.Bold
                             color: Theme.on_surface
                         }
-                    }
 
-                    MouseArea {
-                        id: dlAllMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: root.isBatchDownloading ? Qt.ArrowCursor : Qt.PointingHandCursor
-                        onClicked: downloadCurrentSection()
+                        Text {
+                            text: {
+                                if (root.activeTab === "local") return (localView.filteredLocalWps ? localView.filteredLocalWps.length : 0) + " wallpapers in gallery";
+                                if (root.activeTab === "online") return (onlineWpModel.count > 0 ? (onlineWpModel.count + " wallhaven wallpapers loaded") : "explore wallhaven community gallery");
+                                if (root.activeTab === "live") return (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) + " animated & video streams";
+                                return "matugen color schemes & awww engine";
+                            }
+                            font.family: Theme?.fontFamily ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 10
+                            color: Theme.on_surface_variant
+                        }
                     }
                 }
 
-                IconButton {
-                    icon: Theme?.iconShuffle ?? "󰒝"
-                    tooltip: "roll random wallpaper"
-                    onClicked: {
-                        let activeCat = "all";
-                        if (root.localCategoryFilter !== "all") {
-                            activeCat = root.localCategoryFilter;
-                            if (root.localSubCategoryFilter !== "all") {
-                                activeCat = root.localCategoryFilter + "/" + root.localSubCategoryFilter;
+                // Explicit spacer pushes all actions to the far right edge
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    spacing: 6
+                    Layout.alignment: Qt.AlignVCenter
+
+                    // Batch download action
+                    Rectangle {
+                        Layout.preferredHeight: 30
+                        Layout.preferredWidth: dlAllRow.implicitWidth + 20
+                        radius: Theme?.radiusPill ?? 999
+                        color: dlAllMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                        border.color: Theme.widgetBorder
+                        border.width: 1
+                        visible: (root.activeTab === "online" && onlineWpModel.count > 0) || (root.activeTab === "live" && ((root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count) > 0))
+                        opacity: root.isBatchDownloading ? 0.6 : 1.0
+
+                        RowLayout {
+                            id: dlAllRow
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                text: root.isBatchDownloading ? (Theme?.iconRefresh ?? "↺") : (Theme?.iconDownload ?? "󰇚")
+                                font.family: Theme?.fontIcon ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                color: Theme.primary
+                            }
+
+                            Text {
+                                text: root.isBatchDownloading ? "saving..." : ("download all (" + (root.activeTab === "online" ? onlineWpModel.count : (root.liveSubTab === "local" ? root.localLiveWallpapers.length : liveWpModel.count)) + ")")
+                                font.family: Theme?.fontFamily ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeXs ?? 10
+                                font.weight: Font.Bold
+                                color: Theme.on_surface
                             }
                         }
-                        WallpaperService?.applyRandomWallpaper ? WallpaperService.applyRandomWallpaper(activeCat) : null;
-                    }
-                }
 
-                IconButton {
-                    icon: Theme?.iconRefresh ?? "↺"
-                    tooltip: "refresh / rescan"
-                    onClicked: {
-                        if (root.activeTab === "local") reloadLocalWallpapers();
-                        else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text);
-                        else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery);
-                        else WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
+                        MouseArea {
+                            id: dlAllMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: root.isBatchDownloading ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            onClicked: downloadCurrentSection()
+                        }
                     }
-                }
 
-                IconButton {
-                    icon: Theme?.iconClose ?? "✕"
-                    tooltip: "close panel"
-                    onClicked: popup.open = false
+                    IconButton {
+                        icon: Theme?.iconShuffle ?? "󰒝"
+                        tooltip: "roll random wallpaper"
+                        onClicked: {
+                            let activeCat = "all";
+                            if (root.localCategoryFilter !== "all") {
+                                activeCat = root.localCategoryFilter;
+                                if (root.localSubCategoryFilter !== "all") {
+                                    activeCat = root.localCategoryFilter + "/" + root.localSubCategoryFilter;
+                                }
+                            }
+                            WallpaperService?.applyRandomWallpaper ? WallpaperService.applyRandomWallpaper(activeCat) : null;
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme?.iconRefresh ?? "↺"
+                        tooltip: "refresh / rescan"
+                        onClicked: {
+                            if (root.activeTab === "local") reloadLocalWallpapers();
+                            else if (root.activeTab === "online") fetchWallhaven(onlineInput.text, root.onlineSorting, 1, resInput.text);
+                            else if (root.activeTab === "live") fetchLiveWallpapers(root.liveSearchQuery);
+                            else WallpaperService?.reapplyTheme ? WallpaperService.reapplyTheme() : null;
+                        }
+                    }
+
+                    IconButton {
+                        icon: Theme?.iconClose ?? "✕"
+                        tooltip: "close panel"
+                        onClicked: popup.open = false
+                    }
                 }
             }
 
-            // 2. Cohesive Segmented Tab Bar (matching QuickSettings)
-            Flickable {
+            // 2. Cohesive Full-Width Segmented Tab Bar
+            Rectangle {
                 Layout.fillWidth: true
-                height: 36
-                contentWidth: tabRow.implicitWidth
-                flickableDirection: Flickable.HorizontalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                clip: true
+                height: 38
+                radius: Theme?.radiusPill ?? 999
+                color: Theme.surface_container_lowest
+                border.color: Theme.outline_variant ?? Theme.widgetBorder
+                border.width: 1
 
                 RowLayout {
                     id: tabRow
-                    spacing: 6
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    spacing: 3
 
                     Repeater {
                         model: [
@@ -764,10 +797,18 @@ Rectangle {
 
                         delegate: Rectangle {
                             required property var modelData
-                            height: 32
-                            width: tabItemRow.implicitWidth + 24
-                            radius: Theme?.widgetRadius ?? 10
-                            color: root.activeTab === modelData.id ? Theme.primary : (tabMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest)
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: Theme?.radiusPill ?? 999
+
+                            readonly property bool isSelected: root.activeTab === modelData.id
+
+                            color: isSelected
+                                ? (Theme.surface_container_high ?? Theme.primary_container)
+                                : (tabMouse.containsMouse ? Theme.surface_container_low : "transparent")
+
+                            border.color: isSelected ? (Theme.outline_variant ?? Theme.primary) : "transparent"
+                            border.width: isSelected ? 1 : 0
 
                             Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
 
@@ -779,16 +820,16 @@ Rectangle {
                                 Text {
                                     text: modelData.icon
                                     font.family: Theme?.fontIcon ?? "sans-serif"
-                                    font.pixelSize: Theme?.fontSizeXs ?? 10
-                                    color: root.activeTab === modelData.id ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
+                                    color: isSelected ? Theme.primary : Theme.on_surface_variant
                                 }
 
                                 Text {
                                     text: modelData.label
                                     font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: Theme?.fontSizeSm ?? 11
-                                    font.weight: Font.Medium
-                                    color: root.activeTab === modelData.id ? (Theme.on_primary ?? "#ffffff") : Theme.on_surface
+                                    font.weight: isSelected ? Font.DemiBold : Font.Medium
+                                    color: isSelected ? Theme.on_surface : Theme.on_surface_variant
                                 }
                             }
 

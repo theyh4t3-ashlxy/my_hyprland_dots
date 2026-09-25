@@ -1,6 +1,6 @@
 -- don't let hyprland cook your solid borders and corners
 hl.layer_rule({
-    match = { namespace = "^quickshell:(?!corners|border).*" },
+    match = { namespace = "^quickshell:(bar|notifications|osd|popup|screenshot|motionsandbox).*" },
     blur = true,
     ignore_alpha = 0.1,
 })

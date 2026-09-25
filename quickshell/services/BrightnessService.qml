@@ -29,6 +29,7 @@ Scope {
 
     FileView {
         path: "/sys/class/backlight/" + root.device + "/max_brightness"
+        printErrors: false
         onLoaded: {
             let val = parseInt(text().trim());
             if (!isNaN(val) && val > 0) root.max = val;
@@ -37,6 +38,7 @@ Scope {
 
     FileView {
         path: "/sys/class/backlight/" + root.device + "/brightness"
+        printErrors: false
         watchChanges: true
         onLoaded: {
             let val = parseInt(text().trim());
@@ -59,5 +61,10 @@ Scope {
     function setBrightnessPercent(pct) {
         let clamped = Math.max(1, Math.min(100, pct));
         Quickshell.execDetached(["brightnessctl", "set", clamped + "%"]);
+    }
+
+    function step(delta: int): void {
+        let next = Math.max(1, Math.min(100, root.percent + delta));
+        setBrightnessPercent(next);
     }
 }

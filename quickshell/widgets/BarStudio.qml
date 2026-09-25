@@ -30,7 +30,7 @@ PopupPanel {
     property int hoverIndex: -1
 
     readonly property var moduleCatalog: ({
-        "launcher":      { name: "app launcher",      icon: Theme?.iconArch ?? "\uE88A",      desc: "application search & grid" },
+        "launcher":      { name: "app launcher",      icon: Theme?.iconDistro ?? Theme?.iconArch ?? "\uE88A",      desc: "application search & grid" },
         "wallpaper":     { name: "wallpaper browser", icon: Theme?.iconWallpaper ?? "\uE1BC", desc: "awww & mpvpaper selector" },
         "workspaces":    { name: "workspaces",        icon: Theme?.iconWorkspaces ?? "\uE871", desc: "hyprland workspace dots" },
         "windowTitle":   { name: "active window",     icon: Theme?.iconSparkles ?? "\uE65F",   desc: "focused window title badge" },
@@ -290,16 +290,14 @@ PopupPanel {
         spacing: 10
         focus: true
 
-        Shortcut {
-            sequence: "Escape"
-            enabled: root.open
-            onActivated: {
-                if (root.isDragging) {
-                    root.cancelDrag();
-                } else {
-                    if (Settings) Settings.showBarStudio = false;
-                    root.open = false;
-                }
+        Keys.onEscapePressed: (event) => {
+            if (root.isDragging) {
+                root.cancelDrag();
+                event.accepted = true;
+            } else if (root.open) {
+                if (Settings) Settings.showBarStudio = false;
+                root.open = false;
+                event.accepted = true;
             }
         }
 

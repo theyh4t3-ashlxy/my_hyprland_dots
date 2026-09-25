@@ -24,7 +24,7 @@ PopupPanel {
         return 0.0;
     }
 
-    property string tlpProfile: "BAT"
+    property string tlpProfile: "bat"
     property string tlpStatus: "enabled"
     property string platformProfile: "balanced"
     property int cycleCount: 0
@@ -61,10 +61,10 @@ PopupPanel {
         stdout: StdioCollector {
             onStreamFinished: {
                 let mProf = text.match(/TLP profile\s*=\s*([^\n\r]+)/);
-                if (mProf) root.tlpProfile = mProf[1].trim();
+                if (mProf) root.tlpProfile = mProf[1].trim().toLowerCase();
 
                 let mStat = text.match(/tlp\s*=\s*(\w+)/);
-                if (mStat) root.tlpStatus = mStat[1].trim();
+                if (mStat) root.tlpStatus = mStat[1].trim().toLowerCase();
             }
         }
     }
@@ -74,7 +74,7 @@ PopupPanel {
         watchChanges: true
         onLoaded: {
             let t = text().trim();
-            if (t.length > 0) root.platformProfile = t;
+            if (t.length > 0) root.platformProfile = t.toLowerCase();
         }
     }
 
@@ -136,7 +136,7 @@ PopupPanel {
                 }
 
                 Text {
-                    text: "TLP " + root.tlpStatus + " • " + root.tlpProfile
+                    text: "tlp " + root.tlpStatus + " • " + root.tlpProfile
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeXs
                     color: Theme.on_surface_variant
@@ -192,7 +192,7 @@ PopupPanel {
                         spacing: 2
 
                         Text {
-                            text: root.isCharging ? "plugged into AC power" : "running on internal battery"
+                            text: root.isCharging ? "plugged into ac power" : "running on internal battery"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
                             font.weight: Font.Medium
@@ -217,7 +217,7 @@ PopupPanel {
 
                     Text {
                         visible: root.watts > 0
-                        text: root.watts + " W"
+                        text: root.watts + " w"
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontSizeSm
                         font.weight: Font.Bold
@@ -400,8 +400,8 @@ PopupPanel {
                         Layout.preferredWidth: 1
                         height: 36
                         radius: Theme.radiusSm
-                        color: root.tlpProfile.includes("AC") ? Theme.primary : Theme.surface_container_high
-                        border.color: root.tlpProfile.includes("AC") ? "transparent" : Theme.glassBorder
+                        color: root.tlpProfile.toLowerCase().includes("ac") ? Theme.primary : Theme.surface_container_high
+                        border.color: root.tlpProfile.toLowerCase().includes("ac") ? "transparent" : Theme.glassBorder
                         border.width: 1
 
                         RowLayout {
@@ -412,7 +412,7 @@ PopupPanel {
                                 text: Theme.iconFlame
                                 font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeSm
-                                color: root.tlpProfile.includes("AC") ? Theme.on_primary : Theme.on_surface
+                                color: root.tlpProfile.toLowerCase().includes("ac") ? Theme.on_primary : Theme.on_surface
                             }
 
                             Text {
@@ -420,7 +420,7 @@ PopupPanel {
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeXs
                                 font.weight: Font.Medium
-                                color: root.tlpProfile.includes("AC") ? Theme.on_primary : Theme.on_surface
+                                color: root.tlpProfile.toLowerCase().includes("ac") ? Theme.on_primary : Theme.on_surface
                             }
                         }
 
@@ -436,8 +436,8 @@ PopupPanel {
                         Layout.preferredWidth: 1
                         height: 36
                         radius: Theme.radiusSm
-                        color: root.tlpProfile.includes("BAT") ? Theme.primary : Theme.surface_container_high
-                        border.color: root.tlpProfile.includes("BAT") ? "transparent" : Theme.glassBorder
+                        color: root.tlpProfile.toLowerCase().includes("bat") ? Theme.primary : Theme.surface_container_high
+                        border.color: root.tlpProfile.toLowerCase().includes("bat") ? "transparent" : Theme.glassBorder
                         border.width: 1
 
                         RowLayout {
@@ -448,7 +448,7 @@ PopupPanel {
                                 text: Theme.iconShield
                                 font.family: Theme.fontIcon
                                 font.pixelSize: Theme.fontSizeSm
-                                color: root.tlpProfile.includes("BAT") ? Theme.on_primary : Theme.on_surface
+                                color: root.tlpProfile.toLowerCase().includes("bat") ? Theme.on_primary : Theme.on_surface
                             }
 
                             Text {
@@ -456,7 +456,7 @@ PopupPanel {
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeXs
                                 font.weight: Font.Medium
-                                color: root.tlpProfile.includes("BAT") ? Theme.on_primary : Theme.on_surface
+                                color: root.tlpProfile.toLowerCase().includes("bat") ? Theme.on_primary : Theme.on_surface
                             }
                         }
 
@@ -556,7 +556,7 @@ PopupPanel {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Quickshell.execDetached(["kitty", "-e", "nvtop"]);
+                        Quickshell.execDetached(["kitty", "-e", "sh", "-c", "nvtop || top"]);
                         root.open = false;
                     }
                 }
@@ -593,7 +593,7 @@ PopupPanel {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        Quickshell.execDetached(["kitty", "-e", "btop"]);
+                        Quickshell.execDetached(["kitty", "-e", "sh", "-c", "btop || htop || top"]);
                         root.open = false;
                     }
                 }

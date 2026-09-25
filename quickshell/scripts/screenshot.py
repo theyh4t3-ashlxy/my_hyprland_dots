@@ -8,17 +8,17 @@ from pathlib import Path
 def notify(file_path: str, action: str):
     file_name = Path(file_path).name
     if action == "copy":
-        body = "Copied capture directly to clipboard"
+        body = "copied capture directly to clipboard"
     elif action == "edit":
-        body = f"Opened {file_name} in image editor"
+        body = f"opened {file_name} in image editor"
     elif action == "save":
-        body = f"Saved capture to {file_name}"
+        body = f"saved capture to {file_name}"
     else:
-        body = f"Saved to {file_name} and copied to clipboard"
+        body = f"saved to {file_name} and copied to clipboard"
 
     try:
         subprocess.run(
-            ["notify-send", "-a", "quickshell", "-i", file_path, "Screenshot Captured", body],
+            ["notify-send", "-a", "quickshell", "-i", file_path, "screenshot captured", body],
             check=False,
             timeout=3
         )

@@ -18,11 +18,10 @@ typeset -U path
 path=(
     "$HOME/.local/bin"
     "$HOME/bin"
-    /usr/local/bin
-    /usr/bin
-    /bin
-    /usr/sbin
-    /sbin
+    /run/wrappers/bin
+    "$HOME/.nix-profile/bin"
+    "/etc/profiles/per-user/$USER/bin"
+    /run/current-system/sw/bin
     $path
 )
 export PATH

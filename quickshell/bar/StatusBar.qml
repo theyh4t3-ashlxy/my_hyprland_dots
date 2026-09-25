@@ -17,7 +17,7 @@ PanelWindow {
     screen: modelData
     color: "transparent"
 
-    function hasAdjacentMonitor(dir) {
+    function hasAdjacentMonitorAt(dir, corner) {
         if (!root.screen) return false;
         let all = Quickshell.screens;
         if (!all || all.length <= 1) return false;
@@ -26,17 +26,59 @@ PanelWindow {
             let o = all[i];
             if (o === root.screen || o.name === root.screen.name) continue;
             let ox = o.x, oy = o.y, ow = o.width, oh = o.height;
-            if (dir === "right" && Math.abs(ox - (sx + sw)) <= 4 && !(oy + oh <= sy || oy >= sy + sh)) return true;
-            if (dir === "left" && Math.abs((ox + ow) - sx) <= 4 && !(oy + oh <= sy || oy >= sy + sh)) return true;
-            if (dir === "top" && Math.abs((oy + oh) - sy) <= 4 && !(ox + ow <= sx || ox >= sx + sw)) return true;
-            if (dir === "bottom" && Math.abs(oy - (sy + sh)) <= 4 && !(ox + ow <= sx || ox >= sx + sw)) return true;
+            if (dir === "right" && Math.abs(ox - (sx + sw)) <= 4) {
+                if (!corner) {
+                    if (!(oy + oh <= sy || oy >= sy + sh)) return true;
+                } else if (corner === "topRight" || corner === "top" || corner === "topLeft") {
+                    if (oy <= sy + 4 && (oy + oh) >= sy + 4) return true;
+                } else if (corner === "bottomRight" || corner === "bottom" || corner === "bottomLeft") {
+                    if (oy <= sy + sh - 4 && (oy + oh) >= sy + sh - 4) return true;
+                }
+            }
+            if (dir === "left" && Math.abs((ox + ow) - sx) <= 4) {
+                if (!corner) {
+                    if (!(oy + oh <= sy || oy >= sy + sh)) return true;
+                } else if (corner === "topLeft" || corner === "top" || corner === "topRight") {
+                    if (oy <= sy + 4 && (oy + oh) >= sy + 4) return true;
+                } else if (corner === "bottomLeft" || corner === "bottom" || corner === "bottomRight") {
+                    if (oy <= sy + sh - 4 && (oy + oh) >= sy + sh - 4) return true;
+                }
+            }
+            if (dir === "top" && Math.abs((oy + oh) - sy) <= 4) {
+                if (!corner) {
+                    if (!(ox + ow <= sx || ox >= sx + sw)) return true;
+                } else if (corner === "topLeft" || corner === "left" || corner === "bottomLeft") {
+                    if (ox <= sx + 4 && (ox + ow) >= sx + 4) return true;
+                } else if (corner === "topRight" || corner === "right" || corner === "bottomRight") {
+                    if (ox <= sx + sw - 4 && (ox + ow) >= sx + sw - 4) return true;
+                }
+            }
+            if (dir === "bottom" && Math.abs(oy - (sy + sh)) <= 4) {
+                if (!corner) {
+                    if (!(ox + ow <= sx || ox >= sx + sw)) return true;
+                } else if (corner === "bottomLeft" || corner === "left" || corner === "topLeft") {
+                    if (ox <= sx + 4 && (ox + ow) >= sx + 4) return true;
+                } else if (corner === "bottomRight" || corner === "right" || corner === "topRight") {
+                    if (ox <= sx + sw - 4 && (ox + ow) >= sx + sw - 4) return true;
+                }
+            }
         }
         return false;
+    }
+
+    function hasAdjacentMonitor(dir) {
+        return hasAdjacentMonitorAt(dir, null);
     }
 
     readonly property var hyprMonitor: Hyprland.monitorFor ? Hyprland.monitorFor(root.screen) : null
     readonly property bool isFullscreen: (hyprMonitor?.activeWorkspace?.hasFullscreen) ?? (Hyprland.focusedWorkspace?.hasFullscreen ?? false)
     visible: !root.isFullscreen
+
+    onIsFullscreenChanged: {
+        if (root.isFullscreen && launcherPopup.open) {
+            launcherPopup.open = false;
+        }
+    }
 
     readonly property string pos: Settings?.barPosition ?? "up"
     readonly property bool isTop: pos === "up" || pos === "top"
@@ -52,17 +94,23 @@ PanelWindow {
     }
     readonly property bool isVertical: isLeft || isRight
 
+    readonly property bool isFloating: Settings?.barFloating ?? false
+    readonly property int barMargin: Settings?.barMargin ?? 0
+    readonly property int effectiveBarMargin: root.isFloating ? (root.barMargin > 0 ? root.barMargin : 8) : 0
+    readonly property int barRadius: Settings?.barRadius ?? 0
+    readonly property int effectiveBarRadius: root.isFloating ? (root.barRadius > 0 ? root.barRadius : (Settings?.screenCornerRadius ?? 12)) : 0
+
     readonly property int scoopRadius: Math.round(Settings?.scoopRadius ?? Settings?.screenCornerRadius ?? 16)
     readonly property string cornerMode: Settings?.screenCornerMode ?? "all"
 
     // bar scoops belong to the bar, dont let "opposite" kill them
-    readonly property bool scoopAllowedLeft: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("left"))
-    readonly property bool scoopAllowedRight: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("right"))
-    readonly property bool scoopAllowedTop: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("top"))
-    readonly property bool scoopAllowedBottom: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitor("bottom"))
+    readonly property bool scoopAllowedLeft: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("left", isBottom ? "bottomLeft" : "topLeft"))
+    readonly property bool scoopAllowedRight: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("right", isBottom ? "bottomRight" : "topRight"))
+    readonly property bool scoopAllowedTop: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("top", isRight ? "topRight" : "topLeft"))
+    readonly property bool scoopAllowedBottom: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("bottom", isRight ? "bottomRight" : "bottomLeft"))
 
     readonly property int borderWidth: Math.round((Settings?.screenFrameDocked ?? true) ? (Settings?.screenBorderWidth ?? 0) : 0)
-    readonly property bool hasBarScoops: !(Settings?.barFloating ?? false) && (Settings?.screenFrameDocked ?? true) && (
+    readonly property bool hasBarScoops: !root.isFloating && (Settings?.screenFrameDocked ?? true) && (
         root.isVertical ? (scoopAllowedTop || scoopAllowedBottom) : (scoopAllowedLeft || scoopAllowedRight)
     )
 
@@ -73,9 +121,17 @@ PanelWindow {
         right: root.isRight || !root.isVertical
     }
 
+    margins {
+        top: root.isFloating && (root.isTop || root.isVertical) ? root.effectiveBarMargin : 0
+        bottom: root.isFloating && (root.isBottom || root.isVertical) ? root.effectiveBarMargin : 0
+        left: root.isFloating && (root.isLeft || !root.isVertical) ? root.effectiveBarMargin : 0
+        right: root.isFloating && (root.isRight || !root.isVertical) ? root.effectiveBarMargin : 0
+    }
+
     implicitWidth: root.isVertical ? (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0)) : (root.screen?.width ?? 1920)
     implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0))
-    exclusiveZone: Theme.barHeight
+    // exclusiveZone: Theme.barHeight
+    exclusiveZone: root.isVertical ? (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) : (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0))
     exclusionMode: ExclusionMode.Normal
 
     WlrLayershell.layer: WlrLayer.Top
@@ -83,10 +139,6 @@ PanelWindow {
 
     mask: Region {
         Region { item: barBg }
-        Region { item: scoopLeftH.visible ? scoopLeftH : null }
-        Region { item: scoopRightH.visible ? scoopRightH : null }
-        Region { item: scoopTopV.visible ? scoopTopV : null }
-        Region { item: scoopBottomV.visible ? scoopBottomV : null }
     }
 
     property alias launcherPopup: launcherPopup
@@ -134,7 +186,7 @@ PanelWindow {
         Text {
             id: launcherText
             anchors.centerIn: parent
-            text: Theme.iconArch
+            text: Theme.iconDistro ?? Theme.iconArch
             font.family: Theme.fontIcon
             font.pixelSize: (Theme.iconSet === "kaomoji" || Theme.iconSet === "text") ? (root.isVertical ? Theme.fontSizeXs : Theme.fontSizeSm) : Theme.fontSizeLg
             color: root.launcherPopup.open ? Theme.primary : Theme.on_surface
@@ -143,15 +195,22 @@ PanelWindow {
             id: lMouse
             anchors.fill: parent
             hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                let pt = launcherPill.mapToItem(null, 0, 0);
-                if (root.isVertical) {
-                    root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
-                } else {
-                    root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.LeftButton) {
+                    let pt = launcherPill.mapToItem(null, 0, 0);
+                    if (root.isVertical) {
+                        root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
+                    } else {
+                        root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
+                    }
+                    root.launcherPopup.open = !root.launcherPopup.open;
+                } else if (mouse.button === Qt.RightButton) {
+                    if (typeof Settings !== "undefined" && Settings?.requestPowerMenuToggle) {
+                        Settings.requestPowerMenuToggle();
+                    }
                 }
-                root.launcherPopup.open = !root.launcherPopup.open;
             }
         }
     }}
@@ -225,6 +284,8 @@ PanelWindow {
             y: root.isBottom && root.hasBarScoops && root.scoopRadius > 0 ? root.scoopRadius : 0
             width: root.isVertical ? Theme.barHeight : parent.width
             height: root.isVertical ? parent.height : Theme.barHeight
+            radius: root.effectiveBarRadius
+            clip: root.isFloating && root.effectiveBarRadius > 0
             color: Theme.barBg
             border.width: 0
 
@@ -387,6 +448,7 @@ PanelWindow {
             visible: root.isVertical
 
             Column {
+                id: leftRowV
                 anchors.top: parent.top
                 anchors.topMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -407,6 +469,7 @@ PanelWindow {
             }
 
             Column {
+                id: centerRowV
                 anchors.centerIn: parent
                 spacing: Theme.widgetSpacing
                 z: 10
@@ -426,6 +489,7 @@ PanelWindow {
             }
 
             Column {
+                id: rightRowV
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: Theme.widgetPaddingH
                 anchors.horizontalCenter: parent.horizontalCenter

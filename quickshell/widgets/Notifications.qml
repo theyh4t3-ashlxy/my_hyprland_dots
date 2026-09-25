@@ -98,8 +98,17 @@ Rectangle {
         id: notifMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.togglePopup()
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.LeftButton) {
+                root.togglePopup();
+            } else if (mouse.button === Qt.RightButton || mouse.button === Qt.MiddleButton) {
+                if (typeof Settings !== "undefined" && Settings) {
+                    Settings.dnd = !Settings.dnd;
+                }
+            }
+        }
     }
 
     PopupPanel {
@@ -229,7 +238,7 @@ Rectangle {
                                 spacing: 8
 
                                 Text {
-                                    text: modelData?.appName || "Notification"
+                                    text: (modelData?.appName || "notification").toLowerCase()
                                     font.family: Theme?.fontFamily ?? "sans-serif"
                                     font.pixelSize: Theme?.fontSizeXs ?? 10
                                     font.weight: Font.Bold
@@ -251,7 +260,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: modelData?.summary ?? ""
+                                text: (modelData?.summary ?? "").toLowerCase()
                                 font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: Theme?.fontSizeMd ?? 13
                                 font.weight: Font.Medium
@@ -262,7 +271,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: modelData?.body ?? ""
+                                text: (modelData?.body ?? "").toLowerCase()
                                 font.family: Theme?.fontFamily ?? "sans-serif"
                                 font.pixelSize: Theme?.fontSizeSm ?? 11
                                 color: Theme.on_surface_variant
@@ -293,7 +302,7 @@ Rectangle {
                                         Text {
                                             anchors.fill: parent
                                             anchors.margins: 4
-                                            text: modelData?.text ?? ""
+                                            text: (modelData?.text ?? "").toLowerCase()
                                             font.family: Theme?.fontFamily ?? "sans-serif"
                                             font.pixelSize: Theme?.fontSizeSm ?? 11
                                             color: Theme.on_surface

@@ -5,9 +5,9 @@ import ".."
 Item {
     id: root
 
-    property real radius: 16
-    property real radiusX: Theme?.scoopRadiusX ?? radius
-    property real radiusY: Theme?.scoopRadiusY ?? radius
+    property real radius: (typeof Theme !== "undefined" ? (Theme?.scoopRadius ?? Theme?.scoopRadiusX ?? 16) : 16)
+    property real radiusX: radius
+    property real radiusY: radius
     property color fillColor: Theme?.cornerFill ?? Theme?.barBg ?? "#14140c"
     property bool flipX: false
     property bool flipY: false
@@ -28,6 +28,7 @@ Item {
 
     readonly property real w: width
     readonly property real h: height
+    readonly property real dpr: Math.max(1.0, (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0))
     readonly property real tension: {
         if (cornerStyle === "squircle") return 0.72;
         if (cornerStyle === "continuous-bezier" || cornerStyle === "g2") return 0.58;
@@ -40,7 +41,10 @@ Item {
 
     Canvas {
         id: canvas
-        anchors.fill: parent
+        width: Math.round(root.width * root.dpr)
+        height: Math.round(root.height * root.dpr)
+        scale: 1.0 / root.dpr
+        transformOrigin: Item.TopLeft
         antialiasing: true
         smooth: true
         renderTarget: Canvas.FramebufferObject
@@ -49,7 +53,10 @@ Item {
         onPaint: {
             var ctx = getContext("2d");
             ctx.reset();
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(root.dpr, root.dpr);
+
             ctx.fillStyle = root.fillColor;
             ctx.beginPath();
 
@@ -110,25 +117,29 @@ Item {
                 if (root.cornerStyle === "chamfer") {
                     ctx.lineTo(sx, sy);
                 } else if (root.cornerStyle === "stepped") {
-                    var midX = w * 0.5;
-                    var midY = h * 0.5;
-                    ctx.lineTo(p2x, midY);
-                    ctx.lineTo(midX, midY);
-                    ctx.lineTo(midX, sy);
+                    var sMidX = w * 0.5;
+                    var sMidY = h * 0.5;
+                    ctx.lineTo(p2x, sMidY);
+                    ctx.lineTo(sMidX, sMidY);
+                    ctx.lineTo(sMidX, sy);
                     ctx.lineTo(sx, sy);
                 } else if (root.cornerStyle === "hyperbolic") {
-                    var hx = fx ? (w * 0.2) : (w * 0.8);
-                    var hy = fy ? (h * 0.8) : (h * 0.2);
-                    ctx.quadraticCurveTo(hx, hy, sx, sy);
+                    var shx = fx ? (w * 0.2) : (w * 0.8);
+                    var shy = fy ? (h * 0.8) : (h * 0.2);
+                    ctx.quadraticCurveTo(shx, shy, sx, sy);
                 } else if (root.cornerStyle === "continuous-bezier" || root.cornerStyle === "g2") {
                     ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
                 } else {
                     ctx.bezierCurveTo(c1x, c1y, c2x, c2y, sx, sy);
                 }
+                ctx.lineCap = "butt";
+                ctx.lineJoin = "round";
                 ctx.lineWidth = root.borderWidth;
                 ctx.strokeStyle = root.borderColor;
                 ctx.stroke();
             }
+
+            ctx.restore();
         }
 
         Component.onCompleted: requestPaint()
@@ -140,6 +151,7 @@ Item {
             function onBorderColorChanged() { canvas.requestPaint(); }
             function onBorderWidthChanged() { canvas.requestPaint(); }
             function onShowBorderChanged() { canvas.requestPaint(); }
+            function onRadiusChanged() { canvas.requestPaint(); }
             function onRadiusXChanged() { canvas.requestPaint(); }
             function onRadiusYChanged() { canvas.requestPaint(); }
             function onWidthChanged() { canvas.requestPaint(); }
@@ -148,6 +160,7 @@ Item {
             function onFlipYChanged() { canvas.requestPaint(); }
             function onCornerStyleChanged() { canvas.requestPaint(); }
             function onTensionChanged() { canvas.requestPaint(); }
+            function onDprChanged() { canvas.requestPaint(); }
         }
     }
 }

@@ -44,6 +44,48 @@ PanelWindow {
         item: toastBox
     }
 
+    function sanitize(notif): var {
+        if (!notif) return null;
+        if (notif.__sanitized) return notif;
+
+        let safeActions = [];
+        try {
+            if (notif.actions) {
+                for (let i = 0; i < notif.actions.length; ++i) {
+                    const act = notif.actions[i];
+                    if (act) {
+                        safeActions.push({
+                            id: act.id ?? "",
+                            text: act.text ?? "",
+                            invoke: function() {
+                                try {
+                                    if (typeof act.invoke === "function") act.invoke();
+                                } catch (e) {}
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (e) {}
+
+        const notifId = notif.id ?? Date.now();
+        return {
+            __sanitized: true,
+            id: notifId,
+            summary: String(notif.summary ?? ""),
+            body: String(notif.body ?? ""),
+            appName: String(notif.appName ?? "system"),
+            appIcon: String(notif.appIcon ?? ""),
+            urgency: Number(notif.urgency ?? 1),
+            expireTimeout: Number(notif.expireTimeout ?? -1),
+            image: String(notif.image ?? ""),
+            actions: safeActions,
+            dismiss: function() {
+                NotificationService.dismiss(notifId);
+            }
+        };
+    }
+
     Connections {
         target: NotificationService
 
@@ -51,21 +93,41 @@ PanelWindow {
             if (Settings?.dnd) return;
             if (!notif) return;
 
-            let updated = root.toastList.filter(n => n && n !== notif && (notif.id === undefined || n.id !== notif.id));
+            const safe = root.sanitize(notif);
+            if (!safe) return;
+
+            let updated = root.toastList.filter(n => n && n.id !== safe.id);
             while (updated.length >= 5) {
                 let dropped = updated.shift();
-                if (dropped && typeof dropped.dismiss === "function") {
+                if (dropped && dropped.id !== undefined && dropped.id !== null) {
+                    NotificationService.dismiss(dropped.id);
+                } else if (dropped && typeof dropped.dismiss === "function") {
                     try { dropped.dismiss(); } catch (e) {}
                 }
             }
-            updated.push(notif);
+            updated.push(safe);
             root.toastList = updated;
+        }
+
+        function onNotificationDismissed(id) {
+            if (id === undefined || id === null) return;
+            root.toastList = root.toastList.filter(n => n && n.id !== id);
+        }
+
+        function onAllCleared() {
+            root.toastList = [];
         }
     }
 
     function removeToast(notif) {
         if (!notif) return;
-        root.toastList = root.toastList.filter(n => n && n !== notif && (notif.id === undefined || n.id !== notif.id));
+        let id = (typeof notif === "object") ? notif.id : notif;
+        if (id !== undefined && id !== null) {
+            NotificationService.dismiss(id);
+            root.toastList = root.toastList.filter(n => n && n.id !== id);
+        } else {
+            root.toastList = root.toastList.filter(n => n && n !== notif);
+        }
     }
 
     // positioning container relative to bar
