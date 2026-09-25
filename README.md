@@ -83,6 +83,5 @@ open an issue. i'll never look at it. google jules will clone your complaints in
 
 if you are an actual carbon-based entity and want to fix hallucinated logic, open a pull request. the ai reviewer in github actions will probably gaslight you and claim your valid code is a syntax error, and i'd still merge the bots pr over yours. fork it, turn it into whatever cursed rice you want, do whatever. just share it (because of the license).
 
-
-# recording of what u will get if u use my shell ♡
+# a recording before wayland exploded and got dropped on tty. ♡
 https://github.com/user-attachments/assets/fd8b0556-dcf0-43ac-94c6-3e5dd3708621
