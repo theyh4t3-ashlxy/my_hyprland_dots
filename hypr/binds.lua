@@ -1,4 +1,4 @@
-local mod = "SUPER"
+local win = "WIN"
 local term = "uwsm app -- kitty"
 
 -- Helpers
@@ -7,7 +7,7 @@ local function bind(keys, dsp, opts)
 end
 
 local function mbind(key, dsp, opts)
-	hl.bind(mod .. " + " .. key, dsp, opts)
+	hl.bind(win .. " + " .. key, dsp, opts)
 end
 
 local function qs(cmd)
