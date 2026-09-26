@@ -24,6 +24,79 @@ arch is dead to me. the imperative nightmare is officially over.
 
 prerequisites: your sanity, a perfectly working nixos installation, put `programs.hyprland.enable = true;` with `withUWSM = true;` declared in `/etc/nixos/configuration.nix`.
 
+## the declarative ransom note (/etc/nixos/configuration.nix)
+
+before cloning or executing the installer, paste this block into your `/etc/nixos/configuration.nix` unless you want `./install.zsh --doctor` to publicly humiliate your missing binaries in bold red ansi.
+
+if you attempt to rawdog this desktop without declaring these packages, quickshell will suffer an existential crisis negotiating layer-shell surrender terms, matugen will throw a tantrum with zero wallpaper colors to sample, and your terminal will render hollow unicode tofu rectangles everywhere instead of rice:
+
+```nix
+  # 1. wayland session harness: held together by uwsm and unresolved emotional trauma
+  programs.hyprland = {
+    enable = true;
+    withUWSM = true; # systemd putting a leash on hyprland so it stops leaking orphan zombie procs into the void
+  };
+  programs.zsh.enable = true; # sets up zsh in /etc/shells so your user doesn't get locked out weeping in sh
+  programs.dconf.enable = true; # atomic gsettings/gtk preferences so theme reloads don't desync into chaos
+
+  # 2. digital hoarder collection: terminal toys and wayland rice machinery
+  environment.systemPackages = with pkgs; [
+    # wayland rice tooling & compositor daemons
+    kitty                # gpu-accelerated terminal where we run git commands we barely understand
+    quickshell           # qml layer-shell desktop shell engineered to make waybar users cry
+    matugen              # material you color generator extracting palettes from anime wallpapers
+    awww                 # animated wallpaper daemon that won't panic when wayland blinks
+    mpvpaper             # video wallpaper runner for when your gpu isn't sweating enough
+    hyprpicker           # wayland color picker for obsessive hex code sampling
+    wl-clipboard         # wl-copy and wl-paste so you can steal broken stackoverflow snippets
+    brightnessctl        # backlight control so you don't burn your retinas at 3 am
+    playerctl            # mpris media controller keeping spotify on a short leash
+    adw-gtk3             # libadwaita styling for crusty gtk3 apps pretending to look modern
+    glib                 # provides gsettings so gtk theme switches don't desync into modern art
+    dconf                # gnome configuration backend for atomic dark mode toggles
+    libnotify            # notify-send so background python daemons can yell at you
+    ffmpeg               # zero-frame thumbnail extraction for live video wallpapers
+
+    # terminal cosplay to pretend we understand rust cli tooling
+    micro                # terminal editor for when neovim keybinds cause cognitive paralysis
+    neovim               # the modal editor you tell people on reddit you use daily
+    fastfetch            # neofetch rewrite to display your uptime before the next segfault
+    eza                  # ls with lipstick and nerd font icons
+    zoxide               # smart cd that guesses where you wanted to navigate
+    fzf                  # fuzzy finder to accommodate your technological neglect
+    bat                  # cat clone with syntax highlighting and wings
+    ripgrep              # rg because searching files with grep takes forty business days
+    fd                   # find replacement because life is too short for -exec \; syntax
+    jq                   # json parser for wrangling quickshell api payloads
+    yazi                 # async rust terminal file manager that goes zooom
+    git                  # version control for committing straight to main without tests
+    zsh                  # the interactive shell keeping you from existential dread
+
+    # glue scripts and wallpaper manipulation contraband
+    python3              # the snake language running background desktop glue
+    python3Packages.pillow # image processing so lockscreen blurring actually works
+    unar                 # archive unpacker for theme extraction contraband
+    gh                   # github cli for screaming at autonomous bots in issue trackers
+  ];
+
+  # 3. typography: sacrificial glyphs to keep unicode tofu rectangles from infesting your desktop
+  fonts.packages = with pkgs; [
+    nerd-fonts.jetbrains-mono # the holy monospace font with all patched ligatures
+    noto-fonts                # standard sans-serif fallback so letters actually render
+    noto-fonts-cjk-sans       # prevents asian characters from collapsing into blank boxes
+    noto-fonts-color-emoji    # renders emojis in full color instead of cursed black silhouettes
+  ];
+```
+
+after pasting the manifest, switch your generation like a civilized nixos user before touching the installer or running `--doctor`:
+
+```zsh
+sudo nixos-rebuild switch
+```
+
+> [!NOTE]
+> **where are the icon fonts?** `install.zsh` automatically pulls Google's Material Symbols (`MaterialSymbolsRounded.ttf`, `MaterialSymbolsOutlined.ttf`, `MaterialSymbolsSharp.ttf`), Font Awesome 6 Free (`fa-solid-900.ttf`, `fa-regular-400.ttf`), and Segoe Fluent Icons (`SegoeIcons.ttf`) straight into `~/.local/share/fonts` during installation. why? because packaging bespoke icon webfonts and proprietary microsoft assets in nixpkgs is an exercise in bureaucratic suffering, and `fc-cache` locates them in local share anyway. if you run `./install.zsh --doctor` on a pristine system before running `./install.zsh`, it will flag these 6 icon fonts as missing until the installer fetches them (or you can declare `material-symbols` and `font-awesome_6` in `fonts.packages` if unfree curl downloads make your declarative purism itch).
+
 do not run this script as root. if you run `sudo ./install.zsh`, it will detect your autonomy, and roast you in bold red ansi, and terminates immediately before you decide to `chmod` your entire life.
 
 clone the repo into xdg data storage (because cluttering `~` is a crime):
