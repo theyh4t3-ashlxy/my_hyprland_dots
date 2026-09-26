@@ -9,7 +9,7 @@ QtObject {
 
     property string currentSchemeType: Settings.matugenScheme ?? "scheme-tonal-spot"
     property string currentMode: Settings.matugenMode ?? "dark"
-    property string currentWallpaperPath: Settings.currentWallpaper || "/home/ashley/.wallpapers/hyprland/hypr.png"
+    property string currentWallpaperPath: Settings.currentWallpaper || ""
     readonly property string scriptPath: Qt.resolvedUrl("../scripts/wallpaper.py").toString().replace(/^file:\/\//, "")
 
     property FileView currentWpFile: FileView {

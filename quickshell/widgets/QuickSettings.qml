@@ -26,7 +26,7 @@ Rectangle {
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
 
-    readonly property string userHome: Quickshell.env("HOME") || "/home/ashley"
+    readonly property string userHome: Quickshell.env("HOME") || ""
     readonly property string cacheDir: Quickshell.env("XDG_CACHE_HOME") || (userHome + "/.cache")
 
     // Scope signal safety & file watcher

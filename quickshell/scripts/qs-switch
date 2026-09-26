@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+TARGET="${1:-toggle}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+CACHE_FILE="$CACHE_DIR/current_shell"
+mkdir -p "$CACHE_DIR"
+
+CURRENT="$(cat "$CACHE_FILE" 2>/dev/null || echo "quickshell")"
+
+if [ "$TARGET" = "toggle" ]; then
+    if [ "$CURRENT" = "brain_shell" ]; then
+        TARGET="quickshell"
+    else
+        TARGET="brain_shell"
+    fi
+fi
+
+# Kill any existing quickshell instance
+pkill -x quickshell 2>/dev/null || true
+pkill -x qs 2>/dev/null || true
+sleep 0.1
+
+echo "$TARGET" > "$CACHE_FILE"
+
+# Launch target under UWSM supervision if available
+if [ "$TARGET" = "brain_shell" ]; then
+    if command -v uwsm >/dev/null 2>&1; then
+        uwsm app -- quickshell -p "$HOME/.config/Brain_Shell" &
+    else
+        quickshell -p "$HOME/.config/Brain_Shell" &
+    fi
+else
+    if command -v uwsm >/dev/null 2>&1; then
+        uwsm app -- qs -d &
+    else
+        qs -d &
+    fi
+fi

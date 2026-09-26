@@ -9,7 +9,7 @@ Singleton {
 
     // reactive zero-restart theming watcher for palette.css
     property var paletteWatcher: FileView {
-        path: (Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "/home/ashley") + "/.config")) + "/quickshell/palette.css"
+        path: (Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "") + "/.config")) + "/quickshell/palette.css"
         watchChanges: true
         printErrors: false
     }
@@ -337,7 +337,7 @@ Singleton {
     readonly property color barBg:            alpha(getStyleColor("barBg", barStyle), barOpacity)
     readonly property color barBorderColor:   getStyleColor("barBorderColor", barStyle)
     readonly property color cornerFill: {
-        let cm = cfg?.cornerColorMode ?? "bar";
+        let cm = Settings?.cornerColorMode ?? "bar";
         if (cm === "accent") return primary;
         if (cm === "pure-black") return "#000000";
         if (cm === "theme") return surface_container_high;
@@ -398,7 +398,7 @@ Singleton {
     readonly property int    animExpressiveEasing:  Easing.OutBack
 
     // icon summoner circle: pulling glyphs out of ~/.local/share by their ankles
-    readonly property string userFontDir:           (Quickshell.env("XDG_DATA_HOME") || ((Quickshell.env("HOME") || "/home/ashley") + "/.local/share")) + "/fonts/"
+    readonly property string userFontDir:           (Quickshell.env("XDG_DATA_HOME") || ((Quickshell.env("HOME") || "") + "/.local/share")) + "/fonts/"
 
     FontLoader {
         id: loaderMatRounded

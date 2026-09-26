@@ -30,7 +30,7 @@ class TestF21FileViewSignalWarnings(unittest.TestCase):
     def test_log_free_of_current_shell_missing_warning(self):
         """T1.21.2: Runtime log is free of 'Read of ... current_shell failed' warnings."""
         log = QuickshellLogAuditor.get_recent_log(100)
-        has_warning = "Read of /home/ashley/.cache/current_shell failed" in log
+        has_warning = "current_shell failed" in log
         self.assertFalse(
             has_warning,
             "Quickshell runtime log should not contain current_shell missing warnings"

@@ -76,40 +76,103 @@ verify_nixos() {
     fi
 }
 
-fetch_curated_wallpaper() {
-    log_step "wallpaper acquisition..."
-    execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded}
+fetch_wallhaven_wallpaper() {
+    log_step "wallpaper acquisition from wallhaven (waifu preferences ignored)..."
+    execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded,wallhaven}
 
-    local target_file="$WALLPAPER_DIR/downloaded/default_nordic_minimal.png"
-    if [[ -f "$target_file" ]]; then
-        log_info "wallpaper already cached at $target_file"
-        return 0
-    fi
-
-    log_info "fetching a wallpaper that will not embarrass you during screen shares..."
-    local wp_source="https://raw.githubusercontent.com/catppuccin/wallpapers/main/landscapes/evening-sky.png"
+    local wh_dir="$WALLPAPER_DIR/wallhaven"
+    local target_file=""
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        log_dry "curl/wget download to $target_file"
+        log_dry "query wallhaven api -> download random wallpaper to $wh_dir"
+        print "$wh_dir/dry_run_wallpaper.png"
         return 0
     fi
 
-    local download_success=false
+    log_info "querying wallhaven api for random wallpaper (categories=111, purity=100)..."
+
+    local api_url="https://wallhaven.cc/api/v1/search?sorting=random&categories=111&purity=100"
+    local json_payload=""
+
     if (( $+commands[curl] )); then
-        curl -fsSL --connect-timeout 5 "$wp_source" -o "$target_file" 2>/dev/null && download_success=true || true
+        json_payload=$(curl -fsSL --connect-timeout 8 "$api_url" 2>/dev/null || true)
     elif (( $+commands[wget] )); then
-        wget -q --timeout=5 -O "$target_file" "$wp_source" 2>/dev/null && download_success=true || true
-    else
-        log_warn "neither curl nor wget exists. add them to your nix configuration."
-        return 1
+        json_payload=$(wget -q --timeout=8 -O - "$api_url" 2>/dev/null || true)
     fi
 
-    if [[ "$download_success" == "true" && -s "$target_file" ]]; then
-        log_ok "saved curated wallpaper -> $target_file"
-    else
-        log_warn "failed to download wallpaper. enjoy your default black void."
-        return 1
+    local img_url=""
+    if [[ -n "$json_payload" ]]; then
+        if (( $+commands[python3] )); then
+            img_url=$(print -r -- "$json_payload" | python3 -c '
+import sys, json
+try:
+    data = json.load(sys.stdin).get("data", [])
+    if data and len(data) > 0:
+        print(data[0].get("path", ""))
+except Exception:
+    pass
+' 2>/dev/null || true)
+        elif (( $+commands[jq] )); then
+            img_url=$(print -r -- "$json_payload" | jq -r '.data[0].path // empty' 2>/dev/null || true)
+        fi
     fi
+
+    if [[ -n "$img_url" && "$img_url" == http* ]]; then
+        local img_name="${img_url:t}"
+        target_file="$wh_dir/$img_name"
+
+        if [[ -f "$target_file" && -s "$target_file" ]]; then
+            log_ok "wallhaven wallpaper already cached -> $target_file"
+            print -r "$target_file"
+            return 0
+        fi
+
+        log_info "downloading wallhaven wallpaper ($img_name)..."
+        local dl_ok=false
+        if (( $+commands[curl] )); then
+            curl -fsSL --connect-timeout 10 "$img_url" -o "$target_file" 2>/dev/null && dl_ok=true || true
+        elif (( $+commands[wget] )); then
+            wget -q --timeout=10 -O "$target_file" "$img_url" 2>/dev/null && dl_ok=true || true
+        fi
+
+        if [[ "$dl_ok" == "true" && -s "$target_file" ]]; then
+            log_ok "captured random wallpaper from wallhaven: $img_name (waifu preferences successfully ignored)"
+            print -r "$target_file"
+            return 0
+        fi
+    fi
+
+    log_warn "wallhaven api choked, unreachable, or rate-limited. attempting emergency fallback..."
+
+    # Check if we already have any image in $WALLPAPER_DIR
+    local cached=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
+    if (( ${#cached} )); then
+        log_info "using existing cached wallpaper -> ${cached[1]}"
+        print -r "${cached[1]}"
+        return 0
+    fi
+
+    # Fallback to static catppuccin download
+    local fallback_file="$WALLPAPER_DIR/downloaded/catppuccin_evening_sky.png"
+    local fallback_source="https://raw.githubusercontent.com/catppuccin/wallpapers/main/landscapes/evening-sky.png"
+    if (( $+commands[curl] )); then
+        curl -fsSL --connect-timeout 6 "$fallback_source" -o "$fallback_file" 2>/dev/null || true
+    elif (( $+commands[wget] )); then
+        wget -q --timeout=6 -O "$fallback_file" "$fallback_source" 2>/dev/null || true
+    fi
+
+    if [[ -s "$fallback_file" ]]; then
+        log_ok "emergency fallback wallpaper saved -> $fallback_file"
+        print -r "$fallback_file"
+        return 0
+    fi
+
+    log_err "failed to acquire any wallpaper. enjoy the existential void."
+    return 1
+}
+
+fetch_curated_wallpaper() {
+    fetch_wallhaven_wallpaper "$@"
 }
 
 # Returns selected items separated by newlines
@@ -233,6 +296,9 @@ link_selected_configurations() {
             else
                 execute cp -rf "$src"/. "$target/"
             fi
+            if [[ -f "$target/bookmarks" ]]; then
+                execute sed -i "s|/home/ashley|$HOME|g" "$target/bookmarks" 2>/dev/null || true
+            fi
             log_ok "synced $folder as real directory (flatpak containment)"
             continue
         fi
@@ -285,11 +351,19 @@ link_selected_configurations() {
 
 setup_directories_and_permissions() {
     log_info "allocating runtime and cache paths..."
-    execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded}
+    execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded,wallhaven}
     execute mkdir -p "$CACHE_DIR"/quickshell/{thumbnails,wallpapers}
     execute mkdir -p "$CACHE_DIR/zsh"
     execute mkdir -p "$DATA_DIR"/{quickshell/scratch,quicknav/marks,fonts}
+    execute mkdir -p "$HOME/.local/bin" "$HOME/.local/state/quickshell" "$CONFIG_DIR/nvim/lua/config"
     execute mkdir -p "$BACKUP_DIR"
+
+    # install qs-switch helper into ~/.local/bin
+    if [[ -f "$DOTS_DIR/quickshell/scripts/qs-switch" ]]; then
+        execute cp -f "$DOTS_DIR/quickshell/scripts/qs-switch" "$HOME/.local/bin/qs-switch"
+        execute chmod +x "$HOME/.local/bin/qs-switch"
+        log_ok "installed qs-switch helper into ~/.local/bin/qs-switch"
+    fi
 
     # ensure icon fonts in ~/.local/share/fonts for nixos
     local font_dir="$DATA_DIR/fonts"
@@ -321,6 +395,7 @@ setup_directories_and_permissions() {
         log_info "marking shell scripts executable..."
         local script_targets=(
             "$DOTS_DIR"/quickshell/scripts/*.(sh|py)(N.)
+            "$DOTS_DIR"/quickshell/scripts/qs-switch(N.)
             "$DOTS_DIR"/matugen/post-hook-scripts/*.(zsh|sh)(N.)
             "$DOTS_DIR"/install.zsh(N.)
         )
@@ -333,7 +408,13 @@ setup_directories_and_permissions() {
 }
 
 initial_theming() {
-    log_step "palette extraction via matugen..."
+    log_step "commencing desktop initialization ritual..."
+
+    # 1. Directory sanitation & preparation
+    execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded,wallhaven}
+    execute mkdir -p "$CONFIG_DIR"/nvim/lua/config
+    execute mkdir -p "$HOME/.local/state/quickshell"
+    execute mkdir -p "$CACHE_DIR"/quickshell/{thumbnails,wallpapers}
 
     if [[ -d "$DOTS_DIR/wallpapers" ]]; then
         local repo_wps=( "$DOTS_DIR"/wallpapers/*.(png|jpg|jpeg|webp)(N.) )
@@ -342,24 +423,83 @@ initial_theming() {
         fi
     fi
 
-    local sample_wp=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
+    local target_wp=""
+    local existing_wps=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
 
-    if (( ${#sample_wp} == 0 )); then
-        fetch_curated_wallpaper || true
-        sample_wp=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
+    # If --fetch-wp or no wallpapers exist, pull from Wallhaven
+    if [[ "$opt_fetch_wp" == "true" || ${#existing_wps} -eq 0 ]]; then
+        target_wp="$(fetch_wallhaven_wallpaper)" || true
+        target_wp="${target_wp##*$'\n'}"
+    else
+        target_wp="${existing_wps[1]}"
     fi
 
-    if (( ${#sample_wp} )); then
-        local first_wp="${sample_wp[1]}"
-        log_info "generating material palette from: $first_wp"
-        if (( $+commands[matugen] )); then
-            execute matugen image "$first_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0
-            log_ok "matugen dynamic scheme applied."
-        else
-            log_warn "matugen missing. ensure it is added to your nix configuration."
+    if [[ -z "$target_wp" || ! -f "$target_wp" ]]; then
+        local any_wps=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
+        if (( ${#any_wps} )); then
+            target_wp="${any_wps[1]}"
         fi
+    fi
+
+    if [[ -z "$target_wp" || ! -f "$target_wp" ]]; then
+        log_warn "no valid wallpaper located in $WALLPAPER_DIR. skipping theme ritual."
+        return 1
+    fi
+
+    log_info "active ritual wallpaper -> $target_wp"
+
+    # 2. Update Quickshell runtime markers and settings
+    execute mkdir -p "${XDG_RUNTIME_DIR:-/run/user/$EUID}"
+    if [[ "$DRY_RUN" != "true" ]]; then
+        print -r "$target_wp" > "/tmp/qs_current_wallpaper.txt" 2>/dev/null || true
+        print -r "$target_wp" > "${XDG_RUNTIME_DIR:-/run/user/$EUID}/qs_current_wallpaper.txt" 2>/dev/null || true
+    fi
+
+    # Update settings.conf in state and config so Quickshell boots with the wallpaper
+    local conf_targets=(
+        "$HOME/.local/state/quickshell/settings.conf"
+        "$CONFIG_DIR/quickshell/settings.conf"
+    )
+    for cf in "${conf_targets[@]}"; do
+        if [[ -f "$cf" ]]; then
+            if grep -qs "^currentWallpaper=" "$cf"; then
+                execute sed -i "s|^currentWallpaper=.*|currentWallpaper=\"$target_wp\"|" "$cf" 2>/dev/null || true
+            else
+                print "currentWallpaper=\"$target_wp\"" >> "$cf" 2>/dev/null || true
+            fi
+        else
+            execute mkdir -p "${cf:h}"
+            print "currentWallpaper=\"$target_wp\"" > "$cf" 2>/dev/null || true
+        fi
+    done
+
+    # 3. Matugen dynamic palette generation
+    if (( $+commands[matugen] )); then
+        log_info "generating material palette tokens via matugen..."
+        execute matugen image "$target_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0
+        log_ok "matugen dynamic scheme propagated across hyprland, quickshell, gtk, and kitty."
     else
-        log_warn "no wallpapers located in $WALLPAPER_DIR. skipping palette step."
+        log_warn "matugen missing. declare it in configuration.nix or enjoy unstyled chaos."
+    fi
+
+    # 4. Trigger wallpaper indexer so Quickshell WallpaperBrowser is pre-populated
+    if [[ -f "$DOTS_DIR/quickshell/scripts/wallpaper.py" ]] && (( $+commands[python3] )); then
+        log_info "indexing ~/.wallpapers gallery into cache..."
+        execute python3 "$DOTS_DIR/quickshell/scripts/wallpaper.py" scan >/dev/null 2>&1 || true
+        log_ok "wallpaper gallery indexed into /tmp/qs_wallpapers.json."
+    fi
+
+    # 5. If running inside active Wayland session, apply wallpaper live to screen via awww
+    if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        if (( $+commands[awww] )); then
+            log_info "arming awww daemon and casting wallpaper to display..."
+            if ! awww query >/dev/null 2>&1; then
+                execute awww-daemon --format argb >/dev/null 2>&1 &!
+                sleep 0.5
+            fi
+            execute awww img "$target_wp" --transition-type wipe --transition-step 90 --transition-duration 2 >/dev/null 2>&1 || true
+            log_ok "wallpaper deployed to display outputs."
+        fi
     fi
 }
 
@@ -539,7 +679,11 @@ doctor_check() {
                 print -P "  %F{120}󰄲%f $target -> %F{244}$dest%f"
             fi
         elif [[ -d "$target" ]]; then
-            print -P "  %F{221}󰀦%f $target exists as real unlinked directory"
+            if [[ "$l" == "gtk-3.0" || "$l" == "gtk-4.0" ]]; then
+                print -P "  %F{120}󰄲%f $target synced directory (flatpak containment)"
+            else
+                print -P "  %F{221}󰀦%f $target exists as real unlinked directory"
+            fi
         else
             print -P "  %F{244}󰅚%f $target absent"
         fi
@@ -575,6 +719,7 @@ show_help() {
     print "  -u, --update                     git pull, relink configs, reload hyprland"
     print "      --doctor                     run health check and list missing packages"
     print "      --reload                     reload hyprland and quickshell via uwsm"
+    print "      --fetch-wp                   fetch a random wallpaper from wallhaven"
     print "  -h, --help                       show this message"
     print ""
     print "granular flags:"
@@ -598,6 +743,7 @@ main() {
     local opt_backup=""
     local opt_theme=true
     local opt_reload=true
+    local opt_fetch_wp=false
     local -a opt_dots=()
 
     while [[ $# -gt 0 ]]; do
@@ -609,6 +755,7 @@ main() {
             -i|--interactive|-c|--custom) opt_mode="custom"; shift ;;
             --doctor|--check)       opt_mode="doctor"; shift ;;
             --reload)               opt_mode="reload"; shift ;;
+            --fetch-wp)             opt_fetch_wp=true; [[ "$opt_mode" == "menu" ]] && opt_mode="fetch_wp"; shift ;;
             -n|--dry-run)           DRY_RUN=true; shift ;;
             --backup)               opt_backup=true; shift ;;
             --no-backup)            opt_backup=false; shift ;;
@@ -642,8 +789,9 @@ main() {
         print "  5) 󰑐 update dotfiles (git pull + sync + reload)"
         print "  6) 󰄲 doctor diagnostic scan"
         print "  7) 󰁕 reload compositors & quickshell"
-        print "  8) 󰅚 quit"
-        print -Pn "choice [1-8, default 1]: "
+        print "  8) 󰋩 fetch wallhaven wallpaper & execute theme ritual"
+        print "  9) 󰅚 quit"
+        print -Pn "choice [1-9, default 1]: "
 
         local choice=""
         if [[ -t 0 ]]; then read -r choice; elif [[ -r /dev/tty ]]; then read -r choice </dev/tty; else choice="1"; fi
@@ -657,7 +805,8 @@ main() {
             5) opt_mode="update" ;;
             6) opt_mode="doctor" ;;
             7) opt_mode="reload" ;;
-            8|q|Q) print "aborting."; exit 0 ;;
+            8) opt_mode="fetch_wp" ;;
+            9|q|Q) print "aborting."; exit 0 ;;
             *) log_warn "invalid input. falling back to wizard."; opt_mode="custom" ;;
         esac
     fi
@@ -682,6 +831,12 @@ main() {
             [[ "$opt_theme" == "true" ]] && initial_theming
             [[ "$opt_reload" == "true" ]] && reload_shell
             log_ok "update finished."
+            ;;
+        fetch_wp)
+            setup_directories_and_permissions
+            opt_fetch_wp=true
+            initial_theming
+            [[ "$opt_reload" == "true" ]] && reload_shell
             ;;
         custom)
             log_step "interactive nixos dotfiles wizard"
@@ -713,6 +868,9 @@ main() {
 
             if ask_yn "run wallpaper seed & matugen dynamic palette generation?" "Y"; then
                 opt_theme=true
+                if ask_yn "fetch fresh random wallpaper from wallhaven (waifu preferences ignored)?" "N"; then
+                    opt_fetch_wp=true
+                fi
             else
                 opt_theme=false
             fi

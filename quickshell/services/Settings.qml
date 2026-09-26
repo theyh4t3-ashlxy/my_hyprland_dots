@@ -102,7 +102,7 @@ QtObject {
     property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
     property bool showBarStudio: false
 
-    property string currentWallpaper: "/home/ashley/.wallpapers/hyprland/hypr.png"
+    property string currentWallpaper: ""
     property string matugenMode: "dark"
     property string matugenScheme: "scheme-tonal-spot"
     property string awwwTransitionType: "wipe"
@@ -348,7 +348,7 @@ QtObject {
         { key: "screenCornerMode", type: "string", def: "all" },
         { key: "cornerStyle", type: "string", def: "cubic" },
         { key: "cornerColorMode", type: "string", def: "bar" },
-        { key: "currentWallpaper", type: "string", def: "/home/ashley/.wallpapers/hyprland/hypr.png" },
+        { key: "currentWallpaper", type: "string", def: "" },
         { key: "matugenMode", type: "string", def: "dark" },
         { key: "matugenScheme", type: "string", def: "scheme-tonal-spot" },
         { key: "awwwTransitionType", type: "string", def: "wipe" },

@@ -27,7 +27,7 @@ Rectangle {
         id: notesModel
     }
 
-    readonly property string notesFilePath: "/home/ashley/.local/share/quickshell/notes.json"
+    readonly property string notesFilePath: (Quickshell.env("XDG_DATA_HOME") || ((Quickshell.env("HOME") || "") + "/.local/share")) + "/quickshell/notes.json"
 
     property FileView notesFile: FileView {
         path: root.notesFilePath
