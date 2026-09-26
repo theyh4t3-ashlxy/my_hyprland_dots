@@ -5,9 +5,9 @@ this is my hyprland setup. synthesized entirely through prompt engineering, mult
 
 the development stack:
 - google ai studio: where i dumped 1.5 million tokens of raw wayland C code and broken quickshell documentation into a single prompt box at 3 am to bully gemini into spitting out layer-shell glue code that (just barely) compiles.
-- google antigravity: where i ran four competing subagents in parallel across isolated git worktrees until my laptop cpu hit 99c and the fan sounded like a jet engine. one agent re-invented display server ipc, another broke python arrays, and the other two locked into an endless merge war over corner scoop radii.
+- google antigravity: where i ran four competing subagents in parallel across isolated git worktrees until my laptop cpu hit 100°c and the fan sounded like a jet engine. one agent re-invented display server ipc, another broke python arrays, and the other two locked into an endless merge war over corner scoop radii.
 - google jules: the async agent that clones this repo into isolated cloud vms while i sleep, invents unit tests for nonexistent bugs, and pushes pull requests directly to main with zero human oversight.
-- quickshell: because normal people use waybar with comfy json configs, but i decided building an entire desktop shell in raw qtquick and qml anchors was a good idea until qt6 updates and breaks every single layout.
+- quickshell: because normal people use waybar with comfy `.jsonc` and `.css` configs, but i decided building an entire desktop shell in raw qtquick and qml anchors was a good idea until qt6 updates and breaks every single layout.
 
 it runs on my machine. if your compositor kernel panics on boot, that is fundamentally a skill issue.
 
