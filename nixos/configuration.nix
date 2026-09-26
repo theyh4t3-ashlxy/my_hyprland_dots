@@ -152,6 +152,8 @@
     wl-clipboard
     brightnessctl
     playerctl
+    adw-gtk3
+    glib
 
     # terminal cosplay to pretend we understand rust cli tooling
     micro

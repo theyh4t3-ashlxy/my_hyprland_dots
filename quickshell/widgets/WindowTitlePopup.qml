@@ -85,10 +85,16 @@ PopupPanel {
                             candidates.push(parts[parts.length - 1]);
                         }
                         for (let i = 0; i < candidates.length; i++) {
-                            let p = Quickshell.iconPath(candidates[i]);
+                            let cand = candidates[i];
+                            if (!cand) continue;
+                            if (Quickshell?.hasThemeIcon && !Quickshell.hasThemeIcon(cand)) continue;
+                            let p = Quickshell.iconPath(cand);
                             if (p) return p;
                         }
-                        return Quickshell.iconPath("application-x-executable") || "";
+                        if (Quickshell?.hasThemeIcon && Quickshell.hasThemeIcon("application-x-executable")) {
+                            return Quickshell.iconPath("application-x-executable");
+                        }
+                        return "";
                     }
                     visible: source !== "" && status !== Image.Error
                 }

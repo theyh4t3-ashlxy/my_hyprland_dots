@@ -26,17 +26,26 @@ Rectangle {
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
 
+    readonly property string userHome: Quickshell.env("HOME") || "/home/ashley"
+    readonly property string cacheDir: Quickshell.env("XDG_CACHE_HOME") || (userHome + "/.cache")
+
     // Scope signal safety & file watcher
     FileView {
         id: shellWatcher
         printErrors: false
-        path: (Quickshell.env("XDG_CACHE_HOME") || ((Quickshell.env("HOME") || "/home/ashley") + "/.cache")) + "/current_shell"
+        path: root.cacheDir + "/current_shell"
         watchChanges: true
         // disk writes dont notify without a reload kick
         onFileChanged: reload()
         onLoaded: {
             const s = text().trim();
-            if (s === "oxytocin" || s === "quickshell") root.activeShell = s;
+            if (s === "brain_shell" || s === "quickshell") {
+                root.activeShell = s;
+            } else if (s === "oxytocin") {
+                // automatic exorcism of old shell regret
+                root.activeShell = "brain_shell";
+                switchProc.switchShell("brain_shell");
+            }
         }
     }
 
@@ -45,9 +54,15 @@ Rectangle {
         function switchShell(target) {
             if (!target) return;
             if (running) running = false;
-            const bin = (Quickshell.env("HOME") || "/home/ashley") + "/.local/bin/qs-switch";
+            const bin = root.userHome + "/.local/bin/qs-switch";
             command = [bin, target];
             running = true;
+        }
+        function restartCurrent() {
+            switchShell(root.activeShell);
+        }
+        onExited: (code) => {
+            shellWatcher.reload();
         }
     }
 
@@ -333,6 +348,103 @@ Rectangle {
                         onClicked: cgRoot.selected(itemVal)
                     }
                 }
+            }
+        }
+    }
+
+    component SliderRow: ColumnLayout {
+        id: slRoot
+        property string title: ""
+        property real from: 0
+        property real to: 100
+        property real value: 0
+        property real stepSize: 1
+        property string suffix: "px"
+        property var formatter: null // optional function(value) -> string
+        signal moved(real val)
+
+        Layout.fillWidth: true
+        spacing: 6
+
+        readonly property string displayText: slRoot.formatter
+            ? slRoot.formatter(slRoot.value)
+            : ((Math.round(slRoot.value * 100) / 100) + slRoot.suffix)
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+
+            Text {
+                visible: slRoot.title !== ""
+                text: slRoot.title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.on_surface_variant
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: slRoot.displayText
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeXs
+                font.weight: Font.Bold
+                color: Theme.primary
+            }
+        }
+
+        Rectangle {
+            id: track
+            Layout.fillWidth: true
+            height: 6
+            radius: 3
+            color: Theme.surface_container_highest
+
+            readonly property real ratio: slRoot.to > slRoot.from
+                ? Math.max(0, Math.min(1, (slRoot.value - slRoot.from) / (slRoot.to - slRoot.from)))
+                : 0
+
+            Rectangle {
+                width: parent.width * track.ratio
+                height: parent.height
+                radius: parent.radius
+                color: Theme.primary
+            }
+
+            Rectangle {
+                id: handle
+                width: 16
+                height: 16
+                radius: 8
+                y: (track.height - height) / 2
+                x: Math.max(0, Math.min(track.width - width, track.width * track.ratio - width / 2))
+                color: Theme.primary
+                border.color: Theme.on_primary
+                border.width: 2
+                scale: dragArea.pressed ? 1.2 : 1.0
+
+                Behavior on scale { NumberAnimation { duration: Theme.animFast } }
+            }
+
+            MouseArea {
+                id: dragArea
+                anchors.fill: parent
+                anchors.margins: -8
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                preventStealing: true
+
+                function commit(localX) {
+                    const t = Math.max(0, Math.min(1, localX / track.width));
+                    let raw = slRoot.from + t * (slRoot.to - slRoot.from);
+                    if (slRoot.stepSize > 0) {
+                        raw = Math.round(raw / slRoot.stepSize) * slRoot.stepSize;
+                    }
+                    raw = Math.max(slRoot.from, Math.min(slRoot.to, raw));
+                    if (Math.abs(raw - slRoot.value) > 1e-9) slRoot.moved(raw);
+                }
+
+                onPressed: (mouse) => commit(mouse.x - 8)
+                onPositionChanged: (mouse) => { if (pressed) commit(mouse.x - 8); }
             }
         }
     }
@@ -624,11 +736,14 @@ Rectangle {
                             onSelected: val => Settings.barPosition = val
                         }
 
-                        ChoiceRow {
-                            title: "bar thickness: " + Settings.barHeight + "px"
-                            model: [28, 32, 36, 40, 48]
-                            currentValue: Settings.barHeight
-                            onSelected: val => Settings.barHeight = val
+                        SliderRow {
+                            title: "bar thickness"
+                            from: 24
+                            to: 56
+                            stepSize: 2
+                            suffix: "px"
+                            value: Settings.barHeight
+                            onMoved: val => Settings.barHeight = val
                         }
 
                         ChoiceGrid {
@@ -695,11 +810,14 @@ Rectangle {
                             }
                         }
 
-                        ChoiceRow {
-                            title: "scoop border width: " + Settings.scoopBorderWidth + "px"
-                            model: [1, 2, 3, 4]
-                            currentValue: Settings.scoopBorderWidth
-                            onSelected: val => Settings.scoopBorderWidth = val
+                        SliderRow {
+                            title: "scoop border width"
+                            from: 1
+                            to: 6
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.scoopBorderWidth
+                            onMoved: val => Settings.scoopBorderWidth = val
                         }
 
                         ChoiceRow {
@@ -724,64 +842,62 @@ Rectangle {
                             }
                         }
 
-                        ChoiceRow {
-                            title: "frame border width: " + (Settings.screenBorderWidth === 0 ? "none (corners only)" : (Settings.screenBorderWidth + "px (full screen frame)"))
-                            model: [0, 2, 4, 8, 12]
-                            currentValue: Settings.screenBorderWidth
-                            onSelected: val => Settings.screenBorderWidth = val
+                        SliderRow {
+                            title: "frame border width"
+                            from: 0
+                            to: 16
+                            stepSize: 2
+                            value: Settings.screenBorderWidth
+                            formatter: v => v === 0 ? "none (corners only)" : (Math.round(v) + "px (full frame)")
+                            onMoved: val => Settings.screenBorderWidth = val
                         }
 
-                        ChoiceRow {
-                            title: "bar scoop radius: " + Settings.scoopRadius + "px"
-                            model: [0, 8, 12, 16, 20, 24, 32]
-                            currentValue: Settings.scoopRadius
-                            onSelected: val => Settings.scoopRadius = val
+                        SliderRow {
+                            title: "bar scoop radius"
+                            from: 0
+                            to: 32
+                            stepSize: 2
+                            suffix: "px"
+                            value: Settings.scoopRadius
+                            onMoved: val => Settings.scoopRadius = val
                         }
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
+                        SliderRow {
+                            title: "screen corner radius"
+                            from: 0
+                            to: 40
+                            stepSize: 2
+                            suffix: "px"
+                            value: Settings.screenCornerRadius
+                            onMoved: val => Settings.screenCornerRadius = val
+                        }
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignRight
+                            visible: Settings.scoopRadius !== Settings.screenCornerRadius
+                            height: 22
+                            implicitWidth: syncText.implicitWidth + 14
+                            radius: Theme.radiusSm
+                            color: syncMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
+
+                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                             Text {
-                                text: "screen corner radius: " + Settings.screenCornerRadius + "px"
+                                id: syncText
+                                anchors.centerIn: parent
+                                text: "match scoops (" + Settings.scoopRadius + "px)"
                                 font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
-                                color: Theme.on_surface_variant
-                                Layout.fillWidth: true
+                                font.pixelSize: 9
+                                color: Theme.primary
                             }
 
-                            Rectangle {
-                                height: 22
-                                implicitWidth: syncText.implicitWidth + 14
-                                radius: Theme.radiusSm
-                                color: syncMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
-                                visible: Settings.scoopRadius !== Settings.screenCornerRadius
-
-                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-                                Text {
-                                    id: syncText
-                                    anchors.centerIn: parent
-                                    text: "match scoops (" + Settings.scoopRadius + "px)"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 9
-                                    color: Theme.primary
-                                }
-
-                                MouseArea {
-                                    id: syncMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Settings.screenCornerRadius = Settings.scoopRadius
-                                }
+                            MouseArea {
+                                id: syncMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Settings.screenCornerRadius = Settings.scoopRadius
                             }
-                        }
-
-                        ChoiceRow {
-                            model: [0, 8, 12, 16, 20, 24, 32]
-                            currentValue: Settings.screenCornerRadius
-                            onSelected: val => Settings.screenCornerRadius = val
                         }
 
                         CategoryHeader {
@@ -789,18 +905,24 @@ Rectangle {
                             icon: Theme.iconSliders
                         }
 
-                        ChoiceRow {
-                            title: "widget spacing: " + Settings.widgetSpacing + "px"
-                            model: [2, 4, 6, 8, 12]
-                            currentValue: Settings.widgetSpacing
-                            onSelected: val => Settings.widgetSpacing = val
+                        SliderRow {
+                            title: "widget spacing"
+                            from: 0
+                            to: 16
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.widgetSpacing
+                            onMoved: val => Settings.widgetSpacing = val
                         }
 
-                        ChoiceRow {
-                            title: "widget padding: " + Settings.widgetPaddingH + "px"
-                            model: [4, 6, 8, 10, 14]
-                            currentValue: Settings.widgetPaddingH
-                            onSelected: val => Settings.widgetPaddingH = val
+                        SliderRow {
+                            title: "widget padding"
+                            from: 2
+                            to: 18
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.widgetPaddingH
+                            onMoved: val => Settings.widgetPaddingH = val
                         }
 
                         ChoiceRow {
@@ -816,35 +938,34 @@ Rectangle {
                             onSelected: val => Settings.widgetRadius = val
                         }
 
-                        ChoiceRow {
-                            title: "popup corner radius: " + Settings.popupRadius + "px"
-                            model: [4, 8, 12, 16, 24]
-                            currentValue: Settings.popupRadius
-                            onSelected: val => Settings.popupRadius = val
+                        SliderRow {
+                            title: "popup corner radius"
+                            from: 0
+                            to: 28
+                            stepSize: 2
+                            suffix: "px"
+                            value: Settings.popupRadius
+                            onMoved: val => Settings.popupRadius = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "bar background opacity"
-                            model: [
-                                { label: "50%", value: 0.50 },
-                                { label: "70%", value: 0.70 },
-                                { label: "85%", value: 0.85 },
-                                { label: "100%", value: 1.0 }
-                            ]
-                            currentValue: Settings.barOpacity
-                            onSelected: val => Settings.barOpacity = val
+                            from: 0.3
+                            to: 1.0
+                            stepSize: 0.05
+                            value: Settings.barOpacity
+                            formatter: v => Math.round(v * 100) + "%"
+                            onMoved: val => Settings.barOpacity = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "popup background opacity"
-                            model: [
-                                { label: "75%", value: 0.75 },
-                                { label: "85%", value: 0.85 },
-                                { label: "95%", value: 0.95 },
-                                { label: "100%", value: 1.0 }
-                            ]
-                            currentValue: Settings.popupOpacity
-                            onSelected: val => Settings.popupOpacity = val
+                            from: 0.5
+                            to: 1.0
+                            stepSize: 0.05
+                            value: Settings.popupOpacity
+                            formatter: v => Math.round(v * 100) + "%"
+                            onMoved: val => Settings.popupOpacity = val
                         }
 
                         SettingCard {
@@ -863,16 +984,19 @@ Rectangle {
                                 width: parent.width
                                 implicitHeight: floatRadiusRow.implicitHeight + 16
 
-                                ChoiceRow {
+                                SliderRow {
                                     id: floatRadiusRow
                                     anchors.left: parent.left
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.margins: Theme.widgetPaddingH
-                                    title: "floating bar corner radius: " + Settings.barRadius + "px"
-                                    model: [0, 4, 8, 12, 16, 20]
-                                    currentValue: Settings.barRadius
-                                    onSelected: val => Settings.barRadius = val
+                                    title: "floating bar corner radius"
+                                    from: 0
+                                    to: 24
+                                    stepSize: 2
+                                    suffix: "px"
+                                    value: Settings.barRadius
+                                    onMoved: val => Settings.barRadius = val
                                 }
                             }
                         }
@@ -1445,17 +1569,14 @@ Rectangle {
                             icon: Theme.iconSliders
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "interface font scaling"
-                            model: [
-                                { label: "85%", value: 0.85 },
-                                { label: "95%", value: 0.95 },
-                                { label: "100%", value: 1.0 },
-                                { label: "110%", value: 1.1 },
-                                { label: "125%", value: 1.25 }
-                            ]
-                            currentValue: Settings.fontScale
-                            onSelected: val => Settings.fontScale = val
+                            from: 0.8
+                            to: 1.4
+                            stepSize: 0.05
+                            value: Settings.fontScale
+                            formatter: v => Math.round(v * 100) + "%"
+                            onMoved: val => Settings.fontScale = val
                         }
 
                         ChoiceRow {
@@ -1639,12 +1760,15 @@ Rectangle {
                             onSelected: val => Settings.workspaceMode = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             visible: Settings.workspaceMode === "fluid-trail"
-                            title: "trail duration: " + Settings.workspaceTrailDuration + "ms"
-                            model: [160, 200, 240, 280, 340]
-                            currentValue: Settings.workspaceTrailDuration
-                            onSelected: val => Settings.workspaceTrailDuration = val
+                            title: "trail duration"
+                            from: 120
+                            to: 400
+                            stepSize: 10
+                            suffix: "ms"
+                            value: Settings.workspaceTrailDuration
+                            onMoved: val => Settings.workspaceTrailDuration = val
                         }
 
                         CategoryHeader {
@@ -1672,12 +1796,15 @@ Rectangle {
                             }
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             visible: Settings.hoverToOpen
-                            title: "hover activation delay: " + Settings.hoverDelay + "ms"
-                            model: [120, 180, 220, 280, 350, 500]
-                            currentValue: Settings.hoverDelay
-                            onSelected: val => Settings.hoverDelay = val
+                            title: "hover activation delay"
+                            from: 80
+                            to: 600
+                            stepSize: 10
+                            suffix: "ms"
+                            value: Settings.hoverDelay
+                            onMoved: val => Settings.hoverDelay = val
                         }
 
                         CategoryHeader {
@@ -1848,27 +1975,24 @@ Rectangle {
                             icon: Theme.iconVolHigh
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "volume scroll step"
-                            model: [
-                                { label: "1% (fine)", value: 1 },
-                                { label: "2%", value: 2 },
-                                { label: "5% (default)", value: 5 },
-                                { label: "10% (coarse)", value: 10 }
-                            ]
-                            currentValue: Settings.volumeStep
-                            onSelected: val => Settings.volumeStep = val
+                            from: 1
+                            to: 15
+                            stepSize: 1
+                            value: Settings.volumeStep
+                            formatter: v => Math.round(v) + "%"
+                            onMoved: val => Settings.volumeStep = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "max volume ceiling"
-                            model: [
-                                { label: "100% (safe)", value: 100 },
-                                { label: "125% (boost)", value: 125 },
-                                { label: "150% (overdrive)", value: 150 }
-                            ]
-                            currentValue: Settings.volumeMax
-                            onSelected: val => Settings.volumeMax = val
+                            from: 100
+                            to: 200
+                            stepSize: 5
+                            value: Settings.volumeMax
+                            formatter: v => Math.round(v) + "%"
+                            onMoved: val => Settings.volumeMax = val
                         }
 
                         CategoryHeader {
@@ -2301,42 +2425,34 @@ Rectangle {
                             icon: Theme.iconSliders
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "backdrop dimming opacity"
-                            model: [
-                                { label: "20%", value: 0.20 },
-                                { label: "35%", value: 0.35 },
-                                { label: "45%", value: 0.45 },
-                                { label: "60%", value: 0.60 },
-                                { label: "75%", value: 0.75 }
-                            ]
-                            currentValue: Settings.screenshotDimOpacity
-                            onSelected: val => Settings.screenshotDimOpacity = val
+                            from: 0.1
+                            to: 0.9
+                            stepSize: 0.05
+                            value: Settings.screenshotDimOpacity
+                            formatter: v => Math.round(v * 100) + "%"
+                            onMoved: val => Settings.screenshotDimOpacity = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "selection border width"
-                            model: [
-                                { label: "1px", value: 1 },
-                                { label: "2px", value: 2 },
-                                { label: "3px", value: 3 },
-                                { label: "4px", value: 4 }
-                            ]
-                            currentValue: Settings.screenshotBorderWidth
-                            onSelected: val => Settings.screenshotBorderWidth = val
+                            from: 1
+                            to: 6
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.screenshotBorderWidth
+                            onMoved: val => Settings.screenshotBorderWidth = val
                         }
 
-                        ChoiceRow {
+                        SliderRow {
                             title: "selection corner radius"
-                            model: [
-                                { label: "sharp (0)", value: 0 },
-                                { label: "subtle (4)", value: 4 },
-                                { label: "rounded (8)", value: 8 },
-                                { label: "soft (12)", value: 12 },
-                                { label: "pill (16)", value: 16 }
-                            ]
-                            currentValue: Settings.screenshotBorderRadius
-                            onSelected: val => Settings.screenshotBorderRadius = val
+                            from: 0
+                            to: 20
+                            stepSize: 2
+                            suffix: "px"
+                            value: Settings.screenshotBorderRadius
+                            onMoved: val => Settings.screenshotBorderRadius = val
                         }
 
                         SettingCard {
@@ -2424,21 +2540,221 @@ Rectangle {
                         spacing: 10
 
                         CategoryHeader {
-                            title: "shell switching"
+                            title: "desktop shell profiles"
                             icon: Theme.iconTerminal
                         }
 
-                        ChoiceRow {
-                            title: "active desktop shell"
-                            model: [
-                                { label: "quickshell (main)", value: "quickshell" },
-                                { label: "oxytocin (modular)", value: "oxytocin" }
-                            ]
-                            currentValue: root.activeShell
-                            onSelected: val => {
-                                root.activeShell = val;
-                                switchProc.switchShell(val);
+                        // Rich profile cards replacing the plain choice row
+                        SettingCard {
+                            Repeater {
+                                model: [
+                                    {
+                                        id: "quickshell",
+                                        name: "quickshell (native)",
+                                        desc: "my shitty ai-generated quickshell setup",
+                                        path: "~/.config/quickshell",
+                                        icon: Theme.iconSliders
+                                    },
+                                    {
+                                        id: "brain_shell",
+                                        name: "brain shell",
+                                        desc: "material you shell with dynamic matugen theming",
+                                        path: "~/.config/Brain_Shell",
+                                        icon: Theme.iconSparkles
+                                    }
+                                ]
+
+                                delegate: Column {
+                                    required property var modelData
+                                    required property int index
+                                    width: parent.width
+                                    spacing: 0
+
+                                    RowDivider { visible: index > 0 }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        implicitHeight: 64
+                                        color: root.activeShell === modelData.id
+                                            ? Theme.primary_overlay
+                                            : (shMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: Theme.widgetPaddingH
+                                            spacing: 12
+
+                                            Rectangle {
+                                                width: 36
+                                                height: 36
+                                                radius: Theme.radiusSm
+                                                color: root.activeShell === modelData.id ? Theme.primary : Theme.surface_container_high
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.icon
+                                                    font.family: Theme.fontIcon
+                                                    font.pixelSize: Theme.fontSizeSm
+                                                    color: root.activeShell === modelData.id ? Theme.on_primary : Theme.on_surface_variant
+                                                }
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+
+                                                RowLayout {
+                                                    spacing: 6
+                                                    Text {
+                                                        text: modelData.name
+                                                        font.family: Theme.fontFamily
+                                                        font.pixelSize: Theme.fontSizeSm
+                                                        font.weight: Font.Bold
+                                                        color: Theme.on_surface
+                                                    }
+                                                    Rectangle {
+                                                        visible: root.activeShell === modelData.id
+                                                        height: 16
+                                                        width: activeText.implicitWidth + 10
+                                                        radius: 8
+                                                        color: Theme.primary
+
+                                                        Text {
+                                                            id: activeText
+                                                            anchors.centerIn: parent
+                                                            text: "ACTIVE"
+                                                            font.family: Theme.fontFamily
+                                                            font.pixelSize: 8
+                                                            font.weight: Font.Bold
+                                                            color: Theme.on_primary
+                                                        }
+                                                    }
+                                                }
+
+                                                Text {
+                                                    text: modelData.desc
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                    color: Theme.on_surface_variant
+                                                }
+
+                                                Text {
+                                                    text: modelData.path
+                                                    font.family: Theme.fontMono
+                                                    font.pixelSize: 9
+                                                    color: Theme.primary
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                height: 28
+                                                width: 72
+                                                radius: Theme.radiusSm
+                                                color: root.activeShell === modelData.id
+                                                    ? Theme.surface_container_high
+                                                    : (shBtnMouse.containsMouse ? Theme.primary : Theme.surface_container_highest)
+                                                border.color: root.activeShell === modelData.id ? Theme.primary : "transparent"
+                                                border.width: 1
+
+                                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: root.activeShell === modelData.id ? "current" : "switch"
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 10
+                                                    font.weight: Font.Bold
+                                                    color: root.activeShell === modelData.id ? Theme.primary : (shBtnMouse.containsMouse ? Theme.on_primary : Theme.on_surface)
+                                                }
+
+                                                MouseArea {
+                                                    id: shBtnMouse
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: root.activeShell === modelData.id ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (root.activeShell !== modelData.id) {
+                                                            root.activeShell = modelData.id;
+                                                            switchProc.switchShell(modelData.id);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: shMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (root.activeShell !== modelData.id) {
+                                                    root.activeShell = modelData.id;
+                                                    switchProc.switchShell(modelData.id);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
+                        }
+
+                        CategoryHeader {
+                            title: "process controls"
+                            icon: Theme.iconSliders
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 38
+                                radius: Theme.widgetRadius
+                                color: rstMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                                border.color: rstMouse.containsMouse ? Theme.primary : Theme.widgetBorder
+                                border.width: 1
+
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 8
+
+                                    Text {
+                                        text: Theme.iconHistory
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeSm
+                                        color: Theme.primary
+                                    }
+
+                                    Text {
+                                        text: switchProc.running ? "restarting shell..." : "restart active shell"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Font.Medium
+                                        color: Theme.on_surface
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: rstMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    enabled: !switchProc.running
+                                    onClicked: switchProc.restartCurrent()
+                                }
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "hot-swap shortcuts & info"
+                            icon: Theme.iconNote
                         }
 
                         SettingCard {
@@ -2449,29 +2765,62 @@ Rectangle {
                                     id: infoCol
                                     anchors.fill: parent
                                     anchors.margins: 12
-                                    spacing: 6
+                                    spacing: 8
 
-                                    Text {
-                                        text: "hot-swap shortcuts & info"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
-                                        color: Theme.primary
+                                    RowLayout {
+                                        spacing: 8
+                                        Text {
+                                            text: "󰌌"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeSm
+                                            color: Theme.primary
+                                        }
+                                        Text {
+                                            text: "super + alt + s"
+                                            font.family: Theme.fontMono
+                                            font.pixelSize: Theme.fontSizeXs
+                                            font.weight: Font.Bold
+                                            color: Theme.primary
+                                        }
+                                        Text {
+                                            text: "to instant toggle between quickshell and brain shell"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeXs
+                                            color: Theme.on_surface_variant
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+
+                                    RowDivider {}
+
+                                    RowLayout {
+                                        spacing: 8
+                                        Text {
+                                            text: "󰈙"
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeSm
+                                            color: Theme.primary
+                                        }
+                                        Text {
+                                            text: "state cache:"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeXs
+                                            font.weight: Font.Bold
+                                            color: Theme.on_surface
+                                        }
+                                        Text {
+                                            text: "~/.cache/current_shell"
+                                            font.family: Theme.fontMono
+                                            font.pixelSize: 10
+                                            color: Theme.on_surface_variant
+                                            Layout.fillWidth: true
+                                        }
                                     }
 
                                     Text {
-                                        text: "press super + alt + s anytime to instantly toggle between quickshell and oxytocin without opening settings."
+                                        text: "switch script automatically updates state cache so your selection persists across hyprland sessions and reboots."
                                         font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        color: Theme.on_surface_variant
-                                        wrapMode: Text.Wrap
-                                        Layout.fillWidth: true
-                                    }
-
-                                    Text {
-                                        text: "active shell state is tracked in ~/.cache/current_shell and automatically restored on hyprland startup."
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
+                                        font.pixelSize: 10
                                         color: Theme.on_surface_variant
                                         wrapMode: Text.Wrap
                                         Layout.fillWidth: true

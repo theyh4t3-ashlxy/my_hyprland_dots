@@ -163,16 +163,16 @@ Rectangle {
     PopupPanel {
         id: popup
         wantsFocus: true
-        Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Escape) {
-                popup.open = false;
-                event.accepted = true;
-            }
-        }
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme.widgetSpacing
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Escape) {
+                    popup.open = false;
+                    event.accepted = true;
+                }
+            }
 
             // header
             RowLayout {

@@ -11,3 +11,6 @@ require("gestures")
 
 -- HyprMod managed settings
 require("hyprmod")
+
+-- Brain_ShellKeybinds
+dofile("/home/ashley/.config/Brain_Shell/Brain_ShellKeybinds.lua")

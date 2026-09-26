@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import sys
-import time
+import json
 import shutil
 import subprocess
+import sys
+import time
 
 def run(cmd: list[str]) -> bool:
     """Run command quietly and return True if exit code is 0."""
@@ -18,8 +19,22 @@ def run(cmd: list[str]) -> bool:
     except Exception:
         return False
 
+def run_hyprctl(args: list[str]) -> bool:
+    """hyprctl returns exit status 0 even on dispatch failure, so verify stdout."""
+    if not shutil.which("hyprctl"):
+        return False
+    try:
+        res = subprocess.run(
+            ["hyprctl", *args],
+            capture_output=True,
+            text=True
+        )
+        return res.returncode == 0 and res.stdout.strip() == "ok"
+    except Exception:
+        return False
+
 def lock_session() -> bool:
-    """Lock screen via native Quickshell IPC."""
+    """Lock screen via native Quickshell IPC with loginctl fallback."""
     # 1. Primary: Quickshell IPC lock
     if run(["qs", "ipc", "call", "lock", "lock"]):
         return True
@@ -34,13 +49,17 @@ def lock_session() -> bool:
         "-u", "critical",
         "-a", "session manager",
         "-i", "system-lock-screen",
-        "screen lock failed",
-        "quickshell lock ipc did not respond!"
+        "Screen lock failed",
+        "Quickshell lock IPC did not respond!"
     ])
     return False
 
 def toggle_caffeine():
     """Toggle Quickshell idle monitor on/off (Caffeine mode)."""
+    if not shutil.which("qs"):
+        run(["notify-send", "-u", "critical", "idle monitor", "qs executable not found!"])
+        return False
+
     try:
         res = subprocess.run(
             ["qs", "ipc", "call", "idle", "toggle"],
@@ -48,40 +67,71 @@ def toggle_caffeine():
             text=True
         )
         if res.returncode == 0:
-            # qs ipc prints the returned boolean value
-            new_state = "enabled" if "true" in res.stdout.lower() else "inhibited (caffeine active)"
-            icon = "caffeine" if "inhibited" in new_state else "preferences-desktop-screensaver"
+            raw = res.stdout.strip().lower()
+
+            # Attempt to parse json / bool / int strings safely
+            is_enabled = None
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, bool):
+                    is_enabled = parsed
+                elif isinstance(parsed, dict) and "enabled" in parsed:
+                    is_enabled = bool(parsed["enabled"])
+            except Exception:
+                pass
+
+            if is_enabled is None:
+                is_enabled = raw in ("true", "1", "on")
+
+            new_state = "enabled" if is_enabled else "inhibited (caffeine active)"
+            icon = "preferences-desktop-screensaver" if is_enabled else "caffeine"
+
             run([
                 "notify-send",
                 "-a", "idle monitor",
                 "-i", icon,
-                "idle timeout changed",
-                f"quickshell idle is now {new_state}"
+                "Idle Timeout Changed",
+                f"Quickshell idle is now {new_state}"
             ])
             return True
     except Exception:
         pass
 
-    run(["notify-send", "-u", "critical", "idle monitor", "failed to communicate with quickshell idle service!"])
+    run(["notify-send", "-u", "critical", "idle monitor", "Failed to communicate with quickshell idle service!"])
     return False
 
 def logout_session() -> bool:
     """Clean exit order: UWSM -> hyprshutdown -> hyprctl dispatch exit."""
-    teardown_cmds = [
-        ["uwsm", "stop"],
-        ["hyprshutdown"],
-        ["hyprctl", "dispatch", "hl.dsp.exit()"],
-        ["hyprctl", "dispatch", "exit"]
-    ]
-    for cmd in teardown_cmds:
-        if run(cmd):
-            return True
+    # 1. UWSM managed session
+    if shutil.which("uwsm") and run(["uwsm", "stop"]):
+        return True
+
+    # 2. Dedicated shutdown helper
+    if shutil.which("hyprshutdown") and run(["hyprshutdown"]):
+        return True
+
+    # 3. Hyprland dispatcher (check for 'ok' output)
+    if run_hyprctl(["dispatch", "hl.dsp.exit()"]):
+        return True
+    if run_hyprctl(["dispatch", "exit"]):
+        return True
+
     return False
 
 def suspend_system():
     """Lock first, allow the lock surface to engage, then suspend."""
-    lock_session()
-    time.sleep(0.2)  # Give Wayland compositor a split second to latch the lock surface
+    if not lock_session():
+        run([
+            "notify-send",
+            "-u", "critical",
+            "-a", "power manager",
+            "Suspend Aborted",
+            "Refusing to suspend: screen locker failed to engage!"
+        ])
+        return
+
+    # Give Wayland compositor breathing room to paint the lock surface
+    time.sleep(0.4)
     run(["systemctl", "suspend"])
 
 def main():

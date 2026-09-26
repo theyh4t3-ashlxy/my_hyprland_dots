@@ -1,10 +1,18 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 Singleton {
     id: root
     readonly property var cfg: (typeof Settings !== "undefined" ? Settings : null)
+
+    // reactive zero-restart theming watcher for palette.css
+    property var paletteWatcher: FileView {
+        path: (Quickshell.env("XDG_CONFIG_HOME") || ((Quickshell.env("HOME") || "/home/ashley") + "/.config")) + "/quickshell/palette.css"
+        watchChanges: true
+        printErrors: false
+    }
 
     // ticking time bomb so the widgets know when to panic
     SystemClock {

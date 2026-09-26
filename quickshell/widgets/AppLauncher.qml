@@ -12,7 +12,6 @@ PopupPanel {
 
     wantsFocus: true
     keyboardFocusMode: WlrKeyboardFocus.Exclusive
-    Keys.forwardTo: [searchInput]
 
     cardWidth: 460
     cardHeight: 560
@@ -67,6 +66,7 @@ PopupPanel {
     content: ColumnLayout {
         anchors.fill: parent
         spacing: Theme?.popupSpacing ?? Theme?.widgetSpacing ?? 10
+        Keys.forwardTo: [searchInput]
 
         // Search Input Box
         Rectangle {
@@ -500,7 +500,17 @@ PopupPanel {
                                 anchors.centerIn: parent
                                 width: 24
                                 height: 24
-                                source: Quickshell.iconPath(modelData?.icon || "application-x-executable", "application-x-executable")
+                                source: {
+                                    let ic = modelData?.icon || "";
+                                    if (ic.startsWith("/")) return "file://" + ic;
+                                    if (Quickshell?.hasThemeIcon && Quickshell.hasThemeIcon(ic)) {
+                                        return Quickshell.iconPath(ic);
+                                    }
+                                    if (Quickshell?.hasThemeIcon && Quickshell.hasThemeIcon("application-x-executable")) {
+                                        return Quickshell.iconPath("application-x-executable");
+                                    }
+                                    return "";
+                                }
                             }
                         }
 
