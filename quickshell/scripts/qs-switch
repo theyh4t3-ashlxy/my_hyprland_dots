@@ -12,26 +12,57 @@ if [ "$TARGET" = "toggle" ]; then
     else
         TARGET="brain_shell"
     fi
+elif [ "$TARGET" = "restart" ]; then
+    TARGET="$CURRENT"
 fi
-
-# Kill any existing quickshell instance
-pkill -x quickshell 2>/dev/null || true
-pkill -x qs 2>/dev/null || true
-sleep 0.1
 
 echo "$TARGET" > "$CACHE_FILE"
 
-# Launch target under UWSM supervision if available
-if [ "$TARGET" = "brain_shell" ]; then
-    if command -v uwsm >/dev/null 2>&1; then
-        uwsm app -- quickshell -p "$HOME/.config/Brain_Shell" &
-    else
-        quickshell -p "$HOME/.config/Brain_Shell" &
+# Execute kill & launch detached from caller process group
+(
+    # Small pause to allow calling UI/process to finish its dispatch
+    sleep 0.1
+
+    # 1. Graceful kill via Quickshell native IPC
+    qs kill >/dev/null 2>&1 || true
+    qs -p "$HOME/.config/Brain_Shell" kill >/dev/null 2>&1 || true
+
+    # 2. Terminate any running quickshell instances across wrapped & unwrapped names
+    pkill -x .quickshell-wra 2>/dev/null || true
+    pkill -x quickshell 2>/dev/null || true
+    pkill -x qs 2>/dev/null || true
+
+    # 3. Wait for processes to vacate layer-shell surfaces
+    for _ in {1..30}; do
+        if ! pgrep -x .quickshell-wra >/dev/null 2>&1 && ! pgrep -x quickshell >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.05
+    done
+
+    # Force kill if still lingering
+    if pgrep -x .quickshell-wra >/dev/null 2>&1 || pgrep -x quickshell >/dev/null 2>&1; then
+        pkill -9 -x .quickshell-wra 2>/dev/null || true
+        pkill -9 -x quickshell 2>/dev/null || true
+        sleep 0.1
     fi
-else
-    if command -v uwsm >/dev/null 2>&1; then
-        uwsm app -- qs -d &
+
+    # Clean stale PID mapping
+    rm -rf /run/user/"$UID"/quickshell/by-pid/* 2>/dev/null || true
+    sleep 0.15
+
+    # 4. Launch target shell
+    if [ "$TARGET" = "brain_shell" ]; then
+        if command -v uwsm >/dev/null 2>&1; then
+            uwsm app -- qs -d -p "$HOME/.config/Brain_Shell" >/dev/null 2>&1
+        else
+            qs -d -p "$HOME/.config/Brain_Shell" >/dev/null 2>&1
+        fi
     else
-        qs -d &
+        if command -v uwsm >/dev/null 2>&1; then
+            uwsm app -- qs -d >/dev/null 2>&1
+        else
+            qs -d >/dev/null 2>&1
+        fi
     fi
-fi
+) </dev/null >/dev/null 2>&1 & disown

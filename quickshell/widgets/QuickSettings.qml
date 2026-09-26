@@ -59,7 +59,7 @@ Rectangle {
             running = true;
         }
         function restartCurrent() {
-            switchShell(root.activeShell);
+            switchShell("restart");
         }
         onExited: (code) => {
             shellWatcher.reload();
@@ -2753,7 +2753,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "hot-swap shortcuts & info"
+                            title: "shell state & info"
                             icon: Theme.iconNote
                         }
 
@@ -2766,32 +2766,6 @@ Rectangle {
                                     anchors.fill: parent
                                     anchors.margins: 12
                                     spacing: 8
-
-                                    RowLayout {
-                                        spacing: 8
-                                        Text {
-                                            text: "󰌌"
-                                            font.family: Theme.fontIcon
-                                            font.pixelSize: Theme.fontSizeSm
-                                            color: Theme.primary
-                                        }
-                                        Text {
-                                            text: "super + alt + s"
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
-                                            color: Theme.primary
-                                        }
-                                        Text {
-                                            text: "to instant toggle between quickshell and brain shell"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            color: Theme.on_surface_variant
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-
-                                    RowDivider {}
 
                                     RowLayout {
                                         spacing: 8
