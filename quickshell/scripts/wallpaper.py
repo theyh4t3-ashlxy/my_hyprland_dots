@@ -15,13 +15,17 @@ from concurrent.futures import ThreadPoolExecutor
 XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 XDG_RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 XDG_CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+XDG_STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
 
 APP_CACHE_DIR = XDG_CACHE_HOME / "quickshell"
+APP_STATE_DIR = XDG_STATE_HOME / "quickshell"
 THUMB_DIR = APP_CACHE_DIR / "thumbnails"
 WALLPAPERS_DIR = Path.home() / ".wallpapers"
-SETTINGS_CONF = XDG_CONFIG_HOME / "quickshell" / "settings.conf"
+SETTINGS_CONF = APP_STATE_DIR / "settings.conf"
+FALLBACK_SETTINGS_CONF = XDG_CONFIG_HOME / "quickshell" / "settings.conf"
 
 APP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+APP_STATE_DIR.mkdir(parents=True, exist_ok=True)
 THUMB_DIR.mkdir(parents=True, exist_ok=True)
 WALLPAPERS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -98,11 +102,12 @@ CURATED_LIVE = [
 
 def load_settings() -> dict:
     settings = dict(DEFAULT_SETTINGS)
-    if not SETTINGS_CONF.exists():
+    conf_path = SETTINGS_CONF if SETTINGS_CONF.exists() else FALLBACK_SETTINGS_CONF
+    if not conf_path.exists():
         return settings
 
     try:
-        content = SETTINGS_CONF.read_text(encoding="utf-8")
+        content = conf_path.read_text(encoding="utf-8")
         for line in content.splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -128,7 +133,7 @@ def load_settings() -> dict:
             else:
                 settings[key] = val
     except Exception as e:
-        sys.stderr.write(f"Warning: Failed to parse {SETTINGS_CONF}: {e}\n")
+        sys.stderr.write(f"Warning: Failed to parse {conf_path}: {e}\n")
 
     return settings
 
@@ -138,6 +143,9 @@ def update_settings(updates: dict):
         if SETTINGS_CONF.exists():
             real_conf = SETTINGS_CONF.resolve()
             lines = real_conf.read_text(encoding="utf-8").splitlines()
+        elif FALLBACK_SETTINGS_CONF.exists():
+            real_conf = SETTINGS_CONF
+            lines = FALLBACK_SETTINGS_CONF.read_text(encoding="utf-8").splitlines()
         else:
             real_conf = SETTINGS_CONF
             lines = [

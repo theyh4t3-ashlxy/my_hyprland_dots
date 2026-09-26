@@ -44,14 +44,42 @@ QtObject {
 
     signal wallpapersUpdated()
 
+    property var wallpaperList: []
+
+    function updateWallpaperList() {
+        if (!localWpListFile) return;
+        let str = localWpListFile.text();
+        if (!str || str.trim() === "") return;
+        try {
+            wallpaperList = JSON.parse(str) || [];
+        } catch (e) {
+            console.warn("[WallpaperService] Failed to parse wallpaperList:", e);
+        }
+    }
+
     property FileView localWpListFile: FileView {
         path: "/tmp/qs_wallpapers.json"
+        blockLoading: true
         watchChanges: true
         printErrors: false
+        onLoaded: service.updateWallpaperList()
         onFileChanged: {
             reload();
+            service.updateWallpaperList();
             service.wallpapersUpdated();
         }
+    }
+
+    function getRandomWallpaperPath(): string {
+        if (!wallpaperList || wallpaperList.length === 0) {
+            updateWallpaperList();
+        }
+        if (wallpaperList && wallpaperList.length > 0) {
+            let idx = Math.floor(Math.random() * wallpaperList.length);
+            let item = wallpaperList[idx];
+            return item?.path ?? item?.url ?? "";
+        }
+        return currentWallpaperPath;
     }
 
     function getTransitionArgs(monitor) {

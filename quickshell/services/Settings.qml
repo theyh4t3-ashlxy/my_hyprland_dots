@@ -139,6 +139,9 @@ QtObject {
     property bool showWallpaper: true
     property bool showQuickNotes: true
     property bool showMotionSandbox: false
+    property bool lockscreenWallpaperSync: true
+    property string lockscreenWallpaper: ""
+    property bool lockscreenShowMedia: true
 
     property string clockFormat: "HH:mm"
     property string dateFormat: "ddd, MMM d"
@@ -264,6 +267,9 @@ QtObject {
     onShowQuickNotesChanged: queueSave()
     onShowMotionSandboxChanged: queueSave()
     onShowBarStudioChanged: queueSave()
+    onLockscreenWallpaperSyncChanged: queueSave()
+    onLockscreenWallpaperChanged: queueSave()
+    onLockscreenShowMediaChanged: queueSave()
     onBarModulesLeftChanged: queueSave()
     onBarModulesCenterChanged: queueSave()
     onBarModulesRightChanged: queueSave()
@@ -378,6 +384,9 @@ QtObject {
         { key: "showQuickNotes", type: "bool", def: true },
         { key: "showMotionSandbox", type: "bool", def: false },
         { key: "showBarStudio", type: "bool", def: false },
+        { key: "lockscreenWallpaperSync", type: "bool", def: true },
+        { key: "lockscreenWallpaper", type: "string", def: "" },
+        { key: "lockscreenShowMedia", type: "bool", def: true },
         { key: "barModulesLeft", type: "json", def: ["launcher", "wallpaper", "workspaces", "windowTitle"] },
         { key: "barModulesCenter", type: "json", def: ["clock"] },
         { key: "barModulesRight", type: "json", def: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"] },
@@ -517,7 +526,21 @@ QtObject {
         root._initialized = true;
     }
 
-    readonly property string confPath: decodeURIComponent(Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, ""))
+    readonly property string stateDir: {
+        let xdgState = Quickshell.env("XDG_STATE_HOME");
+        if (xdgState && xdgState.trim() !== "") return xdgState.trim() + "/quickshell";
+        let home = Quickshell.env("HOME") ?? "";
+        return home ? (home + "/.local/state/quickshell") : "/tmp/quickshell-state";
+    }
+    readonly property string confPath: stateDir + "/settings.conf"
+    readonly property string fallbackConfPath: decodeURIComponent(Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, ""))
+
+    property FileView fallbackConfFile: FileView {
+        path: root.fallbackConfPath
+        blockLoading: true
+        watchChanges: false
+        printErrors: false
+    }
 
     property FileView confFile: FileView {
         path: root.confPath
@@ -526,7 +549,10 @@ QtObject {
         printErrors: false
         onLoaded: root.loadFromFile()
         onLoadFailed: (error) => {
-            // so we don't end up trapped in purgatory on clean setups
+            let str = fallbackConfFile.text();
+            if (str && str.trim() !== "") {
+                root.loadConf(str);
+            }
             root._initialized = true;
             root.save();
         }
@@ -540,10 +566,15 @@ QtObject {
     }
 
     Component.onCompleted: {
+        Quickshell.execDetached(["mkdir", "-p", root.stateDir]);
         let str = confFile.text();
         if (str && str.trim() !== "") {
             root.loadConf(str);
         } else {
+            let fallbackStr = fallbackConfFile.text();
+            if (fallbackStr && fallbackStr.trim() !== "") {
+                root.loadConf(fallbackStr);
+            }
             root._initialized = true;
             root.save();
         }

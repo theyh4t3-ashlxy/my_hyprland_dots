@@ -20,15 +20,62 @@ Scope {
     property date currentTime: new Date()
     property string pendingPassword: ""
 
+    readonly property string lockTokenPath: (Quickshell.env("XDG_RUNTIME_DIR") ?? "/tmp") + "/qs_session_locked.token"
+
+    property FileView lockTokenFile: FileView {
+        path: lockRoot.lockTokenPath
+        blockLoading: true
+        watchChanges: true
+        printErrors: false
+        onLoaded: {
+            let t = text();
+            if (t && t.trim() === "locked" && !lockRoot.locked) {
+                console.log("[LockScreen] Lock token detected. Restoring locked state.");
+                lockRoot.locked = true;
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        let t = lockTokenFile.text();
+        if (t && t.trim() === "locked" && !lockRoot.locked) {
+            console.log("[LockScreen] Lock token present on startup. Engaging session lock.");
+            lockRoot.locked = true;
+        }
+    }
+
+    function pickRandomWallpaperInMemory(): string {
+        if (typeof WallpaperService !== "undefined" && WallpaperService) {
+            if (typeof WallpaperService.getRandomWallpaperPath === "function") {
+                let wp = WallpaperService.getRandomWallpaperPath();
+                if (wp && wp !== "") return wp;
+            }
+            if (WallpaperService.wallpaperList && WallpaperService.wallpaperList.length > 0) {
+                let list = WallpaperService.wallpaperList;
+                let idx = Math.floor(Math.random() * list.length);
+                let item = list[idx];
+                return item?.path ?? item?.url ?? "";
+            }
+            if (WallpaperService.currentWallpaperPath) {
+                return WallpaperService.currentWallpaperPath;
+            }
+        }
+        return "";
+    }
+
     signal triggerShake()
 
-    // 1. Snapshot time & clear auth state on lock
+    // 1. Snapshot time & clear auth state on lock + persist lock token
     onLockedChanged: {
         if (locked) {
             currentTime = new Date();
             authFailed = false;
             isChecking = false;
             pendingPassword = "";
+            lockTokenFile.setText("locked");
+        } else {
+            lockTokenFile.setText("");
+            Quickshell.execDetached(["rm", "-f", lockTokenPath]);
         }
     }
 
@@ -132,6 +179,8 @@ Scope {
 
                 // Power confirmation state (prevents accidental shutdowns)
                 property string pendingPowerAction: ""
+                property bool optionsOpen: false
+                property string localWallpaperOverride: ""
 
                 Timer {
                     id: powerActionResetTimer
@@ -163,14 +212,24 @@ Scope {
                     MouseArea {
                         anchors.fill: parent
                         z: -1
-                        onClicked: pwInput.forceActiveFocus()
+                        onClicked: {
+                            surface.optionsOpen = false;
+                            pwInput.forceActiveFocus();
+                        }
                     }
 
                     // Backdrop Wallpaper
                     Image {
                         anchors.fill: parent
                         source: {
-                            let wp = WallpaperService?.currentWallpaperPath ?? "";
+                            let wp = surface.localWallpaperOverride;
+                            if (!wp || wp === "") {
+                                wp = (Settings?.lockscreenWallpaperSync ?? true)
+                                    ? (WallpaperService?.currentWallpaperPath ?? "")
+                                    : ((Settings?.lockscreenWallpaper && Settings.lockscreenWallpaper.length > 0)
+                                        ? Settings.lockscreenWallpaper
+                                        : (WallpaperService?.currentWallpaperPath ?? ""));
+                            }
                             if (!wp) return "";
                             return (wp.startsWith("file://") || wp.startsWith("http://") || wp.startsWith("https://")) ? wp : ("file://" + wp);
                         }
@@ -185,12 +244,13 @@ Scope {
                         opacity: 0.58
                     }
 
-                    // Top Status Row (Wired/Wi-Fi + Battery via Theme resolvers)
+                    // Top Status Row (Wired/Wi-Fi + Battery via Theme resolvers + Options)
                     RowLayout {
+                        id: statusRow
                         anchors.top: parent.top
                         anchors.right: parent.right
                         anchors.margins: 32
-                        spacing: 20
+                        spacing: 16
 
                         // Network Pill
                         RowLayout {
@@ -239,6 +299,185 @@ Scope {
                                 font.pixelSize: Theme.fontSizeSm
                                 font.weight: Theme.fontWeightMedium
                                 color: Theme.on_surface
+                            }
+                        }
+
+                        // Lockscreen Customization Trigger
+                        IconButton {
+                            icon: Theme.iconSliders
+                            iconSize: Theme.fontSizeMd
+                            tooltip: "lock screen options"
+                            highlighted: surface.optionsOpen
+                            onClicked: surface.optionsOpen = !surface.optionsOpen
+                        }
+                    }
+
+                    // Options Dropdown Panel
+                    Rectangle {
+                        id: optionsCard
+                        anchors.top: statusRow.bottom
+                        anchors.right: statusRow.right
+                        anchors.topMargin: 12
+                        width: 280
+                        implicitHeight: optionsLayout.implicitHeight + 28
+                        radius: Theme.radiusLg
+                        color: Theme.cardBg
+                        border.color: Theme.cardBorder
+                        border.width: 1
+                        visible: opacity > 0
+                        opacity: surface.optionsOpen ? 1.0 : 0.0
+                        scale: surface.optionsOpen ? 1.0 : 0.95
+                        z: 100
+
+                        Behavior on opacity { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+                        Behavior on scale { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
+                        ColumnLayout {
+                            id: optionsLayout
+                            anchors.fill: parent
+                            anchors.margins: 14
+                            spacing: 12
+
+                            // Header
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: Theme.iconSliders
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeMd
+                                    color: Theme.primary
+                                }
+
+                                Text {
+                                    text: "lock screen options"
+                                    font.family: Theme.fontSans
+                                    font.pixelSize: Theme.fontSizeSm
+                                    font.weight: Theme.fontWeightDemiBold
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                IconButton {
+                                    icon: Theme.iconClose
+                                    iconSize: Theme.fontSizeXs
+                                    tooltip: "close"
+                                    onClicked: {
+                                        surface.optionsOpen = false;
+                                        pwInput.forceActiveFocus();
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Theme.outline_disabled
+                            }
+
+                            // Shuffle Wallpaper Action
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 38
+                                radius: Theme.radiusMd
+                                color: shuffleMouse.pressed ? Theme.widgetActive : (shuffleMouse.containsMouse ? Theme.widgetHover : "transparent")
+                                border.color: Theme.cardBorder
+                                border.width: 1
+
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    spacing: 10
+
+                                    Text {
+                                        text: Theme.iconShuffle
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeMd
+                                        color: Theme.primary
+                                    }
+
+                                    Text {
+                                        text: "shuffle wallpaper"
+                                        font.family: Theme.fontSans
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Theme.fontWeightMedium
+                                        color: Theme.on_surface
+                                        Layout.fillWidth: true
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: shuffleMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        let nextWp = lockRoot.pickRandomWallpaperInMemory();
+                                        if (nextWp && nextWp !== "") {
+                                            surface.localWallpaperOverride = nextWp;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Sync Desktop Wallpaper Toggle
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+
+                                Text {
+                                    text: Theme.iconWallpaper
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeMd
+                                    color: (Settings?.lockscreenWallpaperSync ?? true) ? Theme.primary : Theme.on_surface_variant
+                                }
+
+                                Text {
+                                    text: "sync with desktop"
+                                    font.family: Theme.fontSans
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings?.lockscreenWallpaperSync ?? true
+                                    onToggled: {
+                                        Settings.lockscreenWallpaperSync = !Settings.lockscreenWallpaperSync;
+                                    }
+                                }
+                            }
+
+                            // Show Media Player Toggle
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+
+                                Text {
+                                    text: (Settings?.lockscreenShowMedia ?? true) ? Theme.iconEye : Theme.iconEyeOff
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeMd
+                                    color: (Settings?.lockscreenShowMedia ?? true) ? Theme.primary : Theme.on_surface_variant
+                                }
+
+                                Text {
+                                    text: "show now playing"
+                                    font.family: Theme.fontSans
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.on_surface
+                                    Layout.fillWidth: true
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings?.lockscreenShowMedia ?? true
+                                    onToggled: {
+                                        Settings.lockscreenShowMedia = !Settings.lockscreenShowMedia;
+                                    }
+                                }
                             }
                         }
                     }
@@ -296,7 +535,7 @@ Scope {
                             color: Theme.cardBg
                             border.color: Theme.cardBorder
                             border.width: 1
-                            visible: surface.activePlayer !== null && ((surface.activePlayer?.trackTitle ?? "") !== "" || (surface.activePlayer?.isPlaying ?? false))
+                            visible: (Settings?.lockscreenShowMedia ?? true) && surface.activePlayer !== null && ((surface.activePlayer?.trackTitle ?? "") !== "" || (surface.activePlayer?.isPlaying ?? false))
 
                             RowLayout {
                                 anchors.fill: parent
