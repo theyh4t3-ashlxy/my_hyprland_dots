@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -e
+
+ACTION="${1:-launcher}"
+CACHE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/current_shell"
+CURRENT="$(cat "$CACHE_FILE" 2>/dev/null || echo "quickshell")"
+BRAIN_DIR="${BRAIN_SHELL_DIR:-$HOME/.config/Brain_Shell}"
+
+case "$ACTION" in
+    launcher)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call dashboard-launcher toggle 2>/dev/null || true
+        else
+            qs ipc call launcher toggle 2>/dev/null || true
+        fi
+        ;;
+    dashboard|quicksettings|home)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call dashboard-home toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
+    notifs|notifications)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call notification-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call notifs toggle 2>/dev/null || true
+        fi
+        ;;
+    clipboard)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call clipboard-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call clipboard toggle 2>/dev/null || true
+        fi
+        ;;
+    audio)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call audioOut-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call volume toggle 2>/dev/null || true
+        fi
+        ;;
+    screenshot)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call screenshot-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call screenshot open 2>/dev/null || true
+        fi
+        ;;
+    wallpaper)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call wallpaper-toggle toggle 2>/dev/null || true
+        else
+            python3 "$HOME/.config/quickshell/scripts/wallpaper.py" random all 2>/dev/null || true
+        fi
+        ;;
+    lock)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call lock-session toggle 2>/dev/null || true
+        else
+            qs ipc call lock lock 2>/dev/null || true
+        fi
+        ;;
+    powermenu)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call PowerMenu-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call powermenu toggle 2>/dev/null || true
+        fi
+        ;;
+    *)
+        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|wallpaper|lock|powermenu}" >&2
+        exit 1
+        ;;
+esac

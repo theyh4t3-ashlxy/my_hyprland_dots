@@ -358,11 +358,16 @@ setup_directories_and_permissions() {
     execute mkdir -p "$HOME/.local/bin" "$HOME/.local/state/quickshell" "$CONFIG_DIR/nvim/lua/config"
     execute mkdir -p "$BACKUP_DIR"
 
-    # install qs-switch helper into ~/.local/bin
+    # install qs-switch and qs-action helpers into ~/.local/bin
     if [[ -f "$DOTS_DIR/quickshell/scripts/qs-switch" ]]; then
         execute cp -f "$DOTS_DIR/quickshell/scripts/qs-switch" "$HOME/.local/bin/qs-switch"
         execute chmod +x "$HOME/.local/bin/qs-switch"
         log_ok "installed qs-switch helper into ~/.local/bin/qs-switch"
+    fi
+    if [[ -f "$DOTS_DIR/quickshell/scripts/qs-action" ]]; then
+        execute cp -f "$DOTS_DIR/quickshell/scripts/qs-action" "$HOME/.local/bin/qs-action"
+        execute chmod +x "$HOME/.local/bin/qs-action"
+        log_ok "installed qs-action helper into ~/.local/bin/qs-action"
     fi
 
     # ensure icon fonts in ~/.local/share/fonts for nixos
@@ -396,6 +401,7 @@ setup_directories_and_permissions() {
         local script_targets=(
             "$DOTS_DIR"/quickshell/scripts/*.(sh|py)(N.)
             "$DOTS_DIR"/quickshell/scripts/qs-switch(N.)
+            "$DOTS_DIR"/quickshell/scripts/qs-action(N.)
             "$DOTS_DIR"/matugen/post-hook-scripts/*.(zsh|sh)(N.)
             "$DOTS_DIR"/install.zsh(N.)
         )

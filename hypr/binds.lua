@@ -1,4 +1,5 @@
 local win = "WIN"
+local home = os.getenv("HOME") or ""
 local term = "uwsm app -- kitty"
 
 -- Helpers
@@ -10,8 +11,8 @@ local function mbind(key, dsp, opts)
 	hl.bind(win .. " + " .. key, dsp, opts)
 end
 
-local function qs(cmd)
-	return hl.dsp.exec_cmd("qs ipc call " .. cmd)
+local function action(act)
+	return hl.dsp.exec_cmd(home .. "/.local/bin/qs-action " .. act)
 end
 
 -- Core window management
@@ -34,10 +35,16 @@ mbind("SHIFT + SPACE", function()
 	end
 end)
 
--- Session & quickshell controls
+-- Unified desktop & shell controls (dynamically routed to quickshell / brain_shell)
+mbind("D", action("launcher"))
+mbind("N", action("notifs"))
+mbind("V", action("clipboard"))
+mbind("W", action("wallpaper"))
+mbind("A", action("audio"))
+mbind("ESCAPE", action("powermenu"))
+mbind("END", action("lock"))
 mbind("SHIFT + END", hl.dsp.exec_cmd("uwsm stop"))
-mbind("END", qs("lock lock"))
-bind("Print", qs("screenshot open"))
+bind("Print", action("screenshot"))
 
 -- Direction map (u / d / l / r format)
 -- Note: use hl.dsp.window.swap if you want to swap tiled positions,
@@ -78,8 +85,8 @@ local single_toggles = {
 	XF86AudioMute = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
 	XF86AudioMicMute = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
 	XF86WLAN = "nmcli radio wifi toggle",
-	XF86Favorites = "qs ipc call lock lock",
-	XF86NotificationCenter = "qs ipc call notifs toggle",
+	XF86Favorites = home .. "/.local/bin/qs-action lock",
+	XF86NotificationCenter = home .. "/.local/bin/qs-action notifs",
 	XF86PickupPhone = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
 	XF86HangupPhone = "playerctl play-pause",
 }
