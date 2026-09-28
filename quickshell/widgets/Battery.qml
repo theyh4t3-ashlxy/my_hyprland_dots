@@ -36,7 +36,10 @@ Rectangle {
 
     Row {
         id: contentRow
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: container.isVertical ? undefined : parent.left
+        anchors.leftMargin: container.isVertical ? 0 : 8
+        anchors.horizontalCenter: container.isVertical ? parent.horizontalCenter : undefined
         spacing: 4
 
         Text {

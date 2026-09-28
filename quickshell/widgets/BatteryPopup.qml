@@ -130,10 +130,7 @@ PopupPanel {
 
     content: ColumnLayout {
         id: layoutContent
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: Theme.popupPadding
+        anchors.fill: parent
         spacing: Theme.popupSpacing
 
         // Header

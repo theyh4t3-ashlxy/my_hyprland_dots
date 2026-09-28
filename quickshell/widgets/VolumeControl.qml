@@ -27,7 +27,10 @@ Rectangle {
 
     Row {
         id: row
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: Theme.isVertical ? undefined : parent.left
+        anchors.leftMargin: Theme.isVertical ? 0 : 12
+        anchors.horizontalCenter: Theme.isVertical ? parent.horizontalCenter : undefined
         spacing: 4
 
         Text {

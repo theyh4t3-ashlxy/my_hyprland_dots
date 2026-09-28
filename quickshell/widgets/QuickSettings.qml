@@ -538,8 +538,7 @@ Rectangle {
 
         content: ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Theme.widgetPaddingH
-            spacing: Theme.widgetSpacing
+            spacing: Theme.popupSpacing
 
             RowLayout {
                 Layout.fillWidth: true

@@ -31,8 +31,7 @@ PopupPanel {
 
     content: ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Theme.widgetPaddingH + 4
-        spacing: 12
+        spacing: Theme.popupSpacing
 
         // Header
         RowLayout {

@@ -104,6 +104,7 @@ Rectangle {
     visible: !(Theme?.isVertical ?? false) && (Settings?.showWindowTitle ?? true)
     implicitWidth: (Theme?.isVertical ?? false) ? 0 : desiredWidth
     implicitHeight: (Theme?.isVertical ?? false) ? 0 : ((Theme?.barHeight ?? 48) - 8)
+    width: parent ? parent.width : implicitWidth
     radius: Theme?.radiusPill ?? 999
     clip: true
     color: wtMouse.containsMouse ? (Theme?.pillHover ?? "#33ffffff") : (Theme?.pillBg ?? "#1a000000")

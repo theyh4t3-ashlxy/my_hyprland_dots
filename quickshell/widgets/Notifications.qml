@@ -23,7 +23,10 @@ Rectangle {
 
     Row {
         id: notifRow
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: (Theme?.isVertical ?? false) ? undefined : parent.left
+        anchors.leftMargin: (Theme?.isVertical ?? false) ? 0 : 12
+        anchors.horizontalCenter: (Theme?.isVertical ?? false) ? parent.horizontalCenter : undefined
         spacing: 4
 
         Text {

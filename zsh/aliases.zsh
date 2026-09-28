@@ -6,6 +6,7 @@ alias nsearch="nix search nixpkgs"
 alias nshell="nix-shell -p"
 alias nrun="nix run nixpkgs#"
 alias nix-gens="nixos-rebuild list-generations"
+alias neovim="nvim"
 
 # purge old dead nix store paths while keeping 7 days of rollbacks
 cleanup() {

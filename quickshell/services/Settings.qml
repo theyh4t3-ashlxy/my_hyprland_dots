@@ -194,6 +194,20 @@ QtObject {
 
     property bool hyprlandLua: true
 
+    // Granular Customization Engine (Gen 5)
+    property string paddingScale: "cozy"
+    property int widgetPaddingV: 4
+    property string animCurve: "cubic"
+    property string animEasingType: "out"
+    property int animDurationFast: 120
+    property int animDurationNormal: 200
+    property int animDurationSlow: 350
+    property real glassmorphismLevel: 0.85
+    property real cardOpacity: 0.95
+    property real surfaceOpacity: 0.90
+    property bool cornerFillets: true
+    property real cornerSmoothing: 0.7
+
     property bool _initialized: false
     property bool _loading: false
     property bool _isSaving: false
@@ -333,6 +347,18 @@ QtObject {
     onScreenshotShowBadgeChanged: queueSave()
     onScreenshotShowHandlesChanged: queueSave()
     onScreenshotFlashChanged: queueSave()
+    onPaddingScaleChanged: queueSave()
+    onWidgetPaddingVChanged: queueSave()
+    onAnimCurveChanged: queueSave()
+    onAnimEasingTypeChanged: queueSave()
+    onAnimDurationFastChanged: queueSave()
+    onAnimDurationNormalChanged: queueSave()
+    onAnimDurationSlowChanged: queueSave()
+    onGlassmorphismLevelChanged: queueSave()
+    onCardOpacityChanged: queueSave()
+    onSurfaceOpacityChanged: queueSave()
+    onCornerFilletsChanged: queueSave()
+    onCornerSmoothingChanged: queueSave()
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -445,7 +471,19 @@ QtObject {
         { key: "windowTitleMode", type: "string", def: "auto" },
         { key: "windowTitleMaxWidth", type: "int", def: 760 },
         { key: "windowTitleShowIcon", type: "bool", def: true },
-        { key: "hyprlandLua", type: "bool", def: true }
+        { key: "hyprlandLua", type: "bool", def: true },
+        { key: "paddingScale", type: "string", def: "cozy" },
+        { key: "widgetPaddingV", type: "int", def: 4 },
+        { key: "animCurve", type: "string", def: "cubic" },
+        { key: "animEasingType", type: "string", def: "out" },
+        { key: "animDurationFast", type: "int", def: 120 },
+        { key: "animDurationNormal", type: "int", def: 200 },
+        { key: "animDurationSlow", type: "int", def: 350 },
+        { key: "glassmorphismLevel", type: "float", def: 0.85 },
+        { key: "cardOpacity", type: "float", def: 0.95 },
+        { key: "surfaceOpacity", type: "float", def: 0.90 },
+        { key: "cornerFillets", type: "bool", def: true },
+        { key: "cornerSmoothing", type: "float", def: 0.7 }
     ]
 
     function loadObject(data) {

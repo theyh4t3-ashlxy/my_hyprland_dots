@@ -52,10 +52,12 @@ Rectangle {
         onTriggered: {
             if (cafMouse.containsMouse && (Settings?.hoverToOpen ?? true)) {
                 let pt = cafRoot.mapToItem(null, 0, 0);
-                if (Theme.isVertical) {
-                    cafPopup.targetRelativeY = pt.y + (cafRoot.height / 2);
-                } else {
-                    cafPopup.targetRelativeX = pt.x + (cafRoot.width / 2);
+                if (pt) {
+                    if (Theme.isVertical) {
+                        cafPopup.targetRelativeY = pt.y + (cafRoot.height / 2);
+                    } else {
+                        cafPopup.targetRelativeX = pt.x + (cafRoot.width / 2);
+                    }
                 }
                 cafPopup.open = true;
             }
@@ -90,10 +92,12 @@ Rectangle {
         onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton) {
                 let pt = cafRoot.mapToItem(null, 0, 0);
-                if (Theme.isVertical) {
-                    cafPopup.targetRelativeY = pt.y + (cafRoot.height / 2);
-                } else {
-                    cafPopup.targetRelativeX = pt.x + (cafRoot.width / 2);
+                if (pt) {
+                    if (Theme.isVertical) {
+                        cafPopup.targetRelativeY = pt.y + (cafRoot.height / 2);
+                    } else {
+                        cafPopup.targetRelativeX = pt.x + (cafRoot.width / 2);
+                    }
                 }
                 cafPopup.pinned = !cafPopup.open;
                 cafPopup.open = !cafPopup.open;

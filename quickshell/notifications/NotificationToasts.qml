@@ -144,9 +144,9 @@ PanelWindow {
          : isTop ? (Theme.barHeight + 16)
          : 16
 
-        Behavior on x { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
-        Behavior on y { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
-        Behavior on height { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Easing.OutCubic } }
+        Behavior on x { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Theme?.animEasing ?? Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Theme?.animEasing ?? Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Theme?.animEasing ?? Easing.OutCubic } }
 
         ColumnLayout {
             id: toastCol
@@ -160,6 +160,10 @@ PanelWindow {
                     required property var modelData
                     required property int index
                     notificationItem: modelData
+                    dockTop: root.isTop
+                    dockBottom: root.isBottom
+                    dockLeft: root.isLeft
+                    dockRight: root.isRight
                     Layout.fillWidth: true
 
                     onDismissed: {

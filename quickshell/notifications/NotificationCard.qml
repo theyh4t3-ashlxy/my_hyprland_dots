@@ -19,13 +19,18 @@ Rectangle {
         return notif.urgency === 2 ? 10000 : (Settings?.notificationTimeout ?? 5000);
     }
 
-    property bool dockTop: false
-    property bool dockBottom: false
-    property bool dockLeft: false
-    property bool dockRight: false
+    property bool dockTop: (Settings?.barPosition ?? "top") === "top" || (Settings?.barPosition ?? "top") === "up"
+    property bool dockBottom: (Settings?.barPosition ?? "top") === "bottom" || (Settings?.barPosition ?? "top") === "down"
+    property bool dockLeft: (Settings?.barPosition ?? "top") === "left"
+    property bool dockRight: (Settings?.barPosition ?? "top") === "right"
+
+    readonly property string rawBarPos: Settings?.barPosition ?? "top"
+    readonly property bool isDockedLeft: dockLeft || rawBarPos === "left"
+    readonly property real slideDistance: 80
+    readonly property real ingressOffset: isDockedLeft ? -slideDistance : slideDistance
 
     width: 360
-    implicitHeight: col.implicitHeight + 24
+    implicitHeight: col.implicitHeight + (col.anchors.topMargin ?? 14) + (col.anchors.bottomMargin ?? 18)
     readonly property real defaultRadius: Theme?.popupRadius ?? Theme?.radiusMd ?? 14
     radius: defaultRadius
     color: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
@@ -41,7 +46,7 @@ Rectangle {
     }
 
     // dynamic slide & fade entrance/exit
-    property real slideOffset: 80
+    property real slideOffset: root.ingressOffset
     property real cardOpacity: 0.0
 
     transform: Translate {
@@ -58,18 +63,18 @@ Rectangle {
         NumberAnimation {
             target: root
             property: "slideOffset"
-            from: 80
+            from: root.ingressOffset
             to: 0
-            duration: 240
-            easing.type: Easing.OutCubic
+            duration: Theme?.animNormal ?? 200
+            easing.type: Theme?.animEasing ?? Easing.OutCubic
         }
         NumberAnimation {
             target: root
             property: "cardOpacity"
             from: 0.0
             to: 1.0
-            duration: 200
-            easing.type: Easing.OutCubic
+            duration: Theme?.animFast ?? 120
+            easing.type: Theme?.animEasing ?? Easing.OutCubic
         }
     }
 
@@ -78,15 +83,15 @@ Rectangle {
         NumberAnimation {
             target: root
             property: "slideOffset"
-            to: 80
-            duration: 180
+            to: root.ingressOffset
+            duration: Theme?.animFast ?? 120
             easing.type: Easing.InCubic
         }
         NumberAnimation {
             target: root
             property: "cardOpacity"
             to: 0.0
-            duration: 150
+            duration: Theme?.animFast ?? 120
             easing.type: Easing.InCubic
         }
         onFinished: root.dismissed()

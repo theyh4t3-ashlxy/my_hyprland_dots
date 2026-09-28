@@ -27,9 +27,7 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        MotionSandbox {
-            open: Settings.showMotionSandbox
-        }
+        MotionSandbox {}
     }
 
     Variants {

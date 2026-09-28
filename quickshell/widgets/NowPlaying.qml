@@ -116,7 +116,10 @@ Rectangle {
     Row {
         id: row
         spacing: Theme.widgetSpacing + 2
-        anchors.centerIn: parent
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: (!Theme.isVertical && ((root.hasTrack && !root.compactMode) || npMouse.containsMouse || popup.open)) ? parent.left : undefined
+        anchors.leftMargin: Theme.widgetPaddingH + 4
+        anchors.horizontalCenter: (Theme.isVertical || ((!root.hasTrack || root.compactMode) && !npMouse.containsMouse && !popup.open)) ? parent.horizontalCenter : undefined
 
         Text {
             anchors.verticalCenter: parent.verticalCenter

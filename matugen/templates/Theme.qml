@@ -182,14 +182,26 @@ Singleton {
     readonly property int    popupRadius:           cfg?.popupRadius ?? radiusMd
     readonly property int    widgetSpacing:         cfg?.widgetSpacing ?? 4
     readonly property int    widgetPaddingH:        cfg?.widgetPaddingH ?? 8
-    readonly property int    widgetPaddingV:        0
+    readonly property int    widgetPaddingV:        cfg?.widgetPaddingV ?? 4
+    readonly property string paddingScale:          cfg?.paddingScale ?? "cozy"
+    readonly property real   paddingScaleMult: {
+        let ps = paddingScale;
+        if (ps === "compact") return 0.8;
+        if (ps === "comfortable") return 1.25;
+        return 1.0;
+    }
     readonly property real   barOpacity:            cfg?.barOpacity ?? 1.0
     readonly property real   popupOpacity:          cfg?.popupOpacity ?? 1.0
+    readonly property real   glassmorphismLevel:    cfg?.glassmorphismLevel ?? 0.85
+    readonly property real   cardOpacity:           cfg?.cardOpacity ?? 0.95
+    readonly property real   surfaceOpacity:        cfg?.surfaceOpacity ?? 0.90
 
     readonly property int    scoopRadiusX:          cfg?.scoopRadius ?? 16
     readonly property int    scoopRadiusY:          cfg?.scoopRadius ?? 16
     readonly property real   scoopTension:          cfg?.scoopTension ?? 0.5522847498307936
     readonly property string scoopStyle:            cfg?.cornerStyle ?? "cubic"
+    readonly property bool   cornerFillets:         cfg?.cornerFillets ?? true
+    readonly property real   cornerSmoothing:       cfg?.cornerSmoothing ?? 0.7
     readonly property int    screenCornerRadius:    cfg?.screenCornerRadius ?? 16
     readonly property int    screenBorderWidth:     cfg?.screenBorderWidth ?? 2
     readonly property bool   screenFrameDocked:     cfg?.screenFrameDocked ?? true
@@ -382,20 +394,131 @@ Singleton {
         if (sp === "snappy" || sp === "superSnappy") return 0.7;
         if (sp === "hyper") return 0.4;
         if (sp === "chill") return 1.6;
+        if (sp === "hyprland") return 0.85;
         return 1.0;
     }
     readonly property bool   isVertical:            cfg?.barPosition === "left" || cfg?.barPosition === "right"
-    readonly property int    animFast:              Math.round(120 * animSpeedMult)
-    readonly property int    animNormal:            Math.round(200 * animSpeedMult)
+    readonly property string animCurve:             cfg?.animCurve ?? "cubic"
+    readonly property string animEasingType:        cfg?.animEasingType ?? "out"
+    readonly property int    animDurationFast:      cfg?.animDurationFast ?? 120
+    readonly property int    animDurationNormal:    cfg?.animDurationNormal ?? 200
+    readonly property int    animDurationSlow:      cfg?.animDurationSlow ?? 350
+    readonly property int    animFast:              Math.round(animDurationFast * animSpeedMult)
+    readonly property int    animNormal:            Math.round(animDurationNormal * animSpeedMult)
     readonly property int    animDefault:           animNormal
-    readonly property int    animSlow:              Math.round(350 * animSpeedMult)
+    readonly property int    animSlow:              Math.round(animDurationSlow * animSpeedMult)
     readonly property int    expressiveFast:        Math.round(180 * animSpeedMult)
     readonly property int    expressiveDefault:     Math.round(320 * animSpeedMult)
     readonly property int    expressiveSlow:        Math.round(480 * animSpeedMult)
     readonly property int    workspaceTrailDuration:Math.round(260 * animSpeedMult)
     readonly property bool   workspaceActiveTrail:  cfg?.workspaceActiveTrail ?? true
-    readonly property int    animEasing:            Easing.OutCubic
-    readonly property int    animExpressiveEasing:  Easing.OutBack
+
+    // Cubic bezier control points [cx1, cy1, cx2, cy2, endx, endy] for Qt Quick Easing.BezierSpline
+    readonly property var    hyprlandBezier:        [0.05, 0.9, 0.1, 1.05, 1.0, 1.0]
+    readonly property var    hyprlandExitBezier:    [0.3, 0.0, 0.8, 0.15, 1.0, 1.0]
+    readonly property var    smoothBezier:          [0.16, 1.0, 0.3, 1.0, 1.0, 1.0]
+    readonly property var    snappyBezier:          [0.2, 0.0, 0.0, 1.0, 1.0, 1.0]
+    readonly property var    expressiveBezier:      [0.1, 1.15, 0.2, 1.0, 1.0, 1.0]
+    readonly property var    standardBezier:        [0.25, 0.1, 0.25, 1.0, 1.0, 1.0]
+
+    function getBezierPoints(curve: var): var {
+        if (!curve) return standardBezier;
+        if (Array.isArray(curve)) {
+            if (curve.length >= 6) return [Number(curve[0]), Number(curve[1]), Number(curve[2]), Number(curve[3]), Number(curve[4]), Number(curve[5])];
+            if (curve.length >= 4) return [Number(curve[0]), Number(curve[1]), Number(curve[2]), Number(curve[3]), 1.0, 1.0];
+        }
+        if (typeof curve !== "string") return standardBezier;
+        let c = curve.trim().toLowerCase();
+        if (c === "hyprland") return hyprlandBezier;
+        if (c === "smooth" || c === "cubic") return smoothBezier;
+        if (c === "snappy") return snappyBezier;
+        if (c === "expressive") return expressiveBezier;
+        if (c === "linear") return [0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
+
+        // Parse custom cubic-bezier(x1, y1, x2, y2) or "x1, y1, x2, y2"
+        let m = c.match(/^(?:cubic-bezier\s*\(\s*)?([0-9.-]+)\s*,\s*([0-9.-]+)\s*,\s*([0-9.-]+)\s*,\s*([0-9.-]+)(?:\s*\))?$/);
+        if (m) {
+            let p1 = parseFloat(m[1]), p2 = parseFloat(m[2]), p3 = parseFloat(m[3]), p4 = parseFloat(m[4]);
+            if (!isNaN(p1) && !isNaN(p2) && !isNaN(p3) && !isNaN(p4)) {
+                return [p1, p2, p3, p4, 1.0, 1.0];
+            }
+        }
+        return standardBezier;
+    }
+
+    readonly property var    animBezierPoints:      getBezierPoints(animCurve)
+    readonly property real   animOvershoot:         (animCurve === "hyprland" || cfg?.animSpeed === "hyprland") ? 1.05 : ((animCurve === "expressive") ? 1.15 : 1.70158)
+
+    function getEasing(curve: string, type: string): int {
+        let c = (curve ?? "cubic").toLowerCase();
+        let t = (type ?? "out").toLowerCase();
+        if (c === "linear") return Easing.Linear;
+        if (c === "bezier" || c === "spline" || c === "bezierspline") return Easing.BezierSpline;
+        if (c === "quad" || c === "snappy") {
+            if (t === "in") return Easing.InQuad;
+            if (t === "inout" || t === "in_out") return Easing.InOutQuad;
+            if (t === "outin" || t === "out_in") return Easing.OutInQuad;
+            return Easing.OutQuad;
+        }
+        if (c === "quart") {
+            if (t === "in") return Easing.InQuart;
+            if (t === "inout" || t === "in_out") return Easing.InOutQuart;
+            if (t === "outin" || t === "out_in") return Easing.OutInQuart;
+            return Easing.OutQuart;
+        }
+        if (c === "quint") {
+            if (t === "in") return Easing.InQuint;
+            if (t === "inout" || t === "in_out") return Easing.InOutQuint;
+            if (t === "outin" || t === "out_in") return Easing.OutInQuint;
+            return Easing.OutQuint;
+        }
+        if (c === "sine") {
+            if (t === "in") return Easing.InSine;
+            if (t === "inout" || t === "in_out") return Easing.InOutSine;
+            if (t === "outin" || t === "out_in") return Easing.OutInSine;
+            return Easing.OutSine;
+        }
+        if (c === "expo") {
+            if (t === "in") return Easing.InExpo;
+            if (t === "inout" || t === "in_out") return Easing.InOutExpo;
+            if (t === "outin" || t === "out_in") return Easing.OutInExpo;
+            return Easing.OutExpo;
+        }
+        if (c === "circ") {
+            if (t === "in") return Easing.InCirc;
+            if (t === "inout" || t === "in_out") return Easing.InOutCirc;
+            if (t === "outin" || t === "out_in") return Easing.OutInCirc;
+            return Easing.OutCirc;
+        }
+        if (c === "back" || c === "expressive") {
+            if (t === "in") return Easing.InBack;
+            if (t === "inout" || t === "in_out") return Easing.InOutBack;
+            if (t === "outin" || t === "out_in") return Easing.OutInBack;
+            return Easing.OutBack;
+        }
+        if (c === "elastic") {
+            if (t === "in") return Easing.InElastic;
+            if (t === "inout" || t === "in_out") return Easing.InOutElastic;
+            if (t === "outin" || t === "out_in") return Easing.OutInElastic;
+            return Easing.OutElastic;
+        }
+        if (c === "bounce") {
+            if (t === "in") return Easing.InBounce;
+            if (t === "inout" || t === "in_out") return Easing.InOutBounce;
+            if (t === "outin" || t === "out_in") return Easing.OutInBounce;
+            return Easing.OutBounce;
+        }
+        if (t === "in") return Easing.InCubic;
+        if (t === "inout" || t === "in_out") return Easing.InOutCubic;
+        if (t === "outin" || t === "out_in") return Easing.OutInCubic;
+        return Easing.OutCubic;
+    }
+
+    readonly property int    animEasing:            getEasing(animCurve, animEasingType)
+    readonly property int    animExpressiveEasing:  animCurve === "back" ? getEasing("back", animEasingType) : Easing.OutBack
+    readonly property int    animEasingEntrance:    (animCurve === "expressive" || animCurve === "hyprland" || animCurve === "back" || cfg?.animSpeed === "hyprland") ? Easing.OutBack : (animCurve === "snappy" ? Easing.OutQuad : Easing.OutCubic)
+    readonly property int    animEasingExit:        (animCurve === "snappy") ? Easing.InQuad : Easing.InCubic
+    readonly property int    animColorEasing:       Easing.OutQuad
 
     // icon summoner circle: pulling glyphs out of ~/.local/share by their ankles
     readonly property string userFontDir:           (Quickshell.env("XDG_DATA_HOME") || ((Quickshell.env("HOME") || "") + "/.local/share")) + "/fonts/"

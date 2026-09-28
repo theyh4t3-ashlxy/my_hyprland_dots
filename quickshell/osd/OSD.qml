@@ -137,7 +137,12 @@ PanelWindow {
         opacity: osdRoot.revealed ? 1.0 : 0.0
         scale: osdRoot.revealed ? 1.0 : 0.92
 
-        Behavior on opacity { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Theme.animNormal
+                easing.type: osdRoot.revealed ? Theme.animEasing : Easing.InQuad
+            }
+        }
         Behavior on scale   { NumberAnimation { duration: Theme.animNormal; easing.type: osdRoot.revealed ? Easing.OutBack : Easing.InCubic } }
         Behavior on anchors.verticalCenterOffset {
             NumberAnimation {

@@ -111,7 +111,7 @@ PanelWindow {
         right: root.isRight ? root.barSize : 0
     }
 
-    property bool wantsFocus: false
+    property bool wantsFocus: true
     property int keyboardFocusMode: WlrKeyboardFocus.OnDemand
     exclusionMode: ExclusionMode.Ignore
     focusable: wantsFocus
@@ -133,13 +133,17 @@ PanelWindow {
             id: numAnim
             target: root
             property: "morphProgress"
-            duration: root.open ? (Theme.expressiveDefault ?? 260) : (Theme.expressiveFast ?? 160)
-            easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+            duration: root.open ? (Theme?.expressiveDefault ?? 260) : (Theme?.expressiveFast ?? 160)
+            easing.type: root.open ? (Theme?.animEasing ?? Easing.OutCubic) : Easing.InCubic
         }
     }
 
     onOpenChanged: {
-        numAnim.to = open ? 1.0 : 0.0;
+        let targetProgress = open ? 1.0 : 0.0;
+        let distance = Math.abs(targetProgress - root.morphProgress);
+        let baseDuration = open ? (Theme?.expressiveDefault ?? 260) : (Theme?.expressiveFast ?? 160);
+        numAnim.duration = Math.max(50, Math.round(baseDuration * Math.max(0.25, distance)));
+        numAnim.to = targetProgress;
         morphAnim.restart();
     }
 
@@ -158,6 +162,9 @@ PanelWindow {
     Item {
         id: morphContainer
         anchors.fill: parent
+        opacity: root.open
+            ? Math.min(1.0, root.morphProgress * 2.0)
+            : Math.min(1.0, root.morphProgress * 1.4)
 
         // ==========================================
         // AMBIENT ELEVATION DROP SHADOWS
@@ -822,7 +829,9 @@ PanelWindow {
                 y: root.isTop
                     ? (root.morphProgress - 1.0) * 16
                     : (root.isBottom ? (root.curBodyH - root.effectiveHeight) + (1.0 - root.morphProgress) * 16 : 0)
-                opacity: Math.max(0.0, (root.morphProgress - 0.2) / 0.8)
+                opacity: root.open
+                    ? Math.max(0.0, Math.min(1.0, (root.morphProgress - 0.12) / 0.88))
+                    : Math.min(1.0, root.morphProgress / 0.70)
 
                 Item {
                     id: contentItem

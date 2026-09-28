@@ -92,6 +92,12 @@ PanelWindow {
         let clockStart = halfScreen - centerHalf;
         return Math.max(160, clockStart - 260);
     }
+    readonly property real maxRightRowWidth: {
+        let halfScreen = root.width / 2;
+        let centerHalf = (centerRowH.visible ? centerRowH.width : 0) / 2;
+        let clockRight = halfScreen - centerHalf;
+        return Math.max(160, clockRight - (Theme.widgetPaddingH * 2));
+    }
     readonly property bool isVertical: isLeft || isRight
 
     readonly property bool isFloating: Settings?.barFloating ?? false
@@ -200,10 +206,12 @@ PanelWindow {
             onClicked: (mouse) => {
                 if (mouse.button === Qt.LeftButton) {
                     let pt = launcherPill.mapToItem(null, 0, 0);
-                    if (root.isVertical) {
-                        root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
-                    } else {
-                        root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
+                    if (pt) {
+                        if (root.isVertical) {
+                            root.launcherPopup.targetRelativeY = pt.y + (launcherPill.height / 2);
+                        } else {
+                            root.launcherPopup.targetRelativeX = pt.x + (launcherPill.width / 2);
+                        }
                     }
                     root.launcherPopup.open = !root.launcherPopup.open;
                 } else if (mouse.button === Qt.RightButton) {
@@ -393,8 +401,15 @@ PanelWindow {
                         }
                         width: Math.round(targetW)
                         height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
-                        Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                        clip: true
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                        Binding {
+                            target: lModLoader.item
+                            property: "width"
+                            value: lModLoader.width
+                            when: lModLoader.item !== null
+                        }
                     }
                 }
             }
@@ -425,10 +440,13 @@ PanelWindow {
                 anchors.rightMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.widgetSpacing
+                width: Math.min(implicitWidth, root.maxRightRowWidth)
+                clip: true
 
                 Repeater {
                     model: Settings.barModulesRight ?? []
                     delegate: Loader {
+                        id: rModLoader
                         required property string modelData
                         active: root.isModuleVisible(modelData) && !root.isVertical
                         visible: active
@@ -436,8 +454,15 @@ PanelWindow {
                         readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
                         width: Math.round(targetW)
                         height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
-                        Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                        clip: true
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                        Binding {
+                            target: rModLoader.item
+                            property: "width"
+                            value: rModLoader.width
+                            when: rModLoader.item !== null
+                        }
                     }
                 }
             }
