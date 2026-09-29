@@ -10,6 +10,7 @@ import subprocess
 import urllib.request
 import urllib.parse
 from pathlib import Path
+from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
 XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
@@ -33,6 +34,13 @@ CUR_WP_FILE = Path("/tmp/qs_current_wallpaper.txt")
 VIDEO_THUMB = Path("/tmp/qs_video_thumb.jpg")
 WALLPAPERS_JSON = Path("/tmp/qs_wallpapers.json")
 LIVE_JSON = Path("/tmp/qs_live_wallpapers.json")
+
+# Persistent static symlinks & cache (stable target for colors, pfp, lockscreens, external tools)
+CURR_WALL_SYMLINK = Path.home() / ".curr_wall"
+CURR_WALL_STATIC = Path.home() / ".curr_wall_static.jpg"
+CACHE_WALLPAPER = APP_CACHE_DIR / "current_wallpaper"
+GLOBAL_CACHE_WALLPAPER = XDG_CACHE_HOME / "current_wallpaper"
+FALLBACK_WALLPAPER = WALLPAPERS_DIR / "hyprland" / "hypr.png"
 
 DEFAULT_SETTINGS = {
     "currentWallpaper": str(WALLPAPERS_DIR / "hyprland" / "hypr.png"),
@@ -209,19 +217,33 @@ def atomic_write_json(file_path: Path, data):
 def make_video_thumb(video_path: str, target_thumb: Path) -> bool:
     if target_thumb.exists() and target_thumb.stat().st_size > 0:
         return True
+    target_thumb.parent.mkdir(parents=True, exist_ok=True)
+    # 1. Try ffmpeg seek
     try:
-        target_thumb.parent.mkdir(parents=True, exist_ok=True)
         cmd = ["ffmpeg", "-y", "-ss", "00:00:00.5", "-i", video_path, "-vframes", "1", "-q:v", "2", str(target_thumb)]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=True)
-        return target_thumb.exists() and target_thumb.stat().st_size > 0
+        if target_thumb.exists() and target_thumb.stat().st_size > 0:
+            return True
     except Exception:
-        # short loops fail on offset seek, fallback to frame zero
-        try:
-            cmd = ["ffmpeg", "-y", "-i", video_path, "-vframes", "1", "-q:v", "2", str(target_thumb)]
+        pass
+    # 2. Try ffmpeg frame zero
+    try:
+        cmd = ["ffmpeg", "-y", "-i", video_path, "-vframes", "1", "-q:v", "2", str(target_thumb)]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=True)
+        if target_thumb.exists() and target_thumb.stat().st_size > 0:
+            return True
+    except Exception:
+        pass
+    # 3. Try magick frame zero (for gifs/videos)
+    try:
+        if shutil.which("magick"):
+            cmd = ["magick", f"{video_path}[0]", str(target_thumb)]
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=True)
-            return target_thumb.exists() and target_thumb.stat().st_size > 0
-        except Exception:
-            return False
+            if target_thumb.exists() and target_thumb.stat().st_size > 0:
+                return True
+    except Exception:
+        pass
+    return False
 
 def is_live_url(url: str) -> bool:
     clean = url.lower().split("?")[0]
@@ -348,6 +370,143 @@ def scan():
     atomic_write_json(WALLPAPERS_JSON, wallpapers)
     return wallpapers
 
+def atomic_symlink(target_path: Path, symlink_path: Path):
+    """Atomically creates or updates a symlink to prevent broken links during concurrent reads."""
+    target_str = str(target_path.resolve())
+    symlink_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_link = symlink_path.parent / f".tmp_{symlink_path.name}_{os.getpid()}"
+    try:
+        if tmp_link.is_symlink() or tmp_link.exists():
+            tmp_link.unlink()
+        tmp_link.symlink_to(target_str)
+        os.replace(tmp_link, symlink_path)
+    except Exception:
+        try:
+            if symlink_path.is_symlink() or symlink_path.exists():
+                symlink_path.unlink()
+            symlink_path.symlink_to(target_str)
+        except Exception:
+            pass
+
+def resolve_wallpaper_path(path_str: Optional[str] = None) -> Optional[str]:
+    """Resolves a wallpaper path with fallback templates and cache lookup if deleted or missing."""
+    if path_str:
+        p = Path(path_str).expanduser()
+        if p.is_file():
+            return str(p.resolve())
+
+    # 1. Check existing ~/.curr_wall if it points to a valid file
+    if CURR_WALL_SYMLINK.is_symlink() or CURR_WALL_SYMLINK.exists():
+        try:
+            target = CURR_WALL_SYMLINK.resolve()
+            if target.is_file():
+                return str(target)
+        except Exception:
+            pass
+
+    # 2. Check cached wallpaper paths
+    for cache_p in (CACHE_WALLPAPER, GLOBAL_CACHE_WALLPAPER):
+        if cache_p.exists():
+            try:
+                line = cache_p.read_text().strip()
+                if line and os.path.isfile(line):
+                    return str(Path(line).resolve())
+            except Exception:
+                pass
+
+    # 3. Check settings.conf
+    try:
+        cfg = load_settings()
+        cw = cfg.get("currentWallpaper", "")
+        if cw and os.path.isfile(cw):
+            return str(Path(cw).resolve())
+    except Exception:
+        pass
+
+    # 4. Fallback templates
+    candidates = [
+        FALLBACK_WALLPAPER,
+        WALLPAPERS_DIR / "endermanch" / "img0.jpg",
+        WALLPAPERS_DIR / "endermanch" / "Bliss.png",
+        WALLPAPERS_DIR / "Windows" / "Wallpaper" / "Windows" / "img0.jpg",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return str(c.resolve())
+
+    # 5. Search any valid image inside WALLPAPERS_DIR
+    if WALLPAPERS_DIR.is_dir():
+        for root, _, files in os.walk(WALLPAPERS_DIR):
+            for f in files:
+                if Path(f).suffix.lower() in IMAGE_EXTS:
+                    cand = Path(root) / f
+                    if cand.is_file():
+                        return str(cand.resolve())
+
+    return None
+
+def update_wallpaper_symlinks(img_path: str) -> bool:
+    """Updates ~/.curr_wall and ~/.curr_wall_static.jpg symlinks and caches."""
+    target = Path(img_path).resolve()
+    if not target.is_file():
+        fallback = resolve_wallpaper_path(None)
+        if not fallback:
+            return False
+        target = Path(fallback).resolve()
+
+    # 1. Update ~/.curr_wall -> target
+    atomic_symlink(target, CURR_WALL_SYMLINK)
+
+    # 2. Update ~/.curr_wall_static.jpg -> static image
+    ext_lower = target.suffix.lower()
+    if ext_lower in VIDEO_EXTS or ext_lower in ANIM_EXTS:
+        v_hash = hashlib.md5(str(target).encode()).hexdigest()
+        v_thumb = THUMB_DIR / f"{v_hash}.jpg"
+        if not v_thumb.exists() or v_thumb.stat().st_size == 0:
+            make_video_thumb(str(target), v_thumb)
+        if v_thumb.exists() and v_thumb.stat().st_size > 0:
+            atomic_symlink(v_thumb, CURR_WALL_STATIC)
+        else:
+            atomic_symlink(target, CURR_WALL_STATIC)
+    else:
+        atomic_symlink(target, CURR_WALL_STATIC)
+
+    # 3. Store path in persistent caches
+    for cp in (CACHE_WALLPAPER, GLOBAL_CACHE_WALLPAPER):
+        try:
+            cp.parent.mkdir(parents=True, exist_ok=True)
+            cp.write_text(str(target) + "\n")
+        except Exception:
+            pass
+
+    return True
+
+def ensure_symlinks_valid():
+    """Validates that ~/.curr_wall and ~/.curr_wall_static.jpg exist and point to valid files; repairs them with fallback if broken."""
+    needs_repair = False
+    if not CURR_WALL_SYMLINK.is_symlink():
+        needs_repair = True
+    else:
+        try:
+            if not CURR_WALL_SYMLINK.resolve().is_file():
+                needs_repair = True
+        except Exception:
+            needs_repair = True
+
+    if not CURR_WALL_STATIC.is_symlink():
+        needs_repair = True
+    else:
+        try:
+            if not CURR_WALL_STATIC.resolve().is_file():
+                needs_repair = True
+        except Exception:
+            needs_repair = True
+
+    if needs_repair:
+        resolved = resolve_wallpaper_path(None)
+        if resolved:
+            update_wallpaper_symlinks(resolved)
+
 def parse_wallpaper_args(raw_args: list) -> dict:
     cfg = load_settings()
     opts = {
@@ -441,10 +600,13 @@ def set_wallpaper(raw_args):
     if not opts["img_path"]:
         return
 
-    img_path = str(Path(opts["img_path"]).expanduser().resolve())
-    if not os.path.isfile(img_path):
-        sys.stderr.write(f"Error: Wallpaper file does not exist: {img_path}\n")
+    resolved = resolve_wallpaper_path(opts["img_path"])
+    if not resolved:
+        sys.stderr.write(f"Error: Wallpaper file does not exist: {opts['img_path']}\n")
         return
+
+    img_path = resolved
+    update_wallpaper_symlinks(img_path)
 
     valid_transitions = {"simple", "fade", "left", "right", "top", "bottom", "wipe", "wave", "grow", "center", "any", "outer", "random", "none"}
     transition = opts["transition"] if opts["transition"] in valid_transitions else "wipe"
@@ -565,8 +727,9 @@ def set_wallpaper(raw_args):
             sys.stderr.write(f"Failed to execute awww: {e}\n")
 
         try:
+            matugen_target = str(CURR_WALL_STATIC.resolve()) if CURR_WALL_STATIC.is_symlink() else img_path
             subprocess.run([
-                "matugen", "image", img_path,
+                "matugen", "image", matugen_target,
                 "-m", opts["mode"],
                 "-t", opts["scheme"],
                 "--source-color-index", "0"
@@ -599,13 +762,21 @@ def random_wallpaper(args):
         return
 
     cur_wp = ""
-    try:
-        if (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").exists():
-            cur_wp = (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").read_text().strip()
-        elif CUR_WP_FILE.exists():
-            cur_wp = CUR_WP_FILE.read_text().strip()
-    except Exception:
-        pass
+    if CURR_WALL_SYMLINK.is_symlink():
+        try:
+            target = CURR_WALL_SYMLINK.resolve()
+            if target.is_file():
+                cur_wp = str(target)
+        except Exception:
+            pass
+    if not cur_wp:
+        try:
+            if (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").exists():
+                cur_wp = (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").read_text().strip()
+            elif CUR_WP_FILE.exists():
+                cur_wp = CUR_WP_FILE.read_text().strip()
+        except Exception:
+            pass
 
     if filter_cat not in {"all", ""}:
         filtered = [
@@ -733,23 +904,25 @@ def reapply(args):
     scheme = args[1] if len(args) > 1 and args[1] else cfg.get("matugenScheme", "scheme-tonal-spot")
 
     cur_wp = ""
-    try:
-        if (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").exists():
-            cur_wp = (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").read_text().strip()
-        elif CUR_WP_FILE.exists():
-            cur_wp = CUR_WP_FILE.read_text().strip()
-    except Exception:
-        pass
+    if CURR_WALL_SYMLINK.is_symlink():
+        try:
+            target = CURR_WALL_SYMLINK.resolve()
+            if target.is_file():
+                cur_wp = str(target)
+        except Exception:
+            pass
 
     if not cur_wp or not os.path.isfile(cur_wp):
-        candidate = cfg.get("currentWallpaper", "")
-        if candidate and os.path.isfile(candidate):
-            cur_wp = candidate
+        try:
+            if (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").exists():
+                cur_wp = (XDG_RUNTIME_DIR / "qs_current_wallpaper.txt").read_text().strip()
+            elif CUR_WP_FILE.exists():
+                cur_wp = CUR_WP_FILE.read_text().strip()
+        except Exception:
+            pass
 
     if not cur_wp or not os.path.isfile(cur_wp):
-        default_wp = WALLPAPERS_DIR / "hyprland" / "hypr.png"
-        if default_wp.is_file():
-            cur_wp = str(default_wp)
+        cur_wp = resolve_wallpaper_path(cfg.get("currentWallpaper", ""))
 
     if cur_wp and os.path.isfile(cur_wp):
         set_wallpaper([cur_wp, "--mode", mode, "--scheme", scheme] + (args[2:] if len(args) > 2 else []))
@@ -769,6 +942,14 @@ def fetch_live(args):
     ]
     atomic_write_json(LIVE_JSON, filtered if filtered else CURATED_LIVE)
 
+def get_current_wallpaper(args):
+    ensure_symlinks_valid()
+    resolved = resolve_wallpaper_path(None)
+    if resolved:
+        print(resolved)
+    else:
+        print("none")
+
 def print_help():
     print("""quickshell wallpaper manager & matugen bridge
 
@@ -781,12 +962,16 @@ Usage:
   wallpaper.py download <url> [options...]
   wallpaper.py batch-download <url1> [url2...]
   wallpaper.py fetch-live [query]
+  wallpaper.py get
+  wallpaper.py ensure
 """)
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
         print_help()
         return
+
+    ensure_symlinks_valid()
 
     cmd = sys.argv[1].lower()
     args = sys.argv[2:]
@@ -800,6 +985,9 @@ def main():
         "color": lambda: set_color(args),
         "reapply": lambda: reapply(args),
         "fetch-live": lambda: fetch_live(args),
+        "get": lambda: get_current_wallpaper(args),
+        "current": lambda: get_current_wallpaper(args),
+        "ensure": lambda: ensure_symlinks_valid(),
     }
 
     if cmd in dispatch:

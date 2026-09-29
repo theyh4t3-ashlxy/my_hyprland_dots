@@ -59,6 +59,9 @@ Scope {
             if (WallpaperService.currentWallpaperPath) {
                 return WallpaperService.currentWallpaperPath;
             }
+            if (WallpaperService.currWallStatic) {
+                return WallpaperService.currWallStatic;
+            }
         }
         return "";
     }
@@ -229,6 +232,9 @@ Scope {
                                     : ((Settings?.lockscreenWallpaper && Settings.lockscreenWallpaper.length > 0)
                                         ? Settings.lockscreenWallpaper
                                         : (WallpaperService?.currentWallpaperPath ?? ""));
+                            }
+                            if (!wp || wp === "" || /\.(mp4|webm|mkv|mov)$/i.test(wp)) {
+                                wp = WallpaperService?.currWallStatic ?? (Quickshell.env("HOME") + "/.curr_wall_static.jpg");
                             }
                             if (!wp) return "";
                             return (wp.startsWith("file://") || wp.startsWith("http://") || wp.startsWith("https://")) ? wp : ("file://" + wp);
