@@ -117,6 +117,7 @@ Rectangle {
     component SettingCard: Rectangle {
         default property alias content: cardCol.data
         Layout.fillWidth: true
+        width: parent ? parent.width : undefined
         implicitHeight: cardCol.implicitHeight
         radius: Theme.widgetRadius
         color: Theme.cardBg
@@ -364,6 +365,7 @@ Rectangle {
         signal moved(real val)
 
         Layout.fillWidth: true
+        width: parent ? parent.width : undefined
         spacing: 6
 
         readonly property string displayText: slRoot.formatter
@@ -526,6 +528,39 @@ Rectangle {
         function onRequestQuickSettingsClose() {
             popup.open = false;
         }
+        function onRequestKeybindsToggle() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                const p = root.mapToItem(null, 0, 0);
+                if (p) {
+                    popup.targetRelativeX = p.x + (root.width / 2);
+                    popup.targetRelativeY = p.y + (root.height / 2);
+                }
+                if (!popup.open) {
+                    root.activeTab = "keybinds";
+                    popup.open = true;
+                } else if (root.activeTab === "keybinds") {
+                    popup.open = false;
+                } else {
+                    root.activeTab = "keybinds";
+                }
+            }
+        }
+        function onRequestKeybindsOpen() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                const p = root.mapToItem(null, 0, 0);
+                if (p) {
+                    popup.targetRelativeX = p.x + (root.width / 2);
+                    popup.targetRelativeY = p.y + (root.height / 2);
+                }
+                root.activeTab = "keybinds";
+                popup.open = true;
+            }
+        }
+        function onRequestKeybindsClose() {
+            if (root.activeTab === "keybinds") {
+                popup.open = false;
+            }
+        }
     }
 
     PopupPanel {
@@ -624,12 +659,24 @@ Rectangle {
             }
 
             Flickable {
+                id: tabFlick
                 Layout.fillWidth: true
                 height: 36
                 contentWidth: tabRow.implicitWidth
                 flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
+
+                WheelHandler {
+                    orientation: Qt.Vertical
+                    onWheel: (event) => {
+                        const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                        const targetX = tabFlick.contentX - (delta * 0.8);
+                        const maxX = Math.max(0, tabFlick.contentWidth - tabFlick.width);
+                        tabFlick.contentX = Math.max(0, Math.min(maxX, targetX));
+                        event.accepted = true;
+                    }
+                }
 
                 RowLayout {
                     id: tabRow
@@ -642,6 +689,7 @@ Rectangle {
                             { id: "fonts", label: "fonts", icon: Theme.iconNote },
                             { id: "animations", label: "animations", icon: Theme.iconFlame },
                             { id: "vibe", label: "vibe", icon: Theme.iconCoffee },
+                            { id: "keybinds", label: "keybinds", icon: Theme.iconKeyboard },
                             { id: "screenshot", label: "screenshot", icon: Theme.iconCamera },
                             { id: "shells", label: "shells", icon: Theme.iconTerminal }
                         ]
@@ -745,19 +793,34 @@ Rectangle {
                             onMoved: val => Settings.barHeight = val
                         }
 
-                        ChoiceGrid {
-                            title: "aesthetic theme & materials"
-                            columns: 2
+                        SliderRow {
+                            title: "global corner rounding"
+                            from: 0
+                            to: 24
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.globalRounding
+                            onMoved: val => {
+                                Settings.globalRounding = val;
+                                Settings.widgetRadius = Math.max(1, Math.round(val * 0.5));
+                                Settings.popupRadius = Math.max(2, Math.round(val));
+                            }
+                        }
+
+                        Dropdown {
+                            Layout.fillWidth: true
+                            label: "bar style material"
+                            icon: Theme.iconSparkles
                             model: [
-                                { label: "regular (solid)", value: "regular" },
-                                { label: "frosted glass", value: "glass" },
-                                { label: "glass frost (blur)", value: "glass-frost" },
-                                { label: "pure black (oled)", value: "pure-black" },
-                                { label: "cyber neon (glow)", value: "cyber-neon" },
-                                { label: "bento floating", value: "bento-floating" },
-                                { label: "translucent (tint)", value: "translucent" },
-                                { label: "accent glow (cyber)", value: "accent-glow" },
-                                { label: "monochrome", value: "monochrome" }
+                                { label: "Regular (Solid)", value: "regular" },
+                                { label: "Frosted Glass", value: "glass" },
+                                { label: "Glass Frost (Blur)", value: "glass-frost" },
+                                { label: "Pure Black (OLED)", value: "pure-black" },
+                                { label: "Cyber Neon (Glow)", value: "cyber-neon" },
+                                { label: "Bento Floating", value: "bento-floating" },
+                                { label: "Translucent (Tint)", value: "translucent" },
+                                { label: "Accent Glow (Cyber)", value: "accent-glow" },
+                                { label: "Monochrome", value: "monochrome" }
                             ]
                             currentValue: Settings.barStyle
                             onSelected: val => Settings.barStyle = val
@@ -768,32 +831,35 @@ Rectangle {
                             icon: Theme.iconSparkles
                         }
 
-                        ChoiceGrid {
-                            title: "screen corner fillets"
-                            columns: 2
+                        Dropdown {
+                            Layout.fillWidth: true
+                            label: "screen corner fillets"
+                            icon: Theme.iconSparkles
                             model: [
-                                { label: "all (workspace)", value: "all" },
-                                { label: "monitor edges", value: "monitor" },
-                                { label: "bar opposite", value: "opposite" },
-                                { label: "disabled", value: "none" },
-                                { label: "top only", value: "top" },
-                                { label: "bottom only", value: "bottom" },
-                                { label: "left only", value: "left" },
-                                { label: "right only", value: "right" }
+                                { label: "All (Workspace)", value: "all" },
+                                { label: "Monitor Edges", value: "monitor" },
+                                { label: "Bar Opposite", value: "opposite" },
+                                { label: "Disabled", value: "none" },
+                                { label: "Top Only", value: "top" },
+                                { label: "Bottom Only", value: "bottom" },
+                                { label: "Left Only", value: "left" },
+                                { label: "Right Only", value: "right" }
                             ]
                             currentValue: Settings.screenCornerMode
                             onSelected: val => Settings.screenCornerMode = val
                         }
 
-                        ChoiceRow {
-                            title: "corner curvature style"
+                        Dropdown {
+                            Layout.fillWidth: true
+                            label: "corner curvature style"
+                            icon: Theme.iconSparkles
                             model: [
-                                { label: "g2 continuous", value: "continuous-bezier" },
-                                { label: "cubic", value: "cubic" },
-                                { label: "squircle", value: "squircle" },
-                                { label: "hyperbolic", value: "hyperbolic" },
-                                { label: "chamfer 45°", value: "chamfer" },
-                                { label: "flared", value: "flared" }
+                                { label: "G2 Continuous", value: "continuous-bezier" },
+                                { label: "Cubic", value: "cubic" },
+                                { label: "Squircle", value: "squircle" },
+                                { label: "Hyperbolic", value: "hyperbolic" },
+                                { label: "Chamfer 45°", value: "chamfer" },
+                                { label: "Flared", value: "flared" }
                             ]
                             currentValue: Settings.cornerStyle
                             onSelected: val => Settings.cornerStyle = val
@@ -1743,67 +1809,76 @@ Rectangle {
                             }
                         }
 
-                        CategoryHeader {
+                        CollapsibleSection {
+                            Layout.fillWidth: true
                             title: "workspace animation modes"
+                            subtitle: "motion physics & trail duration"
                             icon: Theme.iconWorkspaces
+                            badge: Settings.workspaceMode
+
+                            Dropdown {
+                                width: parent.width
+                                label: "motion style"
+                                icon: Theme.iconWorkspaces
+                                model: [
+                                    { label: "Smooth Slide", value: "slide" },
+                                    { label: "Caelestia Trail", value: "fluid-trail" },
+                                    { label: "Discrete Pill", value: "discrete" }
+                                ]
+                                currentValue: Settings.workspaceMode
+                                onSelected: val => Settings.workspaceMode = val
+                            }
+
+                            SliderRow {
+                                visible: Settings.workspaceMode === "fluid-trail"
+                                title: "trail duration"
+                                from: 120
+                                to: 400
+                                stepSize: 10
+                                suffix: "ms"
+                                value: Settings.workspaceTrailDuration
+                                onMoved: val => Settings.workspaceTrailDuration = val
+                            }
                         }
 
-                        ChoiceRow {
-                            title: "motion style"
-                            model: [
-                                { label: "smooth slide", value: "slide" },
-                                { label: "caelestia trail", value: "fluid-trail" },
-                                { label: "discrete pill", value: "discrete" }
-                            ]
-                            currentValue: Settings.workspaceMode
-                            onSelected: val => Settings.workspaceMode = val
-                        }
-
-                        SliderRow {
-                            visible: Settings.workspaceMode === "fluid-trail"
-                            title: "trail duration"
-                            from: 120
-                            to: 400
-                            stepSize: 10
-                            suffix: "ms"
-                            value: Settings.workspaceTrailDuration
-                            onMoved: val => Settings.workspaceTrailDuration = val
-                        }
-
-                        CategoryHeader {
+                        CollapsibleSection {
+                            Layout.fillWidth: true
                             title: "hover gestures & auto-open"
+                            subtitle: "pill hover triggers & delay"
                             icon: Theme.iconEye
-                        }
+                            badge: Settings.hoverToOpen ? "enabled" : "click only"
 
-                        SettingCard {
-                            ToggleRow {
-                                icon: Theme.iconEye
-                                title: "hover to open flyouts"
-                                subtitle: "hover over bar pills (battery, volume, window) to open popups"
-                                checked: Settings.hoverToOpen
-                                onToggled: Settings.hoverToOpen = !Settings.hoverToOpen
+                            SettingCard {
+                                width: parent.width
+                                ToggleRow {
+                                    icon: Theme.iconEye
+                                    title: "hover to open flyouts"
+                                    subtitle: "hover over bar pills to open popups"
+                                    checked: Settings.hoverToOpen
+                                    onToggled: Settings.hoverToOpen = !Settings.hoverToOpen
+                                }
+
+                                RowDivider {}
+
+                                ToggleRow {
+                                    icon: Theme.iconEyeOff
+                                    title: "hover auto-close"
+                                    subtitle: "dismiss popup when cursor leaves"
+                                    checked: Settings.hoverAutoClose
+                                    onToggled: Settings.hoverAutoClose = !Settings.hoverAutoClose
+                                }
                             }
 
-                            RowDivider {}
-
-                            ToggleRow {
-                                icon: Theme.iconEyeOff
-                                title: "hover auto-close"
-                                subtitle: "automatically dismiss popup when cursor leaves pill and card"
-                                checked: Settings.hoverAutoClose
-                                onToggled: Settings.hoverAutoClose = !Settings.hoverAutoClose
+                            SliderRow {
+                                visible: Settings.hoverToOpen
+                                title: "hover activation delay"
+                                from: 80
+                                to: 600
+                                stepSize: 10
+                                suffix: "ms"
+                                value: Settings.hoverDelay
+                                onMoved: val => Settings.hoverDelay = val
                             }
-                        }
-
-                        SliderRow {
-                            visible: Settings.hoverToOpen
-                            title: "hover activation delay"
-                            from: 80
-                            to: 600
-                            stepSize: 10
-                            suffix: "ms"
-                            value: Settings.hoverDelay
-                            onMoved: val => Settings.hoverDelay = val
                         }
 
                         CategoryHeader {
@@ -1919,106 +1994,123 @@ Rectangle {
                             }
                         }
 
-                        CategoryHeader {
-                            title: "clock & date display formats"
+                        CollapsibleSection {
+                            Layout.fillWidth: true
+                            title: "clock & date display"
+                            subtitle: "formats & workspace capacity"
                             icon: Theme.iconClock
-                        }
+                            badge: Settings.showBarDate ? Settings.clockFormat : "time only"
 
-                        ChoiceRow {
-                            title: "clock time format"
-                            model: [
-                                { label: "24h (16:45)", value: "HH:mm" },
-                                { label: "12h (4:45 pm)", value: "h:mm ap" },
-                                { label: "24h + sec", value: "HH:mm:ss" },
-                                { label: "12h + sec", value: "h:mm:ss ap" }
-                            ]
-                            currentValue: Settings.clockFormat
-                            onSelected: val => Settings.clockFormat = val
-                        }
+                            Dropdown {
+                                width: parent.width
+                                label: "clock time format"
+                                icon: Theme.iconClock
+                                model: [
+                                    { label: "24h (16:45)", value: "HH:mm" },
+                                    { label: "12h (4:45 pm)", value: "h:mm ap" },
+                                    { label: "24h + sec", value: "HH:mm:ss" },
+                                    { label: "12h + sec", value: "h:mm:ss ap" }
+                                ]
+                                currentValue: Settings.clockFormat
+                                onSelected: val => Settings.clockFormat = val
+                            }
 
-                        ChoiceGrid {
-                            title: "date display format"
-                            columns: 2
-                            model: [
-                                { label: "hidden (time only)", value: "none" },
-                                { label: "short (mon, sep 1)", value: "ddd, MMM d" },
-                                { label: "standard (sep 1)", value: "MMM d, yyyy" },
-                                { label: "iso (2026-09-01)", value: "yyyy-MM-dd" }
-                            ]
-                            currentValue: !Settings.showBarDate ? "none" : Settings.dateFormat
-                            onSelected: val => {
-                                if (val === "none") {
-                                    Settings.showBarDate = false;
-                                } else {
-                                    Settings.dateFormat = val;
-                                    Settings.showBarDate = true;
+                            Dropdown {
+                                width: parent.width
+                                label: "date display format"
+                                icon: Theme.iconCalendar
+                                model: [
+                                    { label: "hidden (time only)", value: "none" },
+                                    { label: "short (mon, sep 1)", value: "ddd, MMM d" },
+                                    { label: "standard (sep 1)", value: "MMM d, yyyy" },
+                                    { label: "iso (2026-09-01)", value: "yyyy-MM-dd" }
+                                ]
+                                currentValue: !Settings.showBarDate ? "none" : Settings.dateFormat
+                                onSelected: val => {
+                                    if (val === "none") {
+                                        Settings.showBarDate = false;
+                                    } else {
+                                        Settings.dateFormat = val;
+                                        Settings.showBarDate = true;
+                                    }
                                 }
+                            }
+
+                            Dropdown {
+                                width: parent.width
+                                label: "workspace capacity"
+                                icon: Theme.iconWorkspaces
+                                model: [
+                                    { label: "5 spaces", value: 5 },
+                                    { label: "8 spaces", value: 8 },
+                                    { label: "10 spaces", value: 10 },
+                                    { label: "12 spaces", value: 12 },
+                                    { label: "16 spaces", value: 16 }
+                                ]
+                                currentValue: Settings.workspaceCount
+                                onSelected: val => Settings.workspaceCount = val
                             }
                         }
 
-                        ChoiceRow {
-                            title: "workspace capacity: " + Settings.workspaceCount
-                            model: [
-                                { label: "5 spaces", value: 5 },
-                                { label: "8 spaces", value: 8 },
-                                { label: "10 spaces", value: 10 },
-                                { label: "12 spaces", value: 12 },
-                                { label: "16 spaces", value: 16 }
-                            ]
-                            currentValue: Settings.workspaceCount
-                            onSelected: val => Settings.workspaceCount = val
-                        }
-
-                        CategoryHeader {
-                            title: "audio & output volume"
+                        CollapsibleSection {
+                            Layout.fillWidth: true
+                            title: "audio & volume limits"
+                            subtitle: "scroll step & ceiling limit"
                             icon: Theme.iconVolHigh
+                            badge: Settings.volumeMax + "%"
+
+                            SliderRow {
+                                title: "volume scroll step"
+                                from: 1
+                                to: 15
+                                stepSize: 1
+                                value: Settings.volumeStep
+                                formatter: v => Math.round(v) + "%"
+                                onMoved: val => Settings.volumeStep = val
+                            }
+
+                            SliderRow {
+                                title: "max volume ceiling"
+                                from: 100
+                                to: 200
+                                stepSize: 5
+                                value: Settings.volumeMax
+                                formatter: v => Math.round(v) + "%"
+                                onMoved: val => Settings.volumeMax = val
+                            }
                         }
 
-                        SliderRow {
-                            title: "volume scroll step"
-                            from: 1
-                            to: 15
-                            stepSize: 1
-                            value: Settings.volumeStep
-                            formatter: v => Math.round(v) + "%"
-                            onMoved: val => Settings.volumeStep = val
-                        }
-
-                        SliderRow {
-                            title: "max volume ceiling"
-                            from: 100
-                            to: 200
-                            stepSize: 5
-                            value: Settings.volumeMax
-                            formatter: v => Math.round(v) + "%"
-                            onMoved: val => Settings.volumeMax = val
-                        }
-
-                        CategoryHeader {
+                        CollapsibleSection {
+                            Layout.fillWidth: true
                             title: "notifications & alerts"
+                            subtitle: "auto-dismiss & do not disturb"
                             icon: Theme.iconBell
-                        }
+                            badge: Settings.dnd ? "dnd on" : (Settings.notificationTimeout === 0 ? "sticky" : (Settings.notificationTimeout / 1000 + "s"))
 
-                        ChoiceRow {
-                            title: "toast auto-dismiss duration"
-                            model: [
-                                { label: "3s (fast)", value: 3000 },
-                                { label: "5s (normal)", value: 5000 },
-                                { label: "8s (slow)", value: 8000 },
-                                { label: "12s (long)", value: 12000 },
-                                { label: "sticky", value: 0 }
-                            ]
-                            currentValue: Settings.notificationTimeout
-                            onSelected: val => Settings.notificationTimeout = val
-                        }
-
-                        SettingCard {
-                            ToggleRow {
+                            Dropdown {
+                                width: parent.width
+                                label: "toast auto-dismiss duration"
                                 icon: Theme.iconBell
-                                title: "do not disturb"
-                                subtitle: "suppress on-screen notification popups"
-                                checked: Settings.dnd
-                                onToggled: Settings.dnd = !Settings.dnd
+                                model: [
+                                    { label: "3s (fast)", value: 3000 },
+                                    { label: "5s (normal)", value: 5000 },
+                                    { label: "8s (slow)", value: 8000 },
+                                    { label: "12s (long)", value: 12000 },
+                                    { label: "sticky (manual)", value: 0 }
+                                ]
+                                currentValue: Settings.notificationTimeout
+                                onSelected: val => Settings.notificationTimeout = val
+                            }
+
+                            SettingCard {
+                                width: parent.width
+                                ToggleRow {
+                                    icon: Theme.iconBell
+                                    title: "do not disturb"
+                                    subtitle: "suppress on-screen notification popups"
+                                    checked: Settings.dnd
+                                    onToggled: Settings.dnd = !Settings.dnd
+                                }
                             }
                         }
 
@@ -2804,6 +2896,17 @@ Rectangle {
                     }
                 }
                 TabScrollTrack { target: flickShells }
+
+                Item {
+                    id: tabKeybinds
+                    anchors.fill: parent
+                    visible: root.activeTab === "keybinds"
+
+                    KeybindsPreview {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                    }
+                }
             }
         }
 

@@ -1,4 +1,4 @@
-#!/run/current-system/sw/bin/bash
+#!/usr/bin/env bash
 # ==============================================================================
 # Quickshell E2E Master Test Runner
 # Executes opaque-box test suites across Tiers 1-4 and Static Quality.
@@ -44,26 +44,32 @@ Options:
   --file <path>             Run a specific test script
   -v, --verbose             Verbose test runner output
   -h, --help                Show this help message
-
-Examples:
-  $0                        # Run full E2E test suite
-  $0 --tier 1               # Run Tier 1 Feature Coverage
-  $0 --milestone M1         # Run Milestone 1 tests
-  $0 --tier static          # Run static quality & log checks
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --tier)
+            if [[ -z "${2:-}" ]]; then 
+                echo -e "${RED}error: --tier requires an argument${RESET}" >&2
+                exit 1
+            fi
             TARGET_TIER="$2"
             shift 2
             ;;
         --milestone)
+            if [[ -z "${2:-}" ]]; then 
+                echo -e "${RED}error: --milestone requires an argument${RESET}" >&2
+                exit 1
+            fi
             TARGET_MILESTONE="$2"
             shift 2
             ;;
         --file)
+            if [[ -z "${2:-}" ]]; then 
+                echo -e "${RED}error: --file requires an argument${RESET}" >&2
+                exit 1
+            fi
             TARGET_FILE="$2"
             shift 2
             ;;
@@ -76,7 +82,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo "Unknown argument: $1"
+            echo -e "${RED}Unknown argument: $1${RESET}" >&2
             print_usage
             exit 1
             ;;
@@ -93,7 +99,6 @@ export TARGET_MILESTONE
 export TARGET_FILE
 export VERBOSE
 
-# Python test runner script that discovers and executes tests with structured reporting
 python3 - << 'PYEOF'
 import sys
 import os
@@ -170,37 +175,39 @@ print("-" * 80)
 
 overall_success = True
 
-for name, suite in suites_to_run:
-    test_count = suite.countTestCases()
-    if test_count == 0:
-        continue
-    runner = unittest.TextTestRunner(verbosity=2 if verbose else 0, stream=open(os.devnull, 'w'))
-    result = runner.run(suite)
-    
-    ran = result.testsRun
-    failed = len(result.failures)
-    errors = len(result.errors)
-    skipped = len(result.skipped)
-    passed = ran - failed - errors - skipped
-    
-    total_ran += ran
-    total_passed += passed
-    total_failed += failed
-    total_errors += errors
-    total_skipped += skipped
-    
-    is_ok = (failed == 0 and errors == 0)
-    if not is_ok:
-        overall_success = False
-    
-    status_str = "\033[1;32mPASS\033[0m" if is_ok else "\033[1;31mFAIL\033[0m"
-    print(f"{name:<35} | {ran:<5} | {passed:<5} | {failed:<5} | {errors:<5} | {skipped:<5} | {status_str}")
-    
-    if (failed > 0 or errors > 0) and verbose:
-        for f, tb in result.failures + result.errors:
-            print(f"\n  [!] {f}")
-            for line in tb.splitlines()[-3:]:
-                print(f"      {line}")
+with open(os.devnull, 'w') as devnull:
+    for name, suite in suites_to_run:
+        test_count = suite.countTestCases()
+        if test_count == 0:
+            continue
+            
+        runner = unittest.TextTestRunner(verbosity=2 if verbose else 0, stream=devnull)
+        result = runner.run(suite)
+        
+        ran = result.testsRun
+        failed = len(result.failures)
+        errors = len(result.errors)
+        skipped = len(result.skipped)
+        passed = ran - failed - errors - skipped
+        
+        total_ran += ran
+        total_passed += passed
+        total_failed += failed
+        total_errors += errors
+        total_skipped += skipped
+        
+        is_ok = (failed == 0 and errors == 0)
+        if not is_ok:
+            overall_success = False
+        
+        status_str = "\033[1;32mPASS\033[0m" if is_ok else "\033[1;31mFAIL\033[0m"
+        print(f"{name:<35} | {ran:<5} | {passed:<5} | {failed:<5} | {errors:<5} | {skipped:<5} | {status_str}")
+        
+        if (failed > 0 or errors > 0) and verbose:
+            for f, tb in result.failures + result.errors:
+                print(f"\n  [!] {f}")
+                for line in tb.splitlines()[-3:]:
+                    print(f"      {line}")
 
 duration = time.time() - start_time
 print("-" * 80)

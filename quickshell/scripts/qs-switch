@@ -4,7 +4,8 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 CACHE_FILE="$CACHE_DIR/current_shell"
 mkdir -p "$CACHE_DIR"
 
-CURRENT="$(cat "$CACHE_FILE" 2>/dev/null || echo "quickshell")"
+CURRENT="$(head -n 1 "$CACHE_FILE" 2>/dev/null | tr -d '[:space:]')"
+[ -z "$CURRENT" ] && CURRENT="quickshell"
 
 if [ "$TARGET" = "toggle" ]; then
     if [ "$CURRENT" = "brain_shell" ]; then
@@ -25,6 +26,7 @@ echo "$TARGET" > "$CACHE_FILE"
 
     # 1. Graceful kill via Quickshell native IPC
     qs kill >/dev/null 2>&1 || true
+    qs -p "$HOME/.local/src/Brain_Shell" kill >/dev/null 2>&1 || true
     qs -p "$HOME/.config/Brain_Shell" kill >/dev/null 2>&1 || true
 
     # 2. Terminate any running quickshell instances across wrapped & unwrapped names
@@ -53,10 +55,14 @@ echo "$TARGET" > "$CACHE_FILE"
 
     # 4. Launch target shell
     if [ "$TARGET" = "brain_shell" ]; then
+        BRAIN_PATH="$HOME/.local/src/Brain_Shell"
+        if [ ! -d "$BRAIN_PATH" ] && [ -d "$HOME/.config/Brain_Shell" ]; then
+            BRAIN_PATH="$HOME/.config/Brain_Shell"
+        fi
         if command -v uwsm >/dev/null 2>&1; then
-            uwsm app -- qs -d -p "$HOME/.config/Brain_Shell" >/dev/null 2>&1
+            uwsm app -- qs -d -p "$BRAIN_PATH" >/dev/null 2>&1
         else
-            qs -d -p "$HOME/.config/Brain_Shell" >/dev/null 2>&1
+            qs -d -p "$BRAIN_PATH" >/dev/null 2>&1
         fi
     else
         if command -v uwsm >/dev/null 2>&1; then

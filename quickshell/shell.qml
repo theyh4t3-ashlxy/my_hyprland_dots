@@ -328,6 +328,14 @@ ShellRoot {
             return IdleService.enabled;
         }
     }
+
+    // Keybinds Preview IPC
+    IpcHandler {
+        target: "keybinds"
+        function toggle(): void { Settings.requestKeybindsToggle(); }
+        function open(): void { Settings.requestKeybindsOpen(); }
+        function close(): void { Settings.requestKeybindsClose(); }
+    }
 }
 
 

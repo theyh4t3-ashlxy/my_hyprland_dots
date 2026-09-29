@@ -29,7 +29,10 @@ def find_binary(name: str, fallback_paths: List[str] = None) -> Optional[str]:
 
 QMLLINT_BIN = find_binary(
     "qmllint",
-    ["/nix/store/dbnyhkzcp2bnmm7gqlwrslbawqlkam96-qtdeclarative-6.11.2/bin/qmllint"]
+    [
+        "/nix/store/10553j4116y6jllliqpg5kz7d35bblab-qtdeclarative-6.11.2/bin/qmllint",
+        "/nix/store/dbnyhkzcp2bnmm7gqlwrslbawqlkam96-qtdeclarative-6.11.2/bin/qmllint"
+    ]
 )
 
 NOTIFY_SEND_BIN = find_binary(

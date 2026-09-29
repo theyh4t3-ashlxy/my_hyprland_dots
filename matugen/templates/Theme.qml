@@ -895,6 +895,7 @@ Singleton {
     readonly property string iconShield:            getIcon("\uE9E0", "\uEA18", "", "shield")
     readonly property string iconExpand:            getIcon("\uE5D0", "\uE740", "", "expand")
     readonly property string iconCollapse:          getIcon("\uE5D1", "\uE73F", "", "collapse")
+    readonly property string iconKeyboard:          getIcon("\uE30C", "\uEA08", "", "keyboard")
 
     // emotional support ascii faces for terminal burnout
     readonly property string kaoHappy:              "(ﾉ◕ヮ◕)ﾉ*:･ﾟ*"

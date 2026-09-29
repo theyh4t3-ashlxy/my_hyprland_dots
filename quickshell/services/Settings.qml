@@ -97,6 +97,10 @@ QtObject {
     signal requestIdleOpen()
     signal requestIdleClose()
 
+    signal requestKeybindsToggle()
+    signal requestKeybindsOpen()
+    signal requestKeybindsClose()
+
     property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
     property var barModulesCenter: ["clock"]
     property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
@@ -207,6 +211,7 @@ QtObject {
     property real surfaceOpacity: 0.90
     property bool cornerFillets: true
     property real cornerSmoothing: 0.7
+    property int globalRounding: 8
 
     property bool _initialized: false
     property bool _loading: false
@@ -359,6 +364,7 @@ QtObject {
     onSurfaceOpacityChanged: queueSave()
     onCornerFilletsChanged: queueSave()
     onCornerSmoothingChanged: queueSave()
+    onGlobalRoundingChanged: queueSave()
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -483,7 +489,8 @@ QtObject {
         { key: "cardOpacity", type: "float", def: 0.95 },
         { key: "surfaceOpacity", type: "float", def: 0.90 },
         { key: "cornerFillets", type: "bool", def: true },
-        { key: "cornerSmoothing", type: "float", def: 0.7 }
+        { key: "cornerSmoothing", type: "float", def: 0.7 },
+        { key: "globalRounding", type: "int", def: 8 }
     ]
 
     function loadObject(data) {

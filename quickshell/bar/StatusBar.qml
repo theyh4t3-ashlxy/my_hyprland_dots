@@ -136,15 +136,19 @@ PanelWindow {
 
     implicitWidth: root.isVertical ? (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0)) : (root.screen?.width ?? 1920)
     implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0))
-    // exclusiveZone: Theme.barHeight
     exclusiveZone: root.isVertical ? (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) : (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0))
     exclusionMode: ExclusionMode.Normal
 
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "quickshell:bar"
 
+    // actually letting the compositor know the scoops exist
     mask: Region {
         Region { item: barBg }
+        Region { item: scoopLeftH }
+        Region { item: scoopRightH }
+        Region { item: scoopTopV }
+        Region { item: scoopBottomV }
     }
 
     property alias launcherPopup: launcherPopup
@@ -434,34 +438,41 @@ PanelWindow {
                 }
             }
 
-            Row {
-                id: rightRowH
+            Item {
+                id: rightRowContainer
                 anchors.right: parent.right
                 anchors.rightMargin: Theme.widgetPaddingH
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.widgetSpacing
-                width: Math.min(implicitWidth, root.maxRightRowWidth)
+                width: Math.min(rightRowH.implicitWidth, root.maxRightRowWidth)
+                height: rightRowH.implicitHeight
                 clip: true
 
-                Repeater {
-                    model: Settings.barModulesRight ?? []
-                    delegate: Loader {
-                        id: rModLoader
-                        required property string modelData
-                        active: root.isModuleVisible(modelData) && !root.isVertical
-                        visible: active
-                        sourceComponent: root.getModuleComponent(modelData)
-                        readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
-                        width: Math.round(targetW)
-                        height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
-                        clip: true
-                        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                Row {
+                    id: rightRowH
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.widgetSpacing
 
-                        Binding {
-                            target: rModLoader.item
-                            property: "width"
-                            value: rModLoader.width
-                            when: rModLoader.item !== null
+                    Repeater {
+                        model: Settings.barModulesRight ?? []
+                        delegate: Loader {
+                            id: rModLoader
+                            required property string modelData
+                            active: root.isModuleVisible(modelData) && !root.isVertical
+                            visible: active
+                            sourceComponent: root.getModuleComponent(modelData)
+                            readonly property real targetW: item ? item.implicitWidth : (Theme.barHeight - 8)
+                            width: Math.round(targetW)
+                            height: Math.round(item ? item.implicitHeight : (Theme.barHeight - 8))
+                            clip: true
+                            Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                            Binding {
+                                target: rModLoader.item
+                                property: "width"
+                                value: rModLoader.width
+                                when: rModLoader.item !== null
+                            }
                         }
                     }
                 }

@@ -14,6 +14,11 @@ Rectangle {
     signal regionClicked()
     signal cancelClicked()
 
+    property string currentQuote: Theme.getFlavor("screenshot", "snitch mode: engaged")
+    function randomizeQuote() {
+        currentQuote = Theme.getFlavor("screenshot", "snitch mode: engaged");
+    }
+
     component ActionBtn: Rectangle {
         id: btnRoot
         property string icon: ""
@@ -106,7 +111,7 @@ Rectangle {
             }
 
             Text {
-                text: Theme.getFlavor("screenshot", "snitch mode: engaged")
+                text: root.currentQuote
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeXs
                 font.weight: Font.Medium

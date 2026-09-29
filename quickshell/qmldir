@@ -25,6 +25,9 @@ PopupPanel               controls/PopupPanel.qml
 FlickList                controls/FlickList.qml
 BarPreview               controls/BarPreview.qml
 ScreenshotActions        controls/ScreenshotActions.qml
+Dropdown                 controls/Dropdown.qml
+Slider                   controls/Slider.qml
+CollapsibleSection       controls/CollapsibleSection.qml
 
 # widgets
 Workspaces               widgets/Workspaces.qml
@@ -48,3 +51,4 @@ LockScreen               lockscreen/LockScreen.qml
 ScreenshotOverlay        widgets/ScreenshotOverlay.qml
 BarStudio                widgets/BarStudio.qml
 MotionSandbox            widgets/MotionSandbox.qml
+KeybindsPreview          widgets/KeybindsPreview.qml
