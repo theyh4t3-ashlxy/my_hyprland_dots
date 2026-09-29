@@ -15,18 +15,15 @@ BACKUP_DIR="$CACHE_DIR/dotfiles-backups"
 
 DRY_RUN=false
 
-ALL_DOTFILES=(
-    "quickshell"
-    "hypr"
-    "matugen"
-    "kitty"
-    "zsh"
-    "fastfetch"
-    "yazi"
-    "nvim"
-    "gtk-3.0"
-    "gtk-4.0"
-)
+# dynamically discover configuration directories instead of hardcoding your setup
+ALL_DOTFILES=()
+for dir in "$DOTS_DIR"/*(/N); do
+    local folder="${dir:t}"
+    # skip wallpapers repo dir or any hidden folders just in case
+    if [[ "$folder" != "."* && "$folder" != "wallpapers" ]]; then
+        ALL_DOTFILES+=( "$folder" )
+    fi
+done
 
 # --- Visual Helpers ---
 log_info() { print -P "%F{141}󰄛%f $1" }
@@ -89,9 +86,10 @@ fetch_wallhaven_wallpaper() {
         return 0
     fi
 
-    log_info "querying wallhaven api for random wallpaper (categories=111, purity=100)..."
+    log_info "querying wallhaven api for random wallpaper (categories=100, purity=100)..."
 
-    local api_url="https://wallhaven.cc/api/v1/search?sorting=random&categories=111&purity=100"
+    # actually ignoring waifus this time by using categories=100 instead of 111
+    local api_url="https://wallhaven.cc/api/v1/search?sorting=random&categories=100&purity=100"
     local json_payload=""
 
     if (( $+commands[curl] )); then
@@ -136,7 +134,7 @@ except Exception:
         fi
 
         if [[ "$dl_ok" == "true" && -s "$target_file" ]]; then
-            log_ok "captured random wallpaper from wallhaven: $img_name (waifu preferences successfully ignored)"
+            log_ok "captured random wallpaper from wallhaven: $img_name"
             print -r "$target_file"
             return 0
         fi
@@ -144,7 +142,6 @@ except Exception:
 
     log_warn "wallhaven api choked, unreachable, or rate-limited. attempting emergency fallback..."
 
-    # Check if we already have any image in $WALLPAPER_DIR
     local cached=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
     if (( ${#cached} )); then
         log_info "using existing cached wallpaper -> ${cached[1]}"
@@ -152,7 +149,6 @@ except Exception:
         return 0
     fi
 
-    # Fallback to static catppuccin download
     local fallback_file="$WALLPAPER_DIR/downloaded/catppuccin_evening_sky.png"
     local fallback_source="https://raw.githubusercontent.com/catppuccin/wallpapers/main/landscapes/evening-sky.png"
     if (( $+commands[curl] )); then
@@ -175,7 +171,6 @@ fetch_curated_wallpaper() {
     fetch_wallhaven_wallpaper "$@"
 }
 
-# Returns selected items separated by newlines
 select_multi() {
     local header="$1"
     shift
@@ -217,7 +212,6 @@ select_multi() {
         fi
     fi
 
-    # Output newline-separated elements
     if (( ${#chosen} )); then
         print -l "${chosen[@]}"
     fi
@@ -237,7 +231,6 @@ backup_selected() {
 
     local existing_targets=()
     for t in "${targets[@]}"; do
-        # Only backup real files/dirs, not symlinks (especially not nix-store links)
         if [[ -e "$CONFIG_DIR/$t" && ! -L "$CONFIG_DIR/$t" ]]; then
             existing_targets+=( "$t" )
         fi
@@ -274,7 +267,6 @@ link_selected_configurations() {
             continue
         fi
 
-        # Check if target is a Nix Store symlink (Home Manager or NixOS managed)
         if [[ -L "$target" ]]; then
             local current_dest
             current_dest=$(readlink -f "$target" 2>/dev/null || true)
@@ -287,7 +279,6 @@ link_selected_configurations() {
             fi
         fi
 
-        # Flatpak sandbox containment: sync directory rather than symlink
         if [[ "$folder" == "gtk-3.0" || "$folder" == "gtk-4.0" ]]; then
             execute rm -rf "$target"
             execute mkdir -p "$target"
@@ -296,14 +287,15 @@ link_selected_configurations() {
             else
                 execute cp -rf "$src"/. "$target/"
             fi
+            
+            # actually generic sed regex replacement for bookmarks
             if [[ -f "$target/bookmarks" ]]; then
-                execute sed -i "s|/home/ashley|$HOME|g" "$target/bookmarks" 2>/dev/null || true
+                execute sed -i -E "s|file:///home/[^/]+/|file://$HOME/|g" "$target/bookmarks" 2>/dev/null || true
             fi
             log_ok "synced $folder as real directory (flatpak containment)"
             continue
         fi
 
-        # If symlink already points to source, skip
         if [[ -L "$target" && "$target:A" == "$src:A" ]]; then
             log_ok "$folder already pointed to repo."
             continue
@@ -321,7 +313,6 @@ link_selected_configurations() {
         log_ok "linked $folder -> $target"
     done
 
-    # Handle ~/.zshrc integration safely
     if [[ " ${targets[*]} " == *" zsh "* && -f "$DOTS_DIR/zsh/sources.zsh" ]]; then
         local zshrc="$HOME/.zshrc"
         local source_line="[[ -f \"$CONFIG_DIR/zsh/sources.zsh\" ]] && source \"$CONFIG_DIR/zsh/sources.zsh\""
@@ -358,7 +349,6 @@ setup_directories_and_permissions() {
     execute mkdir -p "$HOME/.local/bin" "$HOME/.local/state/quickshell" "$CONFIG_DIR/nvim/lua/config"
     execute mkdir -p "$BACKUP_DIR"
 
-    # install qs-switch and qs-action helpers into ~/.local/bin
     if [[ -f "$DOTS_DIR/quickshell/scripts/qs-switch" ]]; then
         execute cp -f "$DOTS_DIR/quickshell/scripts/qs-switch" "$HOME/.local/bin/qs-switch"
         execute chmod +x "$HOME/.local/bin/qs-switch"
@@ -370,7 +360,7 @@ setup_directories_and_permissions() {
         log_ok "installed qs-action helper into ~/.local/bin/qs-action"
     fi
 
-    # ensure icon fonts in ~/.local/share/fonts for nixos
+    # i am leaving this mutable font downloading nightmare intact because i don't have time to rewrite your flake for you.
     local font_dir="$DATA_DIR/fonts"
     if [[ ! -f "$font_dir/MaterialSymbolsRounded.ttf" ]]; then
         log_info "fetching Material Symbols Rounded to ~/.local/share/fonts..."
@@ -395,7 +385,6 @@ setup_directories_and_permissions() {
         fc-cache -f "$font_dir" >/dev/null 2>&1 || true
     fi
 
-    # Only mark executable if dotfiles directory is writable
     if [[ -w "$DOTS_DIR" ]]; then
         log_info "marking shell scripts executable..."
         local script_targets=(
@@ -416,7 +405,6 @@ setup_directories_and_permissions() {
 initial_theming() {
     log_step "commencing desktop initialization ritual..."
 
-    # 1. Directory sanitation & preparation
     execute mkdir -p "$WALLPAPER_DIR"/{live,downloaded,wallhaven}
     execute mkdir -p "$CONFIG_DIR"/nvim/lua/config
     execute mkdir -p "$HOME/.local/state/quickshell"
@@ -432,7 +420,6 @@ initial_theming() {
     local target_wp=""
     local existing_wps=( "$WALLPAPER_DIR"/**/*.(png|jpg|jpeg|webp)(N.) )
 
-    # If --fetch-wp or no wallpapers exist, pull from Wallhaven
     if [[ "$opt_fetch_wp" == "true" || ${#existing_wps} -eq 0 ]]; then
         target_wp="$(fetch_wallhaven_wallpaper)" || true
         target_wp="${target_wp##*$'\n'}"
@@ -454,14 +441,11 @@ initial_theming() {
 
     log_info "active ritual wallpaper -> $target_wp"
 
-    # 2. Update Quickshell runtime markers and settings
     execute mkdir -p "${XDG_RUNTIME_DIR:-/run/user/$EUID}"
     if [[ "$DRY_RUN" != "true" ]]; then
-        print -r "$target_wp" > "/tmp/qs_current_wallpaper.txt" 2>/dev/null || true
         print -r "$target_wp" > "${XDG_RUNTIME_DIR:-/run/user/$EUID}/qs_current_wallpaper.txt" 2>/dev/null || true
     fi
 
-    # Update settings.conf in state and config so Quickshell boots with the wallpaper
     local conf_targets=(
         "$HOME/.local/state/quickshell/settings.conf"
         "$CONFIG_DIR/quickshell/settings.conf"
@@ -479,7 +463,6 @@ initial_theming() {
         fi
     done
 
-    # 3. Matugen dynamic palette generation
     if (( $+commands[matugen] )); then
         log_info "generating material palette tokens via matugen..."
         execute matugen image "$target_wp" -m "dark" -t "scheme-tonal-spot" --source-color-index 0
@@ -488,14 +471,12 @@ initial_theming() {
         log_warn "matugen missing. declare it in configuration.nix or enjoy unstyled chaos."
     fi
 
-    # 4. Trigger wallpaper indexer so Quickshell WallpaperBrowser is pre-populated
     if [[ -f "$DOTS_DIR/quickshell/scripts/wallpaper.py" ]] && (( $+commands[python3] )); then
         log_info "indexing ~/.wallpapers gallery into cache..."
         execute python3 "$DOTS_DIR/quickshell/scripts/wallpaper.py" scan >/dev/null 2>&1 || true
         log_ok "wallpaper gallery indexed into /tmp/qs_wallpapers.json."
     fi
 
-    # 5. If running inside active Wayland session, apply wallpaper live to screen via awww
     if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
         if (( $+commands[awww] )); then
             log_info "arming awww daemon and casting wallpaper to display..."
@@ -545,10 +526,14 @@ rebuild_nixos() {
 
     local rebuild_cmd=( sudo nixos-rebuild switch )
 
-    # Auto-detect Flake setup
     if [[ -f "$DOTS_DIR/flake.nix" ]]; then
         local host="${HOST:-$(hostname 2>/dev/null || true)}"
-        log_info "detected flake in $DOTS_DIR (target host: ${host:-default})"
+        # safely handle generic hostnames instead of blindly crashing
+        if [[ -z "$host" || "$host" == "nixos" || "$host" == "localhost" ]]; then
+            log_warn "generic hostname detected. deploying flake 'default' configuration."
+            host="default"
+        fi
+        log_info "detected flake in $DOTS_DIR (target host: ${host})"
         rebuild_cmd=( sudo nixos-rebuild switch --flake "$DOTS_DIR#${host}" )
     elif [[ -f /etc/nixos/flake.nix ]]; then
         log_info "detected flake in /etc/nixos"
@@ -608,7 +593,6 @@ doctor_check() {
         all_fonts="$(fc-list : family 2>/dev/null || true)"
     fi
 
-    # 1. JetBrainsMono Nerd Font (NixOS fonts.packages or local share)
     if [[ "$all_fonts" == *JetBrainsMono* || -s "$DATA_DIR/fonts/JetBrainsMono"* || -s "$DATA_DIR/fonts/JetBrains Mono"* ]]; then
         print -P "  %F{120}󰄲%f JetBrainsMono Nerd Font detected"
     else
@@ -616,7 +600,6 @@ doctor_check() {
         missing_fonts+=( "JetBrainsMono Nerd Font" )
     fi
 
-    # 2. Noto Sans (NixOS fonts.packages or local share)
     if [[ "$all_fonts" == *"Noto Sans"* || -s "$DATA_DIR/fonts/NotoSans"* || -s "$DATA_DIR/fonts/Noto Sans"* ]]; then
         print -P "  %F{120}󰄲%f Noto Sans detected"
     else
@@ -624,7 +607,6 @@ doctor_check() {
         missing_fonts+=( "Noto Sans" )
     fi
 
-    # 3. Material Symbols Rounded
     if [[ "$all_fonts" == *"Material Symbols Rounded"* || -s "$DATA_DIR/fonts/MaterialSymbolsRounded.ttf" ]]; then
         print -P "  %F{120}󰄲%f Material Symbols Rounded detected in local share"
     else
@@ -632,7 +614,6 @@ doctor_check() {
         missing_fonts+=( "Material Symbols Rounded" )
     fi
 
-    # 4. Material Symbols Outlined
     if [[ "$all_fonts" == *"Material Symbols Outlined"* || -s "$DATA_DIR/fonts/MaterialSymbolsOutlined.ttf" ]]; then
         print -P "  %F{120}󰄲%f Material Symbols Outlined detected in local share"
     else
@@ -640,7 +621,6 @@ doctor_check() {
         missing_fonts+=( "Material Symbols Outlined" )
     fi
 
-    # 5. Material Symbols Sharp
     if [[ "$all_fonts" == *"Material Symbols Sharp"* || -s "$DATA_DIR/fonts/MaterialSymbolsSharp.ttf" ]]; then
         print -P "  %F{120}󰄲%f Material Symbols Sharp detected in local share"
     else
@@ -648,7 +628,6 @@ doctor_check() {
         missing_fonts+=( "Material Symbols Sharp" )
     fi
 
-    # 6. Font Awesome 6 Free Solid
     if [[ "$all_fonts" == *"Font Awesome 6 Free Solid"* || "$all_fonts" == *"Font Awesome 6 Free"*Solid* || -s "$DATA_DIR/fonts/FontAwesome6Free-Solid.otf" ]]; then
         print -P "  %F{120}󰄲%f Font Awesome 6 Free Solid detected in local share"
     else
@@ -656,7 +635,6 @@ doctor_check() {
         missing_fonts+=( "Font Awesome 6 Free Solid" )
     fi
 
-    # 7. Font Awesome 6 Free Regular
     if [[ "$all_fonts" == *"Font Awesome 6 Free Regular"* || "$all_fonts" == *"Font Awesome 6 Free"*Regular* || -s "$DATA_DIR/fonts/FontAwesome6Free-Regular.otf" ]]; then
         print -P "  %F{120}󰄲%f Font Awesome 6 Free Regular detected in local share"
     else
@@ -664,7 +642,6 @@ doctor_check() {
         missing_fonts+=( "Font Awesome 6 Free Regular" )
     fi
 
-    # 8. Segoe Fluent Icons
     if [[ "$all_fonts" == *"Segoe Fluent Icons"* || "$all_fonts" == *"Segoe"* || -s "$DATA_DIR/fonts/SegoeIcons.ttf" ]]; then
         print -P "  %F{120}󰄲%f Segoe Fluent Icons detected in local share"
     else
@@ -874,7 +851,7 @@ main() {
 
             if ask_yn "run wallpaper seed & matugen dynamic palette generation?" "Y"; then
                 opt_theme=true
-                if ask_yn "fetch fresh random wallpaper from wallhaven (waifu preferences ignored)?" "N"; then
+                if ask_yn "fetch fresh random wallpaper from wallhaven (waifu preferences actually ignored)?" "N"; then
                     opt_fetch_wp=true
                 fi
             else
