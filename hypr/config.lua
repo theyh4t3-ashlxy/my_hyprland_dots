@@ -18,9 +18,12 @@ if ok and type(user_colors) == "table" then
 	if user_colors.inactive_border then colors.inactive_border = user_colors.inactive_border end
 end
 
--- cursor environment merged from hyprmod
+-- cursor & system environment fixes
 hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")
 hl.env("XCURSOR_SIZE", "24")
+hl.env("TZDIR", "/etc/zoneinfo")
+hl.env("TZ", "America/Chicago")
+hl.env("QT_LOGGING_RULES", "quickshell.dbus.warning=false;quickshell.service.powerprofiles.warning=false")
 
 hl.config({
 	general = {

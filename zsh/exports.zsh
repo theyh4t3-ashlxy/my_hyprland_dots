@@ -3,6 +3,9 @@ export EDITOR="micro"
 export VISUAL="micro"
 export PAGER="less"
 export LANG="en_US.UTF-8"
+export TZDIR="/etc/zoneinfo"
+export TZ="America/Chicago"
+export QT_LOGGING_RULES="quickshell.dbus.warning=false;quickshell.service.powerprofiles.warning=false"
 
 # less that doesnt leave ghost text all over my screen
 export LESS="-R -F -X -i"
