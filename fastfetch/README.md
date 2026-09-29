@@ -33,6 +33,6 @@ neofetch was abandoned and slow. fastfetch is written in c and queries your hard
 ╰─ ❯                                                                                                                                                                                                       18:45
 ``````
 
-matugen dumps fresh accent colors into this every time you change wallpapers, which means that you will get colors that make windows noobs go "wow how do i get that"
-and u say
-"u dont."
+matugen dumps fresh accent colors into this every time you change wallpapers, which means that you will get colors that make windows noobs go "wow how do i get that"  
+and u say:  
+"u dont."  
