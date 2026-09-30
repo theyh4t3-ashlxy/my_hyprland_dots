@@ -2026,7 +2026,12 @@ Rectangle {
                                     { label: "12h + sec", value: "h:mm:ss ap" }
                                 ]
                                 currentValue: Settings.clockFormat
-                                onSelected: val => Settings.clockFormat = val
+                                onSelected: val => {
+                                    Settings.clockFormat = val;
+                                    let is12 = /ap/i.test(val);
+                                    Settings.clockMilitary = !is12;
+                                    Settings.clockShowSeconds = /:ss/i.test(val);
+                                }
                             }
 
                             Dropdown {
@@ -2340,7 +2345,7 @@ Rectangle {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        root.close();
+                                        popup.open = false;
                                         Settings.requestWelcomeOpen();
                                     }
                                 }

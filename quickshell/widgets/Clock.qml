@@ -83,15 +83,17 @@ Rectangle {
             horizontalAlignment: Text.AlignHCenter
             lineHeight: 0.9
             text: {
-                if (Theme?.isVertical ?? false) {
-                    return Qt.formatDateTime(clockRoot.now, "HH\nmm").toLowerCase();
-                }
                 let military = (Settings?.clock24h !== undefined ? Settings.clock24h : (Settings?.clockMilitary ?? true));
-                let showSec = Settings?.clockShowSeconds ?? false;
-                let defaultFmt = military ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "h:mm:ss ap" : "h:mm ap");
+                let is12 = (Settings?.clockFormat && /ap/i.test(Settings.clockFormat)) || !military;
+                let showSec = Settings?.clockShowSeconds ?? (Settings?.clockFormat && /:ss/i.test(Settings.clockFormat));
+
+                if (Theme?.isVertical ?? false) {
+                    return Qt.formatDateTime(clockRoot.now, is12 ? "hh\nmm" : "HH\nmm").toLowerCase();
+                }
+
                 let timeFmt = Settings?.clockFormat;
-                if (!timeFmt || (military && /ap/i.test(timeFmt)) || (!military && !/ap/i.test(timeFmt))) {
-                    timeFmt = defaultFmt;
+                if (!timeFmt || timeFmt.trim() === "") {
+                    timeFmt = is12 ? (showSec ? "h:mm:ss ap" : "h:mm ap") : (showSec ? "HH:mm:ss" : "HH:mm");
                 }
                 let timeStr = Qt.formatDateTime(clockRoot.now, timeFmt).toLowerCase();
                 let dateFmt = (Settings?.dateFormat && Settings.dateFormat !== "none") ? Settings.dateFormat : "";
@@ -136,12 +138,12 @@ Rectangle {
                 }
             } else if (mouse.button === Qt.MiddleButton) {
                 if (Settings) {
-                    let cur = Settings.clock24h !== undefined ? Settings.clock24h : (Settings.clockMilitary ?? true);
-                    let next = !cur;
-                    Settings.clockMilitary = next;
-                    Settings.clock24h = next;
-                    let showSec = Settings?.clockShowSeconds ?? false;
-                    Settings.clockFormat = next ? (showSec ? "HH:mm:ss" : "HH:mm") : (showSec ? "h:mm:ss ap" : "h:mm ap");
+                    let curIs12 = (Settings?.clockFormat && /ap/i.test(Settings.clockFormat)) || (Settings?.clockMilitary === false) || (Settings?.clock24h === false);
+                    let nextIs12 = !curIs12;
+                    let showSec = Settings?.clockShowSeconds ?? (Settings?.clockFormat && /:ss/i.test(Settings.clockFormat));
+                    Settings.clockMilitary = !nextIs12;
+                    Settings.clock24h = !nextIs12;
+                    Settings.clockFormat = nextIs12 ? (showSec ? "h:mm:ss ap" : "h:mm ap") : (showSec ? "HH:mm:ss" : "HH:mm");
                 }
             }
         }
@@ -241,7 +243,10 @@ Rectangle {
                         Layout.alignment: Qt.AlignRight
 
                         Text {
-                            text: Qt.formatDateTime(clockRoot.now, "HH:mm:ss").toLowerCase()
+                            text: {
+                                let is12 = (Settings?.clockFormat && /ap/i.test(Settings.clockFormat)) || (Settings?.clockMilitary === false) || (Settings?.clock24h === false);
+                                return Qt.formatDateTime(clockRoot.now, is12 ? "h:mm:ss ap" : "HH:mm:ss").toLowerCase();
+                            }
                             font.family: Theme?.fontMono ?? "monospace"
                             font.pixelSize: Theme?.fontSizeLg ?? 16
                             font.weight: Font.Bold

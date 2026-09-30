@@ -299,7 +299,19 @@ QtObject {
     onBarModulesLeftChanged: queueSave()
     onBarModulesCenterChanged: queueSave()
     onBarModulesRightChanged: queueSave()
-    onClockFormatChanged: queueSave()
+    onClockFormatChanged: {
+        if (!root._loading) {
+            let is12 = /ap/i.test(clockFormat);
+            if (clockMilitary === is12) {
+                clockMilitary = !is12;
+            }
+            let sec = /:ss/i.test(clockFormat);
+            if (clockShowSeconds !== sec) {
+                clockShowSeconds = sec;
+            }
+        }
+        queueSave();
+    }
     onDateFormatChanged: queueSave()
     onShowBarDateChanged: queueSave()
     onWorkspaceCountChanged: queueSave()
@@ -325,8 +337,27 @@ QtObject {
     onPopupOpacityChanged: queueSave()
     onVolumeStepChanged: queueSave()
     onVolumeMaxChanged: queueSave()
-    onClockShowSecondsChanged: queueSave()
-    onClockMilitaryChanged: queueSave()
+    onClockShowSecondsChanged: {
+        if (!root._loading) {
+            let is12 = !clockMilitary || (clockFormat && /ap/i.test(clockFormat));
+            let desired = is12 ? (clockShowSeconds ? "h:mm:ss ap" : "h:mm ap") : (clockShowSeconds ? "HH:mm:ss" : "HH:mm");
+            if (clockFormat !== desired) {
+                clockFormat = desired;
+            }
+        }
+        queueSave();
+    }
+    onClockMilitaryChanged: {
+        if (!root._loading) {
+            let is12 = !clockMilitary;
+            let sec = clockShowSeconds || (clockFormat && /:ss/i.test(clockFormat));
+            let desired = is12 ? (sec ? "h:mm:ss ap" : "h:mm ap") : (sec ? "HH:mm:ss" : "HH:mm");
+            if (clockFormat !== desired) {
+                clockFormat = desired;
+            }
+        }
+        queueSave();
+    }
     onNotificationTimeoutChanged: queueSave()
     onScoopBorderEnabledChanged: queueSave()
     onScoopBorderWidthChanged: queueSave()
@@ -583,6 +614,15 @@ QtObject {
         }
         root._loading = true;
         loadObject(data);
+        if (data.clockFormat !== undefined) {
+            let is12 = /ap/i.test(root.clockFormat);
+            root.clockMilitary = !is12;
+            root.clockShowSeconds = /:ss/i.test(root.clockFormat);
+        } else if (data.clockMilitary !== undefined) {
+            let is12 = !root.clockMilitary;
+            let sec = root.clockShowSeconds;
+            root.clockFormat = is12 ? (sec ? "h:mm:ss ap" : "h:mm ap") : (sec ? "HH:mm:ss" : "HH:mm");
+        }
         root._loading = false;
         root._initialized = true;
     }
