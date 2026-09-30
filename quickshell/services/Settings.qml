@@ -101,6 +101,10 @@ QtObject {
     signal requestKeybindsOpen()
     signal requestKeybindsClose()
 
+    signal requestWelcomeToggle()
+    signal requestWelcomeOpen()
+    signal requestWelcomeClose()
+
     property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
     property var barModulesCenter: ["clock"]
     property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
@@ -212,6 +216,9 @@ QtObject {
     property bool cornerFillets: true
     property real cornerSmoothing: 0.7
     property int globalRounding: 8
+    property bool hasCompletedWelcome: false
+    property bool showShellTab: true
+    property bool showWelcomeWizard: false
 
     property bool _initialized: false
     property bool _loading: false
@@ -365,6 +372,13 @@ QtObject {
     onCornerFilletsChanged: queueSave()
     onCornerSmoothingChanged: queueSave()
     onGlobalRoundingChanged: queueSave()
+    onHasCompletedWelcomeChanged: queueSave()
+    onShowShellTabChanged: queueSave()
+
+    onRequestWelcomeToggle: showWelcomeWizard = !showWelcomeWizard
+    onRequestWelcomeOpen: showWelcomeWizard = true
+    onRequestWelcomeClose: showWelcomeWizard = false
+
 
     readonly property var _schema: [
         { key: "barPosition", type: "string", def: "top" },
@@ -490,7 +504,9 @@ QtObject {
         { key: "surfaceOpacity", type: "float", def: 0.90 },
         { key: "cornerFillets", type: "bool", def: true },
         { key: "cornerSmoothing", type: "float", def: 0.7 },
-        { key: "globalRounding", type: "int", def: 8 }
+        { key: "globalRounding", type: "int", def: 8 },
+        { key: "hasCompletedWelcome", type: "bool", def: false },
+        { key: "showShellTab", type: "bool", def: true }
     ]
 
     function loadObject(data) {
@@ -737,6 +753,18 @@ QtObject {
         } else {
             let cmd = action === "disable" ? "dpms off" : (action === "enable" ? "dpms on" : "dpms toggle");
             Hyprland.dispatch(cmd);
+        }
+    }
+
+    property Timer welcomeFirstRunTimer: Timer {
+        id: welcomeFirstRunTimer
+        interval: 750
+        running: true
+        repeat: false
+        onTriggered: {
+            if (!root.hasCompletedWelcome) {
+                root.showWelcomeWizard = true;
+            }
         }
     }
 }

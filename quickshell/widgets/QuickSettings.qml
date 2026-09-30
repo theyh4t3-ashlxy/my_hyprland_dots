@@ -26,6 +26,15 @@ Rectangle {
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
 
+    Connections {
+        target: Settings
+        function onShowShellTabChanged() {
+            if (!(Settings.showShellTab ?? true) && root.activeTab === "shells") {
+                root.activeTab = "layout";
+            }
+        }
+    }
+
     readonly property string userHome: Quickshell.env("HOME") || ""
     readonly property string cacheDir: Quickshell.env("XDG_CACHE_HOME") || (userHome + "/.cache")
 
@@ -683,16 +692,21 @@ Rectangle {
                     spacing: 4
 
                     Repeater {
-                        model: [
-                            { id: "layout", label: "layout", icon: Theme.iconGrid },
-                            { id: "modules", label: "modules", icon: Theme.iconEye },
-                            { id: "fonts", label: "fonts", icon: Theme.iconNote },
-                            { id: "animations", label: "animations", icon: Theme.iconFlame },
-                            { id: "vibe", label: "vibe", icon: Theme.iconCoffee },
-                            { id: "keybinds", label: "keybinds", icon: Theme.iconKeyboard },
-                            { id: "screenshot", label: "screenshot", icon: Theme.iconCamera },
-                            { id: "shells", label: "shells", icon: Theme.iconTerminal }
-                        ]
+                        model: {
+                            let tabs = [
+                                { id: "layout", label: "layout", icon: Theme.iconGrid },
+                                { id: "modules", label: "modules", icon: Theme.iconEye },
+                                { id: "fonts", label: "fonts", icon: Theme.iconNote },
+                                { id: "animations", label: "animations", icon: Theme.iconFlame },
+                                { id: "vibe", label: "vibe", icon: Theme.iconCoffee },
+                                { id: "keybinds", label: "keybinds", icon: Theme.iconKeyboard },
+                                { id: "screenshot", label: "screenshot", icon: Theme.iconCamera }
+                            ];
+                            if (Settings.showShellTab ?? true) {
+                                tabs.push({ id: "shells", label: "shells", icon: Theme.iconTerminal });
+                            }
+                            return tabs;
+                        }
 
                         delegate: Rectangle {
                             required property var modelData
@@ -2224,6 +2238,115 @@ Rectangle {
                             }
                         }
 
+                        // Desktop Shell Profiles & Welcome Guide
+                        CategoryHeader {
+                            title: "onboarding & shell profiles"
+                            icon: Theme.iconSparkles
+                        }
+
+                        SettingCard {
+                            // Show shell profiles tab toggle
+                            RowLayout {
+                                width: parent.width
+                                spacing: 12
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 1
+
+                                    Text {
+                                        text: "desktop shell profiles tab"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Theme.fontWeightMedium
+                                        color: Theme.on_surface
+                                    }
+
+                                    Text {
+                                        text: "display or hide the Brain_Shell switcher tab in QuickSettings"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        color: Theme.on_surface_variant
+                                    }
+                                }
+
+                                ToggleSwitch {
+                                    checked: Settings.showShellTab ?? true
+                                    onToggled: Settings.showShellTab = !Settings.showShellTab
+                                }
+                            }
+
+                            RowDivider {}
+
+                            // Reopen Welcome Guide
+                            Rectangle {
+                                width: parent.width
+                                implicitHeight: 44
+                                radius: Theme.radiusSm
+                                color: rewelcomeMouse.containsMouse ? Theme.surface_container_highest : "transparent"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: 10
+
+                                    Text {
+                                        text: Theme.iconSparkles
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeSm
+                                        color: Theme.primary
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+
+                                        Text {
+                                            text: "reopen welcome guide"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeSm
+                                            font.weight: Theme.fontWeightMedium
+                                            color: Theme.on_surface
+                                        }
+
+                                        Text {
+                                            text: "first-time setup, philosophy & calibration tour"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeXs
+                                            color: Theme.on_surface_variant
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 58
+                                        height: 26
+                                        radius: Theme.radiusPill
+                                        color: Theme.primary
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "launch"
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.fontSizeXs
+                                            font.weight: Theme.fontWeightBold
+                                            color: Theme.on_primary
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: rewelcomeMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        root.close();
+                                        Settings.requestWelcomeOpen();
+                                    }
+                                }
+                            }
+                        }
+
                         CategoryHeader {
                             title: "factory reset"
                             icon: Theme.iconFlame
@@ -2619,7 +2742,7 @@ Rectangle {
                 Flickable {
                     id: flickShells
                     anchors.fill: parent
-                    visible: root.activeTab === "shells"
+                    visible: (Settings.showShellTab ?? true) && root.activeTab === "shells"
                     clip: true
                     contentWidth: width
                     contentHeight: shellsCol.implicitHeight + 16
@@ -2895,7 +3018,10 @@ Rectangle {
                         }
                     }
                 }
-                TabScrollTrack { target: flickShells }
+                TabScrollTrack {
+                    target: flickShells
+                    visible: (Settings.showShellTab ?? true) && root.activeTab === "shells"
+                }
 
                 Item {
                     id: tabKeybinds

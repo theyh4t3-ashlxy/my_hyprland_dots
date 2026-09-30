@@ -52,3 +52,5 @@ ScreenshotOverlay        widgets/ScreenshotOverlay.qml
 BarStudio                widgets/BarStudio.qml
 MotionSandbox            widgets/MotionSandbox.qml
 KeybindsPreview          widgets/KeybindsPreview.qml
+WelcomeWizard            widgets/WelcomeWizard.qml
+

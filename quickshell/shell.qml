@@ -35,6 +35,11 @@ ShellRoot {
         OSD {}
     }
 
+    Variants {
+        model: Quickshell.screens
+        WelcomeWizard {}
+    }
+
     LockScreen {
         id: globalLockScreen
     }
@@ -335,6 +340,14 @@ ShellRoot {
         function toggle(): void { Settings.requestKeybindsToggle(); }
         function open(): void { Settings.requestKeybindsOpen(); }
         function close(): void { Settings.requestKeybindsClose(); }
+    }
+
+    // Welcome Wizard IPC
+    IpcHandler {
+        target: "welcome"
+        function toggle(): void { Settings.requestWelcomeToggle(); }
+        function open(): void { Settings.requestWelcomeOpen(); }
+        function close(): void { Settings.requestWelcomeClose(); }
     }
 }
 

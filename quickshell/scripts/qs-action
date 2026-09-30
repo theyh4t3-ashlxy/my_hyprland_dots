@@ -77,8 +77,11 @@ case "$ACTION" in
     keybinds|keys|shortcuts)
         qs ipc call keybinds toggle 2>/dev/null || true
         ;;
+    welcome|intro|onboarding)
+        qs ipc call welcome toggle 2>/dev/null || true
+        ;;
     *)
-        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|wallpaper|lock|powermenu|keybinds}" >&2
+        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|wallpaper|lock|powermenu|keybinds|welcome}" >&2
         exit 1
         ;;
 esac
