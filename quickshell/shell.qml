@@ -1,10 +1,5 @@
 //@ pragma UseQApplication
-// ==============================================================================
-// quickshell root orchestrator: the asylum command deck
-// spawns bars, liquid corners, overlays, and registers IPC endpoints.
-// engineered to make electron devs cry and waybar users question their life choices.
-// do not touch unless you crave a completely black screen and existential dread.
-// ==============================================================================
+
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
