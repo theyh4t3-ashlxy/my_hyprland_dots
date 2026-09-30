@@ -39,6 +39,13 @@ case "$ACTION" in
             qs ipc call clipboard toggle 2>/dev/null || true
         fi
         ;;
+    notes|quicknotes|tasks|todo)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call dashboard-kanban toggle 2>/dev/null || true
+        else
+            qs ipc call notes toggle 2>/dev/null || true
+        fi
+        ;;
     audio)
         if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
             qs ipc -p "$BRAIN_DIR" call audioOut-toggle toggle 2>/dev/null || true
@@ -52,6 +59,9 @@ case "$ACTION" in
         else
             qs ipc call screenshot open 2>/dev/null || true
         fi
+        ;;
+    capture|screencapture)
+        qs ipc call capture toggle 2>/dev/null || true
         ;;
     wallpaper)
         if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
@@ -80,8 +90,32 @@ case "$ACTION" in
     welcome|intro|onboarding)
         qs ipc call welcome toggle 2>/dev/null || true
         ;;
+    studio|barstudio)
+        qs ipc call studio toggle 2>/dev/null || true
+        ;;
+    sandbox|motion)
+        qs ipc call sandbox toggle 2>/dev/null || true
+        ;;
+    record|rec)
+        shift
+        SUB="${1:-toggle}"
+        case "$SUB" in
+            screen|display|full)
+                qs ipc call record screen 2>/dev/null || true ;;
+            region|area|crop)
+                qs ipc call record region 2>/dev/null || true ;;
+            window)
+                qs ipc call record window 2>/dev/null || true ;;
+            stop|end)
+                qs ipc call record stop 2>/dev/null || true ;;
+            discard|cancel)
+                qs ipc call record discard 2>/dev/null || true ;;
+            toggle|*)
+                qs ipc call record toggle 2>/dev/null || true ;;
+        esac
+        ;;
     *)
-        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|wallpaper|lock|powermenu|keybinds|welcome}" >&2
+        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|record|wallpaper|lock|powermenu|keybinds|welcome|studio|sandbox} [subcommand]" >&2
         exit 1
         ;;
 esac

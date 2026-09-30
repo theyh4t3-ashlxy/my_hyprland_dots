@@ -105,10 +105,15 @@ QtObject {
     signal requestWelcomeOpen()
     signal requestWelcomeClose()
 
+    signal requestCaptureToggle()
+    signal requestCaptureOpen()
+    signal requestCaptureClose()
+
     property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
     property var barModulesCenter: ["clock"]
-    property var barModulesRight: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
+    property var barModulesRight: ["media", "quickNotes", "screenCapture", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
     property bool showBarStudio: false
+    property bool showScreenCapture: true
 
     property string currentWallpaper: ""
     property string matugenMode: "dark"
@@ -215,8 +220,9 @@ QtObject {
     property real surfaceOpacity: 0.90
     property bool cornerFillets: true
     property real cornerSmoothing: 0.7
-    property int globalRounding: 8
+    property int globalRounding: popupRadius
     property bool hasCompletedWelcome: false
+    property int welcomeWizardStep: 0
     property bool showShellTab: true
     property bool showWelcomeWizard: false
 
@@ -402,7 +408,14 @@ QtObject {
     onSurfaceOpacityChanged: queueSave()
     onCornerFilletsChanged: queueSave()
     onCornerSmoothingChanged: queueSave()
-    onGlobalRoundingChanged: queueSave()
+    onGlobalRoundingChanged: {
+        if (!root._loading) {
+            if (popupRadius !== globalRounding) popupRadius = globalRounding;
+            let targetWidget = Math.max(1, Math.round(globalRounding * 0.5));
+            if (widgetRadius !== targetWidget) widgetRadius = targetWidget;
+        }
+        queueSave();
+    }
     onHasCompletedWelcomeChanged: queueSave()
     onShowShellTabChanged: queueSave()
 
@@ -534,10 +547,7 @@ QtObject {
         { key: "cardOpacity", type: "float", def: 0.95 },
         { key: "surfaceOpacity", type: "float", def: 0.90 },
         { key: "cornerFillets", type: "bool", def: true },
-        { key: "cornerSmoothing", type: "float", def: 0.7 },
-        { key: "globalRounding", type: "int", def: 8 },
-        { key: "hasCompletedWelcome", type: "bool", def: false },
-        { key: "showShellTab", type: "bool", def: true }
+        { key: "cornerSmoothing", type: "float", def: 0.7 }
     ]
 
     function loadObject(data) {
@@ -623,6 +633,9 @@ QtObject {
             let sec = root.clockShowSeconds;
             root.clockFormat = is12 ? (sec ? "h:mm:ss ap" : "h:mm ap") : (sec ? "HH:mm:ss" : "HH:mm");
         }
+        if (data.hasCompletedWelcome !== undefined) {
+            root.hasCompletedWelcome = (data.hasCompletedWelcome === true || data.hasCompletedWelcome === "true");
+        }
         root._loading = false;
         root._initialized = true;
     }
@@ -635,12 +648,34 @@ QtObject {
     }
     readonly property string confPath: stateDir + "/settings.conf"
     readonly property string fallbackConfPath: decodeURIComponent(Qt.resolvedUrl("../settings.conf").toString().replace(/^file:\/\//, ""))
+    readonly property string welcomeCompletedMarkerPath: stateDir + "/welcome_completed"
 
     property FileView fallbackConfFile: FileView {
         path: root.fallbackConfPath
         blockLoading: true
         watchChanges: false
         printErrors: false
+    }
+
+    property FileView welcomeCompletedFile: FileView {
+        path: root.welcomeCompletedMarkerPath
+        blockLoading: true
+        watchChanges: false
+        printErrors: false
+        onLoaded: {
+            let mark = text().trim();
+            if (mark === "true" || mark === "1") {
+                root.hasCompletedWelcome = true;
+            }
+        }
+    }
+
+    function markWelcomeCompleted() {
+        if (!root.hasCompletedWelcome) {
+            root.hasCompletedWelcome = true;
+        }
+        Quickshell.execDetached(["sh", "-c", "mkdir -p " + root.stateDir + " && echo 'true' > " + root.welcomeCompletedMarkerPath]);
+        queueSave();
     }
 
     property FileView confFile: FileView {
@@ -669,7 +704,8 @@ QtObject {
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", root.stateDir]);
         let str = confFile.text();
-        if (str && str.trim() !== "") {
+        let hadExistingState = (str && str.trim() !== "");
+        if (hadExistingState) {
             root.loadConf(str);
         } else {
             let fallbackStr = fallbackConfFile.text();
@@ -678,6 +714,13 @@ QtObject {
             }
             root._initialized = true;
             root.save();
+        }
+
+        let mark = welcomeCompletedFile.text().trim();
+        if (mark === "true" || mark === "1") {
+            root.hasCompletedWelcome = true;
+        } else if (hadExistingState && root.currentWallpaper && root.currentWallpaper !== "") {
+            root.markWelcomeCompleted();
         }
     }
 
@@ -701,6 +744,7 @@ QtObject {
                 lines.push(item.key + "=" + val);
             }
         }
+        lines.push("hasCompletedWelcome=" + (root.hasCompletedWelcome ? "true" : "false"));
         return lines.join("\n");
     }
 

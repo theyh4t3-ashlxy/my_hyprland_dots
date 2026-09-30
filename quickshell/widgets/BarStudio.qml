@@ -141,9 +141,33 @@ PopupPanel {
             case "bluetooth": Settings.showBluetooth = !Settings.showBluetooth; break;
             case "network": Settings.showNetwork = !Settings.showNetwork; break;
             case "volume": Settings.showVolume = !Settings.showVolume; break;
-            case "battery": Settings.showBattery = !Settings.showBattery; break;
             case "quickSettings": Settings.showQuickSettings = !Settings.showQuickSettings; break;
             case "powerMenu": Settings.showPowerMenu = !Settings.showPowerMenu; break;
+            case "screenCapture": case "capture": Settings.showScreenCapture = !Settings.showScreenCapture; break;
+        }
+    }
+
+    function setModuleVisibility(modId, visible) {
+        if (!Settings) return;
+        switch (modId) {
+            case "launcher": Settings.showLauncher = visible; break;
+            case "wallpaper": Settings.showWallpaper = visible; break;
+            case "workspaces": Settings.showWorkspaces = visible; break;
+            case "windowTitle": Settings.showWindowTitle = visible; break;
+            case "clock": Settings.showClock = visible; break;
+            case "media": Settings.showMedia = visible; break;
+            case "quickNotes": Settings.showQuickNotes = visible; break;
+            case "clipboard": Settings.showClipboard = visible; break;
+            case "screenCapture": case "capture": Settings.showScreenCapture = visible; break;
+            case "idleInhibitor": Settings.showIdleInhibitor = visible; break;
+            case "notifications": Settings.showNotifications = visible; break;
+            case "systemTray": Settings.showSystemTray = visible; break;
+            case "bluetooth": Settings.showBluetooth = visible; break;
+            case "network": Settings.showNetwork = visible; break;
+            case "volume": Settings.showVolume = visible; break;
+            case "battery": Settings.showBattery = visible; break;
+            case "quickSettings": Settings.showQuickSettings = visible; break;
+            case "powerMenu": Settings.showPowerMenu = visible; break;
         }
     }
 
@@ -273,8 +297,9 @@ PopupPanel {
     function removeModule(zoneId, index) {
         const list = getZoneList(zoneId);
         if (index < 0 || index >= list.length) return;
-        list.splice(index, 1);
+        const modId = list.splice(index, 1)[0];
         setZoneList(zoneId, list);
+        setModuleVisibility(modId, false);
     }
 
     function addModuleToZone(modId, targetZone) {
@@ -282,6 +307,7 @@ PopupPanel {
         if (list.includes(modId)) return;
         list.push(modId);
         setZoneList(targetZone, list);
+        setModuleVisibility(modId, true);
     }
 
     content: ColumnLayout {

@@ -243,6 +243,7 @@ PanelWindow {
     Component { id: compBattery; Battery { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compQuickSettings; QuickSettings { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compPowerMenu; PowerMenu {} }
+    Component { id: compScreenCapture; ScreenCapture {} }
 
     function getModuleComponent(modId) {
         if (modId === "launcher") return compLauncher;
@@ -262,6 +263,7 @@ PanelWindow {
         if (modId === "battery") return compBattery;
         if (modId === "quickSettings") return compQuickSettings;
         if (modId === "powerMenu") return compPowerMenu;
+        if (modId === "screenCapture" || modId === "capture") return compScreenCapture;
         return null;
     }
 
@@ -283,6 +285,7 @@ PanelWindow {
         if (modId === "battery") return (Settings?.showBattery ?? true) && (UPower.displayDevice?.isPresent ?? false);
         if (modId === "quickSettings") return Settings?.showQuickSettings ?? true;
         if (modId === "powerMenu") return Settings?.showPowerMenu ?? true;
+        if (modId === "screenCapture" || modId === "capture") return Settings?.showScreenCapture ?? true;
         return true;
     }
 
@@ -424,6 +427,52 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
                 z: 10
 
+                // ── Live Screen Recording Pill (Horizontal) ──────────────
+                Rectangle {
+                    visible: ScreenRecService.isRecording
+                    implicitHeight: Theme.barHeight - 8
+                    implicitWidth: recRowH.implicitWidth + 18
+                    radius: Theme.radiusPill
+                    color: Theme.alpha(Theme.error ?? "#ff5449", 0.18)
+                    border.color: Theme.error ?? "#ff5449"
+                    border.width: 1
+
+                    RowLayout {
+                        id: recRowH
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        // Pulsing red dot
+                        Rectangle {
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: Theme.error ?? "#ff5449"
+
+                            SequentialAnimation on opacity {
+                                loops: Animation.Infinite
+                                running: ScreenRecService.isRecording
+                                NumberAnimation { from: 1.0; to: 0.20; duration: 650; easing.type: Easing.InOutQuad }
+                                NumberAnimation { from: 0.20; to: 1.0; duration: 650; easing.type: Easing.InOutQuad }
+                            }
+                        }
+
+                        Text {
+                            text: "REC " + ScreenRecService.elapsedTimeString
+                            font.family: Theme.fontMono
+                            font.pixelSize: Theme.fontSizeXs
+                            font.weight: Font.Bold
+                            color: Theme.error ?? "#ff5449"
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ScreenRecService.stopRecording()
+                    }
+                }
+
                 Repeater {
                     model: Settings.barModulesCenter ?? ["clock"]
                     delegate: Loader {
@@ -509,6 +558,38 @@ PanelWindow {
                 anchors.centerIn: parent
                 spacing: Theme.widgetSpacing
                 z: 10
+
+                // ── Live Screen Recording Pill (Vertical) ─────────────────
+                Rectangle {
+                    visible: ScreenRecService.isRecording
+                    implicitWidth: Theme.barHeight - 8
+                    implicitHeight: Theme.barHeight - 8
+                    radius: Theme.radiusPill
+                    color: Theme.alpha(Theme.error ?? "#ff5449", 0.22)
+                    border.color: Theme.error ?? "#ff5449"
+                    border.width: 1
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: Theme.error ?? "#ff5449"
+
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite
+                            running: ScreenRecService.isRecording
+                            NumberAnimation { from: 1.0; to: 0.20; duration: 650; easing.type: Easing.InOutQuad }
+                            NumberAnimation { from: 0.20; to: 1.0; duration: 650; easing.type: Easing.InOutQuad }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: ScreenRecService.stopRecording()
+                    }
+                }
 
                 Repeater {
                     model: Settings.barModulesCenter ?? ["clock"]

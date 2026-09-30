@@ -13,34 +13,92 @@ PanelWindow {
     required property var modelData
     screen: modelData
 
-    readonly property bool isPrimaryScreen: !screen || (Quickshell.screens && Quickshell.screens.length > 0 && screen === Quickshell.screens[0])
-    readonly property bool isOpen: (Settings.showWelcomeWizard ?? false) && isPrimaryScreen
+    property bool open: false
+    readonly property bool isOpen: root.open
 
-    property int currentStep: 0
+    function checkShouldOpen() {
+        if (!Settings?.showWelcomeWizard) {
+            root.open = false;
+            return;
+        }
+
+        const focused = Hyprland?.focusedMonitor?.name;
+        if (focused && root.screen?.name) {
+            root.open = (root.screen.name === focused);
+            return;
+        }
+
+        root.open = (!root.screen || (Quickshell.screens && Quickshell.screens.length > 0 && root.screen === Quickshell.screens[0]));
+    }
+
+    Connections {
+        target: Settings
+        function onShowWelcomeWizardChanged() {
+            if (Settings?.showWelcomeWizard) {
+                root.checkShouldOpen();
+            } else {
+                root.open = false;
+            }
+        }
+        function onRequestWelcomeToggle() {
+            if (root.open) {
+                root.open = false;
+            } else {
+                root.checkShouldOpen();
+            }
+        }
+        function onRequestWelcomeOpen() {
+            root.checkShouldOpen();
+        }
+        function onRequestWelcomeClose() {
+            root.open = false;
+        }
+    }
+
+    Connections {
+        target: Hyprland
+        function onFocusedMonitorChanged() {
+            if (root.open) {
+                root.checkShouldOpen();
+            }
+        }
+    }
+
+    property int currentStep: Settings?.welcomeWizardStep ?? 0
+    onCurrentStepChanged: {
+        if (Settings && Settings.welcomeWizardStep !== currentStep) {
+            Settings.welcomeWizardStep = currentStep;
+        }
+    }
     readonly property int totalSteps: 5
 
-    // Detect if Brain_Shell is present on the filesystem
     readonly property string brainShellSrc: Quickshell.env("HOME") + "/.local/src/Brain_Shell"
     readonly property string brainShellConf: Quickshell.env("HOME") + "/.config/Brain_Shell"
     property bool brainShellDetected: false
+    property bool isInstallingBrainShell: false
 
-    function checkBrainShell() {
-        Quickshell.execDetached(["bash", "-c", "if [ -d '" + brainShellSrc + "' ] || [ -d '" + brainShellConf + "' ]; then touch /tmp/qs_brain_detected.tmp; else rm -f /tmp/qs_brain_detected.tmp; fi"]);
+    Process {
+        id: brainDetectProc
+        command: ["sh", "-c", "test -d \"$HOME/.local/src/Brain_Shell\" || test -d \"$HOME/.config/Brain_Shell\""]
+        running: false
+        onExited: (code) => {
+            root.brainShellDetected = (code === 0);
+        }
     }
 
-    property FileView brainCheckFile: FileView {
-        path: "/tmp/qs_brain_detected.tmp"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: {
-            root.brainShellDetected = true;
+    Process {
+        id: brainInstallProc
+        command: ["sh", "-c", "git clone -b dev https://github.com/Brainitech/Brain_Shell.git ~/.local/src/Brain_Shell"]
+        running: false
+        onExited: (code) => {
+            root.isInstallingBrainShell = false;
+            root.checkBrainShell();
         }
-        onLoaded: {
-            root.brainShellDetected = true;
-        }
-        onLoadFailed: {
-            root.brainShellDetected = false;
-        }
+    }
+
+    function checkBrainShell() {
+        brainDetectProc.running = false;
+        brainDetectProc.running = true;
     }
 
     anchors {
@@ -59,28 +117,25 @@ PanelWindow {
 
     property real animReveal: isOpen ? 1.0 : 0.0
     Behavior on animReveal {
-        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
     }
-
 
     function close() {
         Settings.showWelcomeWizard = false;
-        if (!Settings.hasCompletedWelcome) {
-            Settings.hasCompletedWelcome = true;
-            Settings.save();
-        }
+        Settings.markWelcomeCompleted();
+        Settings.welcomeWizardStep = 0;
     }
 
     function completeSetup() {
-        Settings.hasCompletedWelcome = true;
-        Settings.save();
+        Settings.markWelcomeCompleted();
         Settings.showWelcomeWizard = false;
+        Settings.welcomeWizardStep = 0;
         Quickshell.execDetached([
             "notify-send",
-            "-a", "Quickshell",
+            "-a", "quickshell",
             "-i", "preferences-desktop-theme",
-            "Welcome Aboard!",
-            "“follow the user, not the shell” • Your desktop is calibrated and ready."
+            "session locked",
+            "we are live. try not to break it immediately."
         ]);
     }
 
@@ -88,14 +143,19 @@ PanelWindow {
         if (isOpen) {
             currentStep = 0;
             checkBrainShell();
+            focusTrap.forceActiveFocus();
         }
     }
 
     Component.onCompleted: {
         checkBrainShell();
+        if (Settings?.showWelcomeWizard) {
+            checkShouldOpen();
+        }
     }
 
     Item {
+        id: focusTrap
         anchors.fill: parent
         focus: root.isOpen
         opacity: root.animReveal
@@ -103,12 +163,12 @@ PanelWindow {
         Keys.onEscapePressed: root.close()
         Keys.onRightPressed: if (root.currentStep < root.totalSteps - 1) root.currentStep++
         Keys.onLeftPressed: if (root.currentStep > 0) root.currentStep--
+        Keys.onReturnPressed: if (root.currentStep === root.totalSteps - 1) root.completeSetup()
 
-        // Backdrop Dimming / Scrim
         Rectangle {
             anchors.fill: parent
             color: Theme.scrim ?? "#000000"
-            opacity: 0.68 * root.animReveal
+            opacity: 0.88 * root.animReveal
 
             MouseArea {
                 anchors.fill: parent
@@ -116,11 +176,10 @@ PanelWindow {
             }
         }
 
-        // Centered Dialog Card
         Rectangle {
             id: dialogCard
-            width: Math.min(820, Math.max(640, (root.screen?.width ?? 1920) - 64))
-            height: Math.min(600, Math.max(500, (root.screen?.height ?? 1080) - 80))
+            width: Math.min(900, Math.max(680, (root.screen?.width ?? 1920) - 80))
+            height: Math.min(680, Math.max(540, (root.screen?.height ?? 1080) - 100))
             anchors.centerIn: parent
 
             radius: Math.max(16, Settings?.globalRounding ?? 16)
@@ -129,27 +188,31 @@ PanelWindow {
             border.width: 1
             clip: true
 
-            scale: 0.94 + (0.06 * root.animReveal)
+            scale: 0.90 + (0.10 * root.animReveal)
             Behavior on scale {
-                NumberAnimation { duration: 240; easing.type: Easing.OutBack }
+                NumberAnimation { duration: 350; easing.type: Easing.OutBack; easing.overshoot: 1.5 }
             }
 
-            // Catch clicks inside dialog so scrim doesn't close it
-            MouseArea {
-                anchors.fill: parent
-            }
+            MouseArea { anchors.fill: parent }
 
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
 
-                // ── 1. DIALOG HEADER ──────────────────────────────────────────
                 Rectangle {
+                    id: dialogHeader
                     Layout.fillWidth: true
-                    implicitHeight: 64
+                    implicitHeight: 68
+                    radius: dialogCard.radius
                     color: Theme.surface_container_high ?? Theme.surface_container
-                    border.color: Theme.outline_variant ?? Theme.cardBorder
                     border.width: 0
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: parent.radius
+                        color: parent.color
+                    }
 
                     RowLayout {
                         anchors.fill: parent
@@ -158,8 +221,8 @@ PanelWindow {
                         spacing: 12
 
                         Rectangle {
-                            width: 38
-                            height: 38
+                            width: 42
+                            height: 42
                             radius: Theme.radiusMd
                             color: Theme.primary_container
 
@@ -180,7 +243,7 @@ PanelWindow {
                                 spacing: 8
 
                                 Text {
-                                    text: "Ashley's Desktop Environment"
+                                    text: "the architecture of spite"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeMd
                                     font.weight: Theme.fontWeightBold
@@ -188,15 +251,15 @@ PanelWindow {
                                 }
 
                                 Rectangle {
-                                    height: 18
-                                    width: badgeText.implicitWidth + 10
+                                    height: 20
+                                    width: badgeText.implicitWidth + 12
                                     radius: Theme.radiusPill
                                     color: Theme.alpha(Theme.primary, 0.14)
 
                                     Text {
                                         id: badgeText
                                         anchors.centerIn: parent
-                                        text: "first-time setup"
+                                        text: "onboarding"
                                         font.family: Theme.fontMono
                                         font.pixelSize: Theme.fontSizeXs - 1
                                         font.weight: Theme.fontWeightBold
@@ -206,7 +269,7 @@ PanelWindow {
                             }
 
                             Text {
-                                text: "“follow the user, not the shell”"
+                                text: "zero electron bloat • built on borrowed time • wayland native"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: Theme.fontSizeXs
                                 font.italic: true
@@ -214,7 +277,6 @@ PanelWindow {
                             }
                         }
 
-                        // Close / Skip Button
                         Rectangle {
                             width: 32
                             height: 32
@@ -239,7 +301,6 @@ PanelWindow {
                         }
                     }
 
-                    // Bottom divider
                     Rectangle {
                         anchors.bottom: parent.bottom
                         width: parent.width
@@ -248,10 +309,9 @@ PanelWindow {
                     }
                 }
 
-                // ── 2. STEP BREADCRUMB STRIP ──────────────────────────────────
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 40
+                    implicitHeight: 44
                     color: Theme.surface_container_lowest ?? "transparent"
 
                     RowLayout {
@@ -262,17 +322,17 @@ PanelWindow {
 
                         Repeater {
                             model: [
-                                { label: "1. Philosophy", step: 0 },
-                                { label: "2. Aesthetics", step: 1 },
-                                { label: "3. Brain_Shell", step: 2 },
-                                { label: "4. Keybinds", step: 3 },
-                                { label: "5. Ready", step: 4 }
+                                { label: "1. the stack", step: 0 },
+                                { label: "2. dopamine", step: 1 },
+                                { label: "3. brain_shell", step: 2 },
+                                { label: "4. uplink", step: 3 },
+                                { label: "5. warranty", step: 4 }
                             ]
 
                             delegate: Rectangle {
                                 required property var modelData
                                 Layout.fillWidth: true
-                                height: 26
+                                height: 28
                                 radius: Theme.radiusPill
                                 readonly property bool isActive: root.currentStep === modelData.step
                                 readonly property bool isPassed: root.currentStep > modelData.step
@@ -285,7 +345,7 @@ PanelWindow {
 
                                 RowLayout {
                                     anchors.centerIn: parent
-                                    spacing: 4
+                                    spacing: 6
 
                                     Text {
                                         visible: isPassed
@@ -323,7 +383,6 @@ PanelWindow {
                     }
                 }
 
-                // ── 3. MAIN WIZARD BODY (FLICKABLE VIEW) ───────────────────────
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -333,71 +392,64 @@ PanelWindow {
                         id: flickBody
                         anchors.fill: parent
                         contentWidth: width
-                        contentHeight: stepContentCol.implicitHeight + 32
+                        contentHeight: stepContentCol.implicitHeight + 40
                         boundsBehavior: Flickable.StopAtBounds
+                        clip: true
 
                         ColumnLayout {
                             id: stepContentCol
-                            width: parent.width - 40
+                            width: parent.width - 48
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: 14
 
-                            Item { height: 6 }
+                            Item { height: 10 }
 
-                            // ══════════════════════════════════════════════════
-                            // STEP 0: WELCOME & PHILOSOPHY
-                            // ══════════════════════════════════════════════════
+                            // step 0
                             ColumnLayout {
                                 visible: root.currentStep === 0
                                 Layout.fillWidth: true
-                                spacing: 14
+                                spacing: 18
 
                                 ColumnLayout {
-                                    spacing: 4
+                                    spacing: 6
 
                                     Text {
-                                        text: "Welcome Home"
+                                        text: "built on pure spite"
                                         font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeTitle
+                                        font.pixelSize: Theme.fontSizeTitle * 1.1
                                         font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
 
                                     Text {
-                                        text: "A fluid, opinionated Wayland desktop tuned to your rhythm."
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        text: "i don't write clean code. i burn cpu cycles coercing qml to do things it was never designed for until the session stops crashing. this is a layer-shell setup held together by digital duct tape and questionable design choices."
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
                                         color: Theme.on_surface_variant
                                     }
                                 }
 
-                                // Philosophy Highlight Card
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    implicitHeight: philCol.implicitHeight + 24
+                                    implicitHeight: philCol.implicitHeight + 28
                                     radius: Theme.radiusMd
                                     color: Theme.surface_container_high ?? Theme.cardBackground
-                                    border.color: Theme.alpha(Theme.primary, 0.3)
+                                    border.color: Theme.alpha(Theme.primary, 0.5)
                                     border.width: 1
 
                                     ColumnLayout {
                                         id: philCol
                                         anchors.fill: parent
                                         anchors.margins: 14
-                                        spacing: 8
+                                        spacing: 12
 
                                         RowLayout {
-                                            spacing: 8
-
+                                            spacing: 10
+                                            Text { text: Theme.iconSparkles; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeMd; color: Theme.primary }
                                             Text {
-                                                text: Theme.iconSparkles
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeMd
-                                                color: Theme.primary
-                                            }
-
-                                            Text {
-                                                text: "The Core Philosophy: Follow the User, Not the Shell"
+                                                text: "the philosophy"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
                                                 font.weight: Theme.fontWeightBold
@@ -408,131 +460,29 @@ PanelWindow {
                                         Text {
                                             Layout.fillWidth: true
                                             wrapMode: Text.Wrap
-                                            text: "Most desktop setups force you into rigid, dogmatic workflows. This environment was crafted to adapt to you instead:\n\n" +
-                                                  "• Colors extract live from your wallpaper with zero reloads or flicker.\n" +
-                                                  "• Corner radii, scoop borders, and physics scale in real-time.\n" +
-                                                  "• Dual-shell compatibility: switch between Quickshell and Brain_Shell effortlessly, or keep it 100% native."
+                                            text: "• most desktop bars hold your hand. this one expects you to read the source code if something breaks.\n" +
+                                                  "• colors are ripped live from your wallpaper using matugen. if your wallpaper is ugly, your desktop will be ugly.\n" +
+                                                  "• zero webviews. if you want a browser engine to render your taskbar, go back to windows."
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
                                             color: Theme.on_surface
-                                            lineHeight: 1.3
-                                        }
-                                    }
-                                }
-
-                                // 3 Key Pillars
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 10
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        implicitHeight: 90
-                                        radius: Theme.radiusSm
-                                        color: Theme.surface_container_lowest
-                                        border.color: Theme.outline_variant
-                                        border.width: 1
-
-                                        ColumnLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 10
-                                            spacing: 4
-
-                                            Text {
-                                                text: "🎨 Reactive Colors"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightBold
-                                                color: Theme.primary
-                                            }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                wrapMode: Text.Wrap
-                                                text: "Matugen generates Material 3 palettes instantly on wallpaper shifts."
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs - 1
-                                                color: Theme.on_surface_variant
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        implicitHeight: 90
-                                        radius: Theme.radiusSm
-                                        color: Theme.surface_container_lowest
-                                        border.color: Theme.outline_variant
-                                        border.width: 1
-
-                                        ColumnLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 10
-                                            spacing: 4
-
-                                            Text {
-                                                text: "🧈 Tactile Physics"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightBold
-                                                color: Theme.primary
-                                            }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                wrapMode: Text.Wrap
-                                                text: "Bezier curves, concave scoop fillets, and buttery smooth transitions."
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs - 1
-                                                color: Theme.on_surface_variant
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        implicitHeight: 90
-                                        radius: Theme.radiusSm
-                                        color: Theme.surface_container_lowest
-                                        border.color: Theme.outline_variant
-                                        border.width: 1
-
-                                        ColumnLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 10
-                                            spacing: 4
-
-                                            Text {
-                                                text: "⌨️ Hand-Crafted Binds"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightBold
-                                                color: Theme.primary
-                                            }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                wrapMode: Text.Wrap
-                                                text: "Fast keyboard navigation with live fuzzy cheatsheets and HUD."
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs - 1
-                                                color: Theme.on_surface_variant
-                                            }
+                                            lineHeight: 1.4
                                         }
                                     }
                                 }
                             }
 
-                            // ══════════════════════════════════════════════════
-                            // STEP 1: AESTHETICS CALIBRATION
-                            // ══════════════════════════════════════════════════
+                            // step 1
                             ColumnLayout {
                                 visible: root.currentStep === 1
                                 Layout.fillWidth: true
                                 spacing: 14
 
                                 ColumnLayout {
-                                    spacing: 3
+                                    spacing: 4
 
                                     Text {
-                                        text: "Tune Your Aesthetics"
+                                        text: "visual dopamine"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeLg
                                         font.weight: Theme.fontWeightBold
@@ -540,99 +490,13 @@ PanelWindow {
                                     }
 
                                     Text {
-                                        text: "Adjust these live controls — watch the desktop react instantly in real time."
+                                        text: "adjust these live controls to trick your brain into thinking you are productive."
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: Theme.on_surface_variant
                                     }
                                 }
 
-                                // 1. Theme Mode: Dark vs Light
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    implicitHeight: 52
-                                    radius: Theme.radiusSm
-                                    color: Theme.surface_container_high
-                                    border.color: Theme.outline_variant
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 12
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 1
-
-                                            Text {
-                                                text: "Color Mode"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: Theme.on_surface
-                                            }
-                                            Text {
-                                                text: "Switch between dark and light palette rendering"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs - 1
-                                                color: Theme.on_surface_variant
-                                            }
-                                        }
-
-                                        RowLayout {
-                                            spacing: 6
-
-                                            Rectangle {
-                                                width: 76
-                                                height: 30
-                                                radius: Theme.radiusPill
-                                                readonly property bool isDark: Settings.matugenMode === "dark"
-                                                color: isDark ? Theme.primary : Theme.surface_container_lowest
-                                                border.color: isDark ? "transparent" : Theme.outline_variant
-                                                border.width: 1
-
-                                                RowLayout {
-                                                    anchors.centerIn: parent
-                                                    spacing: 4
-                                                    Text { text: Theme.iconMoon; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: parent.parent.isDark ? Theme.on_primary : Theme.on_surface }
-                                                    Text { text: "dark"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightMedium; color: parent.parent.isDark ? Theme.on_primary : Theme.on_surface }
-                                                }
-
-                                                MouseArea {
-                                                    anchors.fill: parent
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onClicked: WallpaperService.setMode("dark")
-                                                }
-                                            }
-
-                                            Rectangle {
-                                                width: 76
-                                                height: 30
-                                                radius: Theme.radiusPill
-                                                readonly property bool isLight: Settings.matugenMode === "light"
-                                                color: isLight ? Theme.primary : Theme.surface_container_lowest
-                                                border.color: isLight ? "transparent" : Theme.outline_variant
-                                                border.width: 1
-
-                                                RowLayout {
-                                                    anchors.centerIn: parent
-                                                    spacing: 4
-                                                    Text { text: Theme.iconSun; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: parent.parent.isLight ? Theme.on_primary : Theme.on_surface }
-                                                    Text { text: "light"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightMedium; color: parent.parent.isLight ? Theme.on_primary : Theme.on_surface }
-                                                }
-
-                                                MouseArea {
-                                                    anchors.fill: parent
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onClicked: WallpaperService.setMode("light")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // 2. Palette Scheme Selection
                                 Rectangle {
                                     Layout.fillWidth: true
                                     implicitHeight: 64
@@ -641,21 +505,79 @@ PanelWindow {
                                     border.color: Theme.outline_variant
                                     border.width: 1
 
-                                    ColumnLayout {
+                                    RowLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 6
+                                        anchors.margins: 12
+                                        spacing: 12
 
-                                        Text {
-                                            text: "Matugen Dynamic Scheme"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Theme.fontWeightMedium
-                                            color: Theme.on_surface
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Text { text: "color mode"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightMedium; color: Theme.on_surface }
+                                            Text { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "dark mode because we stare at screens all day. light mode if you hate yourself."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs - 1; color: Theme.on_surface_variant }
                                         }
 
                                         RowLayout {
-                                            spacing: 6
+                                            spacing: 8
+                                            Rectangle {
+                                                id: darkBtn
+                                                width: 86
+                                                height: 34
+                                                radius: Theme.radiusPill
+                                                readonly property bool isDark: Settings.matugenMode === "dark"
+                                                color: isDark ? Theme.primary : Theme.surface_container_lowest
+                                                border.color: isDark ? "transparent" : Theme.outline_variant
+                                                border.width: 1
+
+                                                RowLayout {
+                                                    anchors.centerIn: parent
+                                                    spacing: 6
+                                                    Text { text: Theme.iconMoon; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: darkBtn.isDark ? Theme.on_primary : Theme.on_surface }
+                                                    Text { text: "dark"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightMedium; color: darkBtn.isDark ? Theme.on_primary : Theme.on_surface }
+                                                }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: WallpaperService.setMode("dark") }
+                                            }
+
+                                            Rectangle {
+                                                id: lightBtn
+                                                width: 86
+                                                height: 34
+                                                radius: Theme.radiusPill
+                                                readonly property bool isLight: Settings.matugenMode === "light"
+                                                color: isLight ? Theme.primary : Theme.surface_container_lowest
+                                                border.color: isLight ? "transparent" : Theme.outline_variant
+                                                border.width: 1
+
+                                                RowLayout {
+                                                    anchors.centerIn: parent
+                                                    spacing: 6
+                                                    Text { text: Theme.iconSun; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: lightBtn.isLight ? Theme.on_primary : Theme.on_surface }
+                                                    Text { text: "light"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightMedium; color: lightBtn.isLight ? Theme.on_primary : Theme.on_surface }
+                                                }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: WallpaperService.setMode("light") }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 74
+                                    radius: Theme.radiusSm
+                                    color: Theme.surface_container_high
+                                    border.color: Theme.outline_variant
+                                    border.width: 1
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 8
+
+                                        Text { text: "matugen dynamic scheme"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightMedium; color: Theme.on_surface }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
 
                                             Repeater {
                                                 model: [
@@ -665,11 +587,10 @@ PanelWindow {
                                                     { id: "scheme-fruit-salad", label: "fruit salad" },
                                                     { id: "scheme-monochrome", label: "monochrome" }
                                                 ]
-
                                                 delegate: Rectangle {
                                                     required property var modelData
-                                                    height: 26
-                                                    width: schemeText.implicitWidth + 16
+                                                    Layout.fillWidth: true
+                                                    height: 30
                                                     radius: Theme.radiusPill
                                                     readonly property bool isSelected: Settings.matugenScheme === modelData.id
                                                     color: isSelected ? Theme.primary : (sMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_lowest)
@@ -677,7 +598,6 @@ PanelWindow {
                                                     border.width: 1
 
                                                     Text {
-                                                        id: schemeText
                                                         anchors.centerIn: parent
                                                         text: modelData.label
                                                         font.family: Theme.fontFamily
@@ -685,7 +605,6 @@ PanelWindow {
                                                         font.weight: isSelected ? Theme.fontWeightBold : Theme.fontWeightMedium
                                                         color: isSelected ? Theme.on_primary : Theme.on_surface
                                                     }
-
                                                     MouseArea {
                                                         id: sMouse
                                                         anchors.fill: parent
@@ -699,10 +618,9 @@ PanelWindow {
                                     }
                                 }
 
-                                // 3. Corner Rounding Slider
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    implicitHeight: 64
+                                    implicitHeight: 68
                                     radius: Theme.radiusSm
                                     color: Theme.surface_container_high
                                     border.color: Theme.outline_variant
@@ -710,8 +628,8 @@ PanelWindow {
 
                                     ColumnLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 2
+                                        anchors.margins: 12
+                                        spacing: 4
 
                                         Slider {
                                             Layout.fillWidth: true
@@ -719,7 +637,7 @@ PanelWindow {
                                             to: 24
                                             stepSize: 1
                                             value: Settings.globalRounding
-                                            label: "Global Corner Rounding"
+                                            label: "global corner rounding"
                                             unit: " px"
                                             icon: Theme.iconSliders
                                             accentColor: Theme.primary
@@ -728,14 +646,13 @@ PanelWindow {
                                     }
                                 }
 
-                                // 4. Bar Island / Wallpaper Shuffle Row
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    spacing: 10
+                                    spacing: 12
 
                                     Rectangle {
                                         Layout.fillWidth: true
-                                        implicitHeight: 52
+                                        implicitHeight: 56
                                         radius: Theme.radiusSm
                                         color: Theme.surface_container_high
                                         border.color: Theme.outline_variant
@@ -743,16 +660,14 @@ PanelWindow {
 
                                         RowLayout {
                                             anchors.fill: parent
-                                            anchors.margins: 10
-                                            spacing: 10
-
+                                            anchors.margins: 12
+                                            spacing: 12
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 1
-                                                Text { text: "Floating Bar Island"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightMedium; color: Theme.on_surface }
-                                                Text { text: "Floating pill bar with screen gaps"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs - 1; color: Theme.on_surface_variant }
+                                                spacing: 2
+                                                Text { text: "floating bar island"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightMedium; color: Theme.on_surface }
+                                                Text { text: "toggle between floating pill gaps or clamped edges."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs - 1; color: Theme.on_surface_variant }
                                             }
-
                                             ToggleSwitch {
                                                 checked: Settings.barFloating
                                                 onToggled: Settings.barFloating = !Settings.barFloating
@@ -761,8 +676,8 @@ PanelWindow {
                                     }
 
                                     Rectangle {
-                                        Layout.preferredWidth: 180
-                                        implicitHeight: 52
+                                        Layout.preferredWidth: 200
+                                        implicitHeight: 56
                                         radius: Theme.radiusSm
                                         color: rollMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high
                                         border.color: Theme.outline_variant
@@ -770,21 +685,10 @@ PanelWindow {
 
                                         RowLayout {
                                             anchors.centerIn: parent
-                                            spacing: 6
-
-                                            Text {
-                                                text: "🎲"
-                                                font.pixelSize: Theme.fontSizeMd
-                                            }
-                                            Text {
-                                                text: "Roll Wallpaper"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightBold
-                                                color: Theme.primary
-                                            }
+                                            spacing: 8
+                                            Text { text: "🎲"; font.pixelSize: Theme.fontSizeMd }
+                                            Text { text: "roll wallpaper"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightBold; color: Theme.primary }
                                         }
-
                                         MouseArea {
                                             id: rollMouse
                                             anchors.fill: parent
@@ -796,19 +700,17 @@ PanelWindow {
                                 }
                             }
 
-                            // ══════════════════════════════════════════════════
-                            // STEP 2: THE BRAIN_SHELL DILEMMA
-                            // ══════════════════════════════════════════════════
+                            // step 2
                             ColumnLayout {
                                 visible: root.currentStep === 2
                                 Layout.fillWidth: true
                                 spacing: 14
 
                                 ColumnLayout {
-                                    spacing: 3
+                                    spacing: 4
 
                                     Text {
-                                        text: "The Shell Profile: To Brain or Not to Brain?"
+                                        text: "the brain_shell dilemma"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeLg
                                         font.weight: Theme.fontWeightBold
@@ -816,266 +718,216 @@ PanelWindow {
                                     }
 
                                     Text {
-                                        text: "Choose whether to enable the Brain_Shell switcher or keep your desktop pure native."
+                                        text: "brain_shell is an experimental mutation of this setup. decide if you want to deal with it."
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: Theme.on_surface_variant
                                     }
                                 }
 
-                                // Context explanation
+                                // automated install card (skips rendering if already installed)
                                 Rectangle {
+                                    visible: !root.brainShellDetected
                                     Layout.fillWidth: true
-                                    implicitHeight: bDescCol.implicitHeight + 18
+                                    implicitHeight: devInstallCol.implicitHeight + 24
                                     radius: Theme.radiusSm
-                                    color: Theme.surface_container_high
+                                    color: Theme.surface_container_lowest
                                     border.color: Theme.outline_variant
                                     border.width: 1
 
                                     ColumnLayout {
-                                        id: bDescCol
+                                        id: devInstallCol
                                         anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 4
+                                        anchors.margins: 12
+                                        spacing: 10
 
                                         RowLayout {
                                             spacing: 6
-                                            Text { text: "🧠"; font.pixelSize: Theme.fontSizeMd }
+                                            Text { text: "⚠️"; font.pixelSize: Theme.fontSizeSm }
                                             Text {
-                                                text: "What is Brain_Shell?"
+                                                text: "brain_shell not found on disk"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
                                                 font.weight: Theme.fontWeightBold
-                                                color: Theme.primary
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            Rectangle {
-                                                height: 18
-                                                width: statusTxt.implicitWidth + 10
-                                                radius: Theme.radiusPill
-                                                color: root.brainShellDetected ? Theme.alpha(Theme.primary, 0.15) : Theme.alpha(Theme.outline, 0.15)
-                                                Text {
-                                                    id: statusTxt
-                                                    anchors.centerIn: parent
-                                                    text: root.brainShellDetected ? "✓ detected on disk" : "not yet installed"
-                                                    font.family: Theme.fontMono
-                                                    font.pixelSize: Theme.fontSizeXs - 1
-                                                    color: root.brainShellDetected ? Theme.primary : Theme.on_surface_variant
-                                                }
+                                                color: Theme.on_surface
                                             }
                                         }
-
+                                        
                                         Text {
                                             Layout.fillWidth: true
                                             wrapMode: Text.Wrap
-                                            text: "Brainiac created Brain_Shell — an alternative Material You shell with its own distinct launcher, dashboard, and widgets. We engineered seamless coexistence so both shells share your wallpapers and theme colors."
+                                            text: "the main branch is basically a biohazard right now, so we only use the dev branch. click below to let quickshell clone it directly into ~/.local/src for you, or just ignore it and run in purist mode."
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
                                             color: Theme.on_surface_variant
-                                            lineHeight: 1.25
+                                        }
+
+                                        Rectangle {
+                                            Layout.fillWidth: true
+                                            height: 40
+                                            radius: Theme.radiusSm
+                                            color: root.isInstallingBrainShell ? Theme.surface_container_highest : (installMouse.containsMouse ? Theme.surface_container_highest : Theme.primary)
+                                            border.color: root.isInstallingBrainShell ? Theme.outline_variant : Theme.primary
+                                            border.width: 1
+
+                                            RowLayout {
+                                                anchors.centerIn: parent
+                                                spacing: 8
+
+                                                Text {
+                                                    text: root.isInstallingBrainShell ? Theme.iconSync : Theme.iconDownload
+                                                    font.family: Theme.fontIcon
+                                                    font.pixelSize: Theme.fontSizeSm
+                                                    color: root.isInstallingBrainShell ? Theme.on_surface_variant : Theme.on_primary
+                                                    RotationAnimation on rotation {
+                                                        loops: Animation.Infinite
+                                                        from: 0; to: 360
+                                                        duration: 1000
+                                                        running: root.isInstallingBrainShell
+                                                    }
+                                                }
+
+                                                Text {
+                                                    text: root.isInstallingBrainShell ? "cloning dev branch into src... please wait." : "click to install brain_shell (dev branch)"
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: Theme.fontSizeXs
+                                                    font.weight: Theme.fontWeightBold
+                                                    color: root.isInstallingBrainShell ? Theme.on_surface_variant : Theme.on_primary
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                id: installMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: !root.isInstallingBrainShell
+                                                cursorShape: root.isInstallingBrainShell ? Qt.WaitCursor : Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (!root.isInstallingBrainShell) {
+                                                        root.isInstallingBrainShell = true;
+                                                        brainInstallProc.running = true;
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
 
-                                // Choice Option 1: Keep Shell Switcher
+                                // options (always visible so they can choose even if they don't install)
                                 Rectangle {
                                     id: opt1Card
                                     Layout.fillWidth: true
-                                    implicitHeight: opt1Col.implicitHeight + 20
+                                    implicitHeight: opt1Col.implicitHeight + 24
                                     radius: Theme.radiusMd
                                     readonly property bool isSelected: Settings.showShellTab ?? true
                                     color: isSelected ? Theme.alpha(Theme.primary, 0.12) : Theme.surface_container_lowest
                                     border.color: isSelected ? Theme.primary : Theme.outline_variant
                                     border.width: isSelected ? 2 : 1
-
                                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                     ColumnLayout {
                                         id: opt1Col
                                         anchors.fill: parent
-                                        anchors.margins: 12
-                                        spacing: 6
+                                        anchors.margins: 14
+                                        spacing: 8
 
                                         RowLayout {
-                                            spacing: 10
-
+                                            spacing: 12
                                             Rectangle {
-                                                width: 22
-                                                height: 22
-                                                radius: 11
+                                                width: 24
+                                                height: 24
+                                                radius: 12
                                                 color: opt1Card.isSelected ? Theme.primary : "transparent"
                                                 border.color: opt1Card.isSelected ? Theme.primary : Theme.outline
                                                 border.width: 2
-
-                                                Text {
-                                                    visible: opt1Card.isSelected
-                                                    anchors.centerIn: parent
-                                                    text: Theme.iconCheck
-                                                    font.family: Theme.fontIcon
-                                                    font.pixelSize: 11
-                                                    color: Theme.on_primary
-                                                }
+                                                Text { visible: opt1Card.isSelected; anchors.centerIn: parent; text: Theme.iconCheck; font.family: Theme.fontIcon; font.pixelSize: 12; color: Theme.on_primary }
                                             }
-
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 1
-
-                                                Text {
-                                                    text: "Enable Shell Switcher & Brain_Shell (Recommended)"
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: Theme.fontSizeSm
-                                                    font.weight: Theme.fontWeightBold
-                                                    color: opt1Card.isSelected ? Theme.primary : Theme.on_surface
-                                                }
-
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    wrapMode: Text.Wrap
-                                                    text: "Keep the 'Shells' tab active in QuickSettings. Lets you switch between Quickshell and Brain_Shell with one click or with `qs-switch`."
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: Theme.fontSizeXs
-                                                    color: Theme.on_surface_variant
-                                                }
+                                                spacing: 2
+                                                Text { text: "chaotic dual-shell mode"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightBold; color: opt1Card.isSelected ? Theme.primary : Theme.on_surface }
+                                                Text { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "keeps the 'shells' tab active in quicksettings. lets you hot-swap between this architecture and brain_shell with a single click."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface_variant }
                                             }
                                         }
                                     }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Settings.showShellTab = true
-                                    }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Settings.showShellTab = true }
                                 }
 
-                                // Choice Option 2: Pure Native (Hide Switcher Tab)
                                 Rectangle {
                                     id: opt2Card
                                     Layout.fillWidth: true
-                                    implicitHeight: opt2Col.implicitHeight + 20
+                                    implicitHeight: opt2Col.implicitHeight + 24
                                     radius: Theme.radiusMd
                                     readonly property bool isSelected: !(Settings.showShellTab ?? true)
                                     color: isSelected ? Theme.alpha(Theme.primary, 0.12) : Theme.surface_container_lowest
                                     border.color: isSelected ? Theme.primary : Theme.outline_variant
                                     border.width: isSelected ? 2 : 1
-
                                     Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                     ColumnLayout {
                                         id: opt2Col
                                         anchors.fill: parent
-                                        anchors.margins: 12
-                                        spacing: 6
+                                        anchors.margins: 14
+                                        spacing: 8
 
                                         RowLayout {
-                                            spacing: 10
-
+                                            spacing: 12
                                             Rectangle {
-                                                width: 22
-                                                height: 22
-                                                radius: 11
+                                                width: 24
+                                                height: 24
+                                                radius: 12
                                                 color: opt2Card.isSelected ? Theme.primary : "transparent"
                                                 border.color: opt2Card.isSelected ? Theme.primary : Theme.outline
                                                 border.width: 2
-
-                                                Text {
-                                                    visible: opt2Card.isSelected
-                                                    anchors.centerIn: parent
-                                                    text: Theme.iconCheck
-                                                    font.family: Theme.fontIcon
-                                                    font.pixelSize: 11
-                                                    color: Theme.on_primary
-                                                }
+                                                Text { visible: opt2Card.isSelected; anchors.centerIn: parent; text: Theme.iconCheck; font.family: Theme.fontIcon; font.pixelSize: 12; color: Theme.on_primary }
                                             }
-
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 1
-
-                                                Text {
-                                                    text: "Pure Native Quickshell (Hide Shells Tab)"
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: Theme.fontSizeSm
-                                                    font.weight: Theme.fontWeightBold
-                                                    color: opt2Card.isSelected ? Theme.primary : Theme.on_surface
-                                                }
-
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    wrapMode: Text.Wrap
-                                                    text: "Say no to Brain_Shell. The 'Shells' tab will completely disappear from QuickSettings to keep your interface clean and unified."
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: Theme.fontSizeXs
-                                                    color: Theme.on_surface_variant
-                                                }
+                                                spacing: 2
+                                                Text { text: "purist quickshell mode"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightBold; color: opt2Card.isSelected ? Theme.primary : Theme.on_surface }
+                                                Text { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "purges the 'shells' tab entirely. keeps your interface locked into this setup without extra clutter."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface_variant }
                                             }
                                         }
                                     }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: Settings.showShellTab = false
-                                    }
-                                }
-
-                                Text {
-                                    text: "Tip: You can re-enable or hide the Shells tab anytime in QuickSettings → Layout/Vibe."
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs - 1
-                                    font.italic: true
-                                    color: Theme.on_surface_variant
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: Settings.showShellTab = false }
                                 }
                             }
 
-                            // ══════════════════════════════════════════════════
-                            // STEP 3: ESSENTIAL KEYBINDS
-                            // ══════════════════════════════════════════════════
+                            // step 3
                             ColumnLayout {
                                 visible: root.currentStep === 3
                                 Layout.fillWidth: true
                                 spacing: 14
 
                                 ColumnLayout {
-                                    spacing: 3
-
-                                    Text {
-                                        text: "Master Your Keybinds"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeLg
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
-
-                                    Text {
-                                        text: "Essential muscle memory shortcuts to navigate without lifting your hands."
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        color: Theme.on_surface_variant
-                                    }
+                                    spacing: 4
+                                    Text { text: "muscle memory"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeLg; font.weight: Theme.fontWeightBold; color: Theme.on_surface }
+                                    Text { text: "hyprland bindings designed to keep your hands on the home row where they belong."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface_variant }
                                 }
 
-                                // Keybind Cards Grid
                                 GridLayout {
                                     Layout.fillWidth: true
                                     columns: 2
-                                    rowSpacing: 8
-                                    columnSpacing: 10
+                                    rowSpacing: 10
+                                    columnSpacing: 12
 
                                     Repeater {
                                         model: [
-                                            { bind: "Win + Space", desc: "App Launcher", note: "Fuzzy search apps & quick calculator" },
-                                            { bind: "Win + W", desc: "Shuffle Wallpaper", note: "Roll wallpaper + instant reactive theme" },
-                                            { bind: "Win + S", desc: "QuickSettings", note: "Volume, network, theme toggles & studio" },
-                                            { bind: "Win + /", desc: "Keybinds Cheatsheet", note: "Live searchable shortcuts HUD" },
-                                            { bind: "Win + Shift + S", desc: "Screenshot Tool", note: "Interactive crop, OCR, & color grab" },
-                                            { bind: "Win + Return", desc: "Spawn Terminal", note: "Quick access to your terminal emulator" }
+                                            { bind: "win + d", desc: "app launcher", note: "fuzzy search your binaries" },
+                                            { bind: "win + t", desc: "terminal", note: "kitty instance directly into uwsm" },
+                                            { bind: "win + w", desc: "roll wallpaper", note: "instantly mutate your color scheme" },
+                                            { bind: "win + v", desc: "clipboard", note: "frecency based history picker" },
+                                            { bind: "win + a", desc: "audio menu", note: "quick sink selectors" },
+                                            { bind: "win + space", desc: "float", note: "rip window from the tiling grid" },
+                                            { bind: "win + shft + spc", desc: "sticky pip", note: "pin floating window for video" },
+                                            { bind: "win + q", desc: "kill", note: "vaporize focused window" },
+                                            { bind: "print", desc: "screenshot", note: "marquee crop and hex harvesting" },
+                                            { bind: "win + end", desc: "lock screen", note: "pam layer-shell lockdown" }
                                         ]
 
                                         delegate: Rectangle {
                                             required property var modelData
                                             Layout.fillWidth: true
-                                            implicitHeight: 56
+                                            implicitHeight: 60
                                             radius: Theme.radiusSm
                                             color: Theme.surface_container_high
                                             border.color: Theme.outline_variant
@@ -1084,56 +936,32 @@ PanelWindow {
                                             RowLayout {
                                                 anchors.fill: parent
                                                 anchors.margins: 10
-                                                spacing: 10
+                                                spacing: 12
 
                                                 Rectangle {
-                                                    height: 26
-                                                    width: keyTxt.implicitWidth + 14
+                                                    height: 28
+                                                    width: keyTxt.implicitWidth + 16
                                                     radius: Theme.radiusSm
                                                     color: Theme.surface_container_lowest
                                                     border.color: Theme.outline_variant
                                                     border.width: 1
-
-                                                    Text {
-                                                        id: keyTxt
-                                                        anchors.centerIn: parent
-                                                        text: modelData.bind
-                                                        font.family: Theme.fontMono
-                                                        font.pixelSize: Theme.fontSizeXs
-                                                        font.weight: Theme.fontWeightBold
-                                                        color: Theme.primary
-                                                    }
+                                                    Text { id: keyTxt; anchors.centerIn: parent; text: modelData.bind; font.family: Theme.fontMono; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightBold; color: Theme.primary }
                                                 }
 
                                                 ColumnLayout {
                                                     Layout.fillWidth: true
                                                     spacing: 1
-
-                                                    Text {
-                                                        text: modelData.desc
-                                                        font.family: Theme.fontFamily
-                                                        font.pixelSize: Theme.fontSizeXs
-                                                        font.weight: Theme.fontWeightBold
-                                                        color: Theme.on_surface
-                                                    }
-
-                                                    Text {
-                                                        text: modelData.note
-                                                        font.family: Theme.fontFamily
-                                                        font.pixelSize: Theme.fontSizeXs - 1
-                                                        color: Theme.on_surface_variant
-                                                        elide: Text.ElideRight
-                                                    }
+                                                    Text { text: modelData.desc; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightBold; color: Theme.on_surface }
+                                                    Text { Layout.fillWidth: true; text: modelData.note; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs - 1; color: Theme.on_surface_variant; elide: Text.ElideRight }
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                // Interactive Button to trigger Keybinds Preview
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    implicitHeight: 40
+                                    implicitHeight: 46
                                     radius: Theme.radiusSm
                                     color: prevKbMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_lowest
                                     border.color: Theme.outline_variant
@@ -1141,10 +969,9 @@ PanelWindow {
 
                                     RowLayout {
                                         anchors.centerIn: parent
-                                        spacing: 8
-
-                                        Text { text: Theme.iconKeyboard; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeSm; color: Theme.primary }
-                                        Text { text: "Preview Live Keybinds Cheatsheet (Win + /)"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightMedium; color: Theme.primary }
+                                        spacing: 10
+                                        Text { text: Theme.iconKeyboard; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeMd; color: Theme.primary }
+                                        Text { text: "view full keybind cheatsheet"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightBold; color: Theme.primary }
                                     }
 
                                     MouseArea {
@@ -1152,44 +979,26 @@ PanelWindow {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            Settings.requestKeybindsToggle();
-                                        }
+                                        onClicked: { root.close(); Settings.requestKeybindsOpen(); }
                                     }
                                 }
                             }
 
-                            // ══════════════════════════════════════════════════
-                            // STEP 4: READY TO ROLL
-                            // ══════════════════════════════════════════════════
+                            // step 4
                             ColumnLayout {
                                 visible: root.currentStep === 4
                                 Layout.fillWidth: true
                                 spacing: 14
 
                                 ColumnLayout {
-                                    spacing: 3
-
-                                    Text {
-                                        text: "You're All Set!"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeTitle
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
-
-                                    Text {
-                                        text: "Your configuration has been saved. Your desktop is ready for action."
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        color: Theme.on_surface_variant
-                                    }
+                                    spacing: 4
+                                    Text { text: "warranty void"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeTitle * 1.1; font.weight: Theme.fontWeightBold; color: Theme.on_surface }
+                                    Text { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "you made it to the end. if the shell segfaults from here on out, do not open an issue on github. fix it yourself or learn to live with the bugs."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; color: Theme.on_surface_variant }
                                 }
 
-                                // Calibration Summary Card
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    implicitHeight: summCol.implicitHeight + 20
+                                    implicitHeight: summCol.implicitHeight + 24
                                     radius: Theme.radiusMd
                                     color: Theme.surface_container_high
                                     border.color: Theme.alpha(Theme.primary, 0.4)
@@ -1198,108 +1007,87 @@ PanelWindow {
                                     ColumnLayout {
                                         id: summCol
                                         anchors.fill: parent
-                                        anchors.margins: 12
-                                        spacing: 8
+                                        anchors.margins: 14
+                                        spacing: 12
 
-                                        Text {
-                                            text: "Your Active Profile Summary"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.primary
-                                        }
+                                        Text { text: "final configuration payload"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeSm; font.weight: Theme.fontWeightBold; color: Theme.primary }
 
-                                        RowLayout {
-                                            spacing: 12
-
-                                            Text {
-                                                text: "• Theme Mode: " + Settings.matugenMode
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.on_surface
-                                            }
-
-                                            Text {
-                                                text: "• Scheme: " + Settings.matugenScheme
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.on_surface
-                                            }
-
-                                            Text {
-                                                text: "• Rounding: " + Settings.globalRounding + "px"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.on_surface
-                                            }
-
-                                            Text {
-                                                text: "• Shells Tab: " + (Settings.showShellTab ? "Visible" : "Hidden")
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.on_surface
-                                            }
-                                        }
-
-                                        Text {
+                                        GridLayout {
                                             Layout.fillWidth: true
-                                            wrapMode: Text.Wrap
-                                            text: "You can reopen this setup guide anytime from terminal via `qs-action welcome` or through the QuickSettings menu."
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs - 1
-                                            color: Theme.on_surface_variant
+                                            columns: 2
+                                            rowSpacing: 10
+                                            columnSpacing: 16
+
+                                            RowLayout { spacing: 8; Text { text: "✓"; font.pixelSize: Theme.fontSizeXs; color: Theme.primary } Text { text: "theme: " + Settings.matugenMode; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface } }
+                                            RowLayout { spacing: 8; Text { text: "✓"; font.pixelSize: Theme.fontSizeXs; color: Theme.primary } Text { text: "scheme: " + (Settings.matugenScheme ? Settings.matugenScheme.replace(/^scheme-/, "") : "unknown"); font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface } }
+                                            RowLayout { spacing: 8; Text { text: "✓"; font.pixelSize: Theme.fontSizeXs; color: Theme.primary } Text { text: "rounding: " + Settings.globalRounding + "px"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface } }
+                                            RowLayout { spacing: 8; Text { text: "✓"; font.pixelSize: Theme.fontSizeXs; color: Theme.primary } Text { text: "dual-shell: " + (Settings.showShellTab ? "enabled" : "disabled"); font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface } }
                                         }
+
+                                        Text { Layout.fillWidth: true; wrapMode: Text.Wrap; text: "you can recall this menu by typing `qs-action welcome` in your terminal if you want to ruin your settings again later."; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs - 1; color: Theme.on_surface_variant }
                                     }
                                 }
 
-                                // Celebratory Call to Action
                                 Rectangle {
                                     Layout.fillWidth: true
-                                    implicitHeight: 48
-                                    radius: Theme.radiusSm
-                                    color: Theme.primary
+                                    implicitHeight: 56
+                                    radius: Theme.radiusMd
+                                    color: ctaMouse.containsMouse ? Qt.lighter(Theme.primary, 1.15) : Theme.primary
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                     RowLayout {
                                         anchors.centerIn: parent
-                                        spacing: 8
-
-                                        Text {
-                                            text: Theme.iconSparkles
-                                            font.family: Theme.fontIcon
-                                            font.pixelSize: Theme.fontSizeMd
-                                            color: Theme.on_primary
-                                        }
-
-                                        Text {
-                                            text: "Finish Setup & Launch Desktop"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeMd
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_primary
-                                        }
+                                        spacing: 12
+                                        Text { text: Theme.iconSparkles; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeLg; color: Theme.on_primary }
+                                        Text { text: "save config and launch"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeMd; font.weight: Theme.fontWeightBold; color: Theme.on_primary; font.letterSpacing: 1.1 }
                                     }
 
                                     MouseArea {
+                                        id: ctaMouse
                                         anchors.fill: parent
+                                        hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: root.completeSetup()
                                     }
                                 }
                             }
-
                             Item { height: 10 }
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.right: parent.right
+                        anchors.top: flickBody.top
+                        anchors.bottom: flickBody.bottom
+                        width: 4
+                        color: "transparent"
+
+                        Rectangle {
+                            width: parent.width
+                            radius: 2
+                            color: Theme.on_surface_variant
+                            opacity: (flickBody.contentHeight > flickBody.height) ? (flickBody.moving ? 0.6 : 0.3) : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            height: Math.max(20, flickBody.height * (flickBody.height / Math.max(1, flickBody.contentHeight)))
+                            y: flickBody.visibleArea.yPosition * flickBody.height
                         }
                     }
                 }
 
-                // ── 4. DIALOG FOOTER & NAVIGATION ─────────────────────────────
                 Rectangle {
+                    id: dialogFooter
                     Layout.fillWidth: true
-                    implicitHeight: 58
+                    implicitHeight: 64
+                    radius: dialogCard.radius
                     color: Theme.surface_container_high ?? Theme.surface_container
-                    border.color: Theme.outline_variant ?? Theme.cardBorder
                     border.width: 0
 
+                    Rectangle {
+                        anchors.top: parent.top
+                        width: parent.width
+                        height: parent.radius
+                        color: parent.color
+                    }
                     Rectangle {
                         anchors.top: parent.top
                         width: parent.width
@@ -1313,11 +1101,10 @@ PanelWindow {
                         anchors.rightMargin: 20
                         spacing: 12
 
-                        // Back Button
                         Rectangle {
                             visible: root.currentStep > 0
-                            width: 80
-                            height: 34
+                            width: 90
+                            height: 36
                             radius: Theme.radiusPill
                             color: backMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_lowest
                             border.color: Theme.outline_variant
@@ -1325,73 +1112,59 @@ PanelWindow {
 
                             RowLayout {
                                 anchors.centerIn: parent
-                                spacing: 4
+                                spacing: 6
                                 Text { text: Theme.iconChevronLeft; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: Theme.on_surface }
                                 Text { text: "back"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightMedium; color: Theme.on_surface }
                             }
-
-                            MouseArea {
-                                id: backMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: if (root.currentStep > 0) root.currentStep--
-                            }
+                            MouseArea { id: backMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (root.currentStep > 0) root.currentStep-- }
                         }
 
                         Item { Layout.fillWidth: true }
 
-                        // Step counter
                         Text {
-                            text: "Step " + (root.currentStep + 1) + " of " + root.totalSteps
+                            text: "step " + (root.currentStep + 1) + " of " + root.totalSteps
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeXs
+                            font.weight: Theme.fontWeightBold
                             color: Theme.on_surface_variant
                         }
 
                         Item { Layout.fillWidth: true }
 
-                        // Next / Finish Button
                         Rectangle {
-                            width: root.currentStep === root.totalSteps - 1 ? 140 : 90
-                            height: 34
+                            width: root.currentStep === root.totalSteps - 1 ? 160 : 100
+                            height: 36
                             radius: Theme.radiusPill
-                            color: Theme.primary
+                            color: nextMouse.containsMouse ? Qt.lighter(Theme.primary, 1.1) : Theme.primary
 
                             RowLayout {
                                 anchors.centerIn: parent
-                                spacing: 4
-
-                                Text {
-                                    text: root.currentStep === root.totalSteps - 1 ? "Launch Desktop" : "next"
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.fontSizeXs
-                                    font.weight: Theme.fontWeightBold
-                                    color: Theme.on_primary
-                                }
-
-                                Text {
-                                    text: root.currentStep === root.totalSteps - 1 ? Theme.iconSparkles : Theme.iconChevronRight
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeXs
-                                    color: Theme.on_primary
-                                }
+                                spacing: 6
+                                Text { text: root.currentStep === root.totalSteps - 1 ? "launch" : "next"; font.family: Theme.fontFamily; font.pixelSize: Theme.fontSizeXs; font.weight: Theme.fontWeightBold; color: Theme.on_primary }
+                                Text { text: root.currentStep === root.totalSteps - 1 ? Theme.iconSparkles : Theme.iconChevronRight; font.family: Theme.fontIcon; font.pixelSize: Theme.fontSizeXs; color: Theme.on_primary }
                             }
-
                             MouseArea {
+                                id: nextMouse
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (root.currentStep < root.totalSteps - 1) {
-                                        root.currentStep++;
-                                    } else {
-                                        root.completeSetup();
-                                    }
+                                    if (root.currentStep < root.totalSteps - 1) root.currentStep++;
+                                    else root.completeSetup();
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: dialogCard.radius
+                color: "transparent"
+                border.color: Theme.outline ?? Theme.cardBorder
+                border.width: 1
+                z: 99
             }
         }
     }

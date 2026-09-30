@@ -71,22 +71,30 @@ Singleton {
     readonly property color inverse_primary:        "{{colors.inverse_primary.default.hex}}"
     readonly property color source_color:           "{{colors.source_color.default.hex}}"
 
-    // math black magic so the engine doesn't combust when dividing by zero
+    // math black magic so the engine doesn't combust,
+    // upgraded to approximate linear color space so gradients don't look like dishwater
     function alpha(c: color, a: real): color {
-        if (!c || c.r === undefined) return Qt.rgba(0, 0, 0, 0);
-        let validAlpha = (isNaN(a) || a === undefined) ? 1.0 : Math.max(0.0, Math.min(1.0, a));
-        return Qt.rgba(c.r, c.g, c.b, validAlpha);
+        // qml color coercion is weird, catch absolute garbage
+        if (c === undefined || c.r === undefined) return Qt.rgba(0, 0, 0, 0);
+        let val = (typeof a !== "number" || isNaN(a)) ? 1.0 : Math.max(0.0, Math.min(1.0, a));
+        return Qt.rgba(c.r, c.g, c.b, val);
     }
 
     function blend(c1: color, c2: color, t: real): color {
-        if (!c1 || c1.r === undefined) return c2 ?? Qt.rgba(0, 0, 0, 0);
-        if (!c2 || c2.r === undefined) return c1;
-        let f = (isNaN(t) || t === undefined) ? 0.0 : Math.max(0.0, Math.min(1.0, f));
+        if (c1 === undefined || c1.r === undefined) return (c2 !== undefined) ? c2 : Qt.rgba(0, 0, 0, 0);
+        if (c2 === undefined || c2.r === undefined) return c1;
+        
+        // fixed the variable reference error that would have segfaulted your ui
+        let f = (typeof t !== "number" || isNaN(t)) ? 0.0 : Math.max(0.0, Math.min(1.0, t));
+        let inv = 1.0 - f;
+        
+        // gamma correction approximation (squaring the channels)
+        // prevents the muddy grey deadzone in the middle of standard srgb transitions
         return Qt.rgba(
-            c1.r + (c2.r - c1.r) * f,
-            c1.g + (c2.g - c1.g) * f,
-            c1.b + (c2.b - c1.b) * f,
-            c1.a + (c2.a - c1.a) * f
+            Math.sqrt((c1.r * c1.r * inv) + (c2.r * c2.r * f)),
+            Math.sqrt((c1.g * c1.g * inv) + (c2.g * c2.g * f)),
+            Math.sqrt((c1.b * c1.b * inv) + (c2.b * c2.b * f)),
+            (c1.a * inv) + (c2.a * f) // alpha is inherently linear
         );
     }
 
@@ -171,15 +179,15 @@ Singleton {
     }
 
     // rounding corners until my screen turns into an oval pebble
-    readonly property int    radiusSm:              2
-    readonly property int    radiusMd:              4
-    readonly property int    radiusLg:              8
+    readonly property int    widgetRadius:          cfg?.widgetRadius ?? 2
+    readonly property int    popupRadius:           cfg?.popupRadius ?? 8
+    readonly property int    radiusSm:              Math.max(1, Math.round(widgetRadius * 0.75))
+    readonly property int    radiusMd:              Math.max(2, widgetRadius)
+    readonly property int    radiusLg:              Math.max(4, popupRadius)
     readonly property int    radiusPill:            9999
 
     readonly property int    barHeight:             cfg?.barHeight ?? 32
     readonly property int    barRadius:             cfg?.barRadius ?? 0
-    readonly property int    widgetRadius:          cfg?.widgetRadius ?? radiusSm
-    readonly property int    popupRadius:           cfg?.popupRadius ?? radiusMd
     readonly property int    widgetSpacing:         cfg?.widgetSpacing ?? 4
     readonly property int    widgetPaddingH:        cfg?.widgetPaddingH ?? 8
     readonly property int    widgetPaddingV:        cfg?.widgetPaddingV ?? 4

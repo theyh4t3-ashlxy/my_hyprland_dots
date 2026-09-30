@@ -88,7 +88,15 @@ Rectangle {
                 let showSec = Settings?.clockShowSeconds ?? (Settings?.clockFormat && /:ss/i.test(Settings.clockFormat));
 
                 if (Theme?.isVertical ?? false) {
-                    return Qt.formatDateTime(clockRoot.now, is12 ? "hh\nmm" : "HH\nmm").toLowerCase();
+                    if (is12) {
+                        let h = clockRoot.now.getHours() % 12;
+                        if (h === 0) h = 12;
+                        let m = clockRoot.now.getMinutes();
+                        let hStr = (h < 10 ? "0" : "") + h;
+                        let mStr = (m < 10 ? "0" : "") + m;
+                        return hStr + "\n" + mStr;
+                    }
+                    return Qt.formatDateTime(clockRoot.now, "HH\nmm");
                 }
 
                 let timeFmt = Settings?.clockFormat;

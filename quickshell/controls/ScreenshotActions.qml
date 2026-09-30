@@ -9,11 +9,13 @@ Rectangle {
     signal copyClicked()
     signal saveClicked()
     signal editClicked()
+    signal recordClicked()
     signal fullClicked()
     signal windowClicked()
     signal regionClicked()
     signal cancelClicked()
 
+    property bool isRecordMode: false
     property string currentQuote: Theme.getFlavor("screenshot", "snitch mode: engaged")
     function randomizeQuote() {
         currentQuote = Theme.getFlavor("screenshot", "snitch mode: engaged");
@@ -104,18 +106,18 @@ Rectangle {
             spacing: 6
 
             Text {
-                text: Theme.kaoWink
-                font.family: Theme.fontFamily
+                text: root.isRecordMode ? Theme.iconCamera : Theme.kaoWink
+                font.family: root.isRecordMode ? Theme.fontIcon : Theme.fontFamily
                 font.pixelSize: Theme.fontSizeXs
-                color: Theme.primary
+                color: root.isRecordMode ? (Theme.error ?? "#ff5449") : Theme.primary
             }
 
             Text {
-                text: root.currentQuote
+                text: root.isRecordMode ? "select area to record" : root.currentQuote
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeXs
                 font.weight: Font.Medium
-                color: Theme.on_surface
+                color: root.isRecordMode ? (Theme.error ?? "#ff5449") : Theme.on_surface
             }
         }
     }
@@ -174,6 +176,7 @@ Rectangle {
         }
 
         ActionBtn {
+            visible: !root.isRecordMode
             icon: Theme.iconCopy
             label: "copy"
             iconColor: Theme.primary
@@ -181,15 +184,27 @@ Rectangle {
         }
 
         ActionBtn {
+            visible: !root.isRecordMode
             icon: Theme.iconSave
             label: "save"
             onClicked: root.saveClicked()
         }
 
         ActionBtn {
+            visible: !root.isRecordMode
             icon: Theme.iconEdit
             label: "edit"
             onClicked: root.editClicked()
+        }
+
+        ActionBtn {
+            visible: root.isRecordMode
+            icon: Theme.iconCamera
+            label: "start recording"
+            iconColor: Theme.error ?? "#ff5449"
+            activeColor: Theme.error ?? "#ff5449"
+            hoverColor: Theme.alpha(Theme.error ?? "#ff5449", 0.18)
+            onClicked: root.recordClicked()
         }
 
         Rectangle {

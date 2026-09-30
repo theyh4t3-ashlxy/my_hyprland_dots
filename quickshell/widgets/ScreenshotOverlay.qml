@@ -113,6 +113,13 @@ PanelWindow {
             grabH = screen.height;
         }
 
+        if (ScreenshotService.activeMode === "record") {
+            overlayRoot.isCapturing = false;
+            ScreenshotService.close();
+            ScreenRecService.startRecordingRegion(overlayRoot.screen, grabX, grabY, grabW, grabH);
+            return;
+        }
+
         overlayRoot.isCapturing = true;
 
         if (!frozenScreencopy.hasContent) {
@@ -483,6 +490,7 @@ PanelWindow {
     ScreenshotActions {
         id: actionsBar
         visible: !overlayRoot.isDragging
+        isRecordMode: ScreenshotService.activeMode === "record"
         z: 100
 
         x: Math.max(16, Math.min(overlayRoot.width - implicitWidth - 16,
@@ -551,6 +559,9 @@ PanelWindow {
         }
         onEditClicked: {
             overlayRoot.executeNativeGrab(overlayRoot.activeX, overlayRoot.activeY, overlayRoot.activeW, overlayRoot.activeH, "edit");
+        }
+        onRecordClicked: {
+            overlayRoot.executeNativeGrab(overlayRoot.activeX, overlayRoot.activeY, overlayRoot.activeW, overlayRoot.activeH, "record");
         }
         onCancelClicked: {
             ScreenshotService.close();

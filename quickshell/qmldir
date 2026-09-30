@@ -8,6 +8,7 @@ singleton NotificationService services/NotificationService.qml
 singleton IdleService       services/IdleService.qml
 singleton BrightnessService services/BrightnessService.qml
 singleton ScreenshotService services/ScreenshotService.qml
+singleton ScreenRecService services/ScreenRecService.qml
 
 # bar, corners & overlays
 StatusBar                bar/StatusBar.qml
@@ -53,4 +54,5 @@ BarStudio                widgets/BarStudio.qml
 MotionSandbox            widgets/MotionSandbox.qml
 KeybindsPreview          widgets/KeybindsPreview.qml
 WelcomeWizard            widgets/WelcomeWizard.qml
+ScreenCapture            widgets/ScreenCapture.qml
 

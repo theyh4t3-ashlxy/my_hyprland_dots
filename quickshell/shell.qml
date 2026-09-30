@@ -1,50 +1,66 @@
 //@ pragma UseQApplication
+// ==============================================================================
+// quickshell root orchestrator: the asylum command deck
+// spawns bars, liquid corners, overlays, and registers IPC endpoints.
+// engineered to make electron devs cry and waybar users question their life choices.
+// do not touch unless you crave a completely black screen and existential dread.
+// ==============================================================================
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import Quickshell.Services.Mpris
 import "widgets"
 
 ShellRoot {
+    // the bar: dynamic edges, liquid fillets, and zero electron baggage
     Variants {
         model: Quickshell.screens
         StatusBar {}
     }
 
+    // liquid concave screen corners: sharp 90-degree corners are an illegal felony
     Variants {
         model: Quickshell.screens
         ScreenCorners {}
     }
 
+    // toast alerts that actually respect physics and dismiss on drag
     Variants {
         model: Quickshell.screens
         NotificationToasts {}
     }
 
+    // the mad scientist bar studio for dragging pills around at 3am
     Variants {
         model: Quickshell.screens
         BarStudio {}
     }
 
+    // bezier curves and spring physics calibration playground
     Variants {
         model: Quickshell.screens
         MotionSandbox {}
     }
 
+    // on-screen volume & brightness pills so you know your keys aren't broken
     Variants {
         model: Quickshell.screens
         OSD {}
     }
 
+    // first-run onboarding & vibe calibration monolith (who the fuck is 'we'?):
+    // instantiates per-screen via Variants and dynamically presents on whichever monitor is focused
     Variants {
         model: Quickshell.screens
         WelcomeWizard {}
     }
 
+    // pam-authenticated layer-shell vault to keep out the uninitiated
     LockScreen {
         id: globalLockScreen
     }
 
-    // Notifications IPC
+    // notifications IPC: route alerts to dbus or nuke them into the void
     IpcHandler {
         target: "notifs"
         function toggle(): void { NotificationService.toggle(); }
@@ -63,7 +79,7 @@ ShellRoot {
         function dnd(): void { Settings.dnd = !Settings.dnd; }
     }
 
-    // BarStudio IPC
+    // bar studio IPC: drag status bar pills around at 3am
     IpcHandler {
         target: "studio"
         function toggle(): void { Settings.showBarStudio = !Settings.showBarStudio; }
@@ -71,7 +87,7 @@ ShellRoot {
         function close(): void { Settings.showBarStudio = false; }
     }
 
-    // Motion Sandbox IPC
+    // motion sandbox IPC: torture test bezier curves and spring physics
     IpcHandler {
         target: "sandbox"
         function toggle(): void { Settings.showMotionSandbox = !Settings.showMotionSandbox; }
@@ -79,7 +95,7 @@ ShellRoot {
         function close(): void { Settings.showMotionSandbox = false; }
     }
 
-    // Launcher IPC
+    // app launcher IPC: fuzzy search apps at lightspeed
     IpcHandler {
         target: "launcher"
         function toggle(): void { Settings.requestLauncherToggle(); }
@@ -87,7 +103,7 @@ ShellRoot {
         function close(): void { Settings.requestLauncherClose(); }
     }
 
-    // Screenshot IPC
+    // screenshot IPC: digital kleptomania and receipts for the group chat
     Variants {
         model: Quickshell.screens
         ScreenshotOverlay {}
@@ -102,7 +118,19 @@ ShellRoot {
         function window(): void { ScreenshotService.open("window"); }
     }
 
-    // Quick Settings IPC
+    // screen recording IPC: hardware-accelerated video capture with native multi-source audio
+    IpcHandler {
+        target: "record"
+        function toggle(): void { ScreenRecService.toggle(); }
+        function start(): void { ScreenRecService.startRecording(); }
+        function stop(): void { ScreenRecService.stopRecording(); }
+        function screen(): void { ScreenRecService.startRecording("screen"); }
+        function region(): void { ScreenRecService.startRecording("region"); }
+        function window(): void { ScreenRecService.startRecording("window"); }
+        function discard(): void { ScreenRecService.discardRecording(); }
+    }
+
+    // quick settings IPC: control center, sliders, and unhinged vibe toggles
     IpcHandler {
         target: "quicksettings"
         function toggle(): void { Settings.requestQuickSettingsToggle(); }
@@ -117,7 +145,7 @@ ShellRoot {
         function close(): void { Settings.requestQuickSettingsClose(); }
     }
 
-    // Battery IPC
+    // battery IPC: monitor laptop power depletion panic
     IpcHandler {
         target: "battery"
         function toggle(): void { Settings.requestBatteryToggle(); }
@@ -125,7 +153,7 @@ ShellRoot {
         function close(): void { Settings.requestBatteryClose(); }
     }
 
-    // Window Title IPC
+    // window title IPC: active client telemetry
     IpcHandler {
         target: "window"
         function toggle(): void { Settings.requestWindowTitleToggle(); }
@@ -133,7 +161,7 @@ ShellRoot {
         function close(): void { Settings.requestWindowTitleClose(); }
     }
 
-    // Volume & Audio Mixer IPC
+    // volume & pipewire mixer IPC: decibels exceeding osha recommendations
     IpcHandler {
         target: "volume"
         function toggle(): void { Settings.requestVolumeToggle(); }
@@ -167,7 +195,7 @@ ShellRoot {
         function close(): void { Settings.requestVolumeClose(); }
     }
 
-    // Network & Wi-Fi IPC
+    // network & wifi IPC: wifi, ethernet, and disconnecting from reality
     IpcHandler {
         target: "network"
         function toggle(): void { Settings.requestNetworkToggle(); }
@@ -182,7 +210,7 @@ ShellRoot {
         function close(): void { Settings.requestNetworkClose(); }
     }
 
-    // Bluetooth IPC
+    // bluetooth IPC: rf packets screaming into the void
     IpcHandler {
         target: "bluetooth"
         function toggle(): void { Settings.requestBluetoothToggle(); }
@@ -197,15 +225,23 @@ ShellRoot {
         function close(): void { Settings.requestBluetoothClose(); }
     }
 
-    // Media Player IPC
+    // media player IPC: skip bad tracks with extreme prejudice
     IpcHandler {
         target: "media"
         function toggle(): void { Settings.requestMediaToggle(); }
         function open(): void { Settings.requestMediaOpen(); }
         function close(): void { Settings.requestMediaClose(); }
         function playPause(): void {
-            let player = Mpris.players.values.find(p => p.canControl);
-            if (player) player.playPause();
+            let player = Mpris.players.values.find(p => p.canTogglePlaying) ?? Mpris.players.values.find(p => p.canPlay || p.canPause);
+            if (player) {
+                if (player.canTogglePlaying) {
+                    player.togglePlaying();
+                } else if (player.isPlaying && player.canPause) {
+                    player.pause();
+                } else if (player.canPlay) {
+                    player.play();
+                }
+            }
         }
         function next(): void {
             let player = Mpris.players.values.find(p => p.canGoNext);
@@ -224,7 +260,7 @@ ShellRoot {
         function close(): void { Settings.requestMediaClose(); }
     }
 
-    // Power Menu IPC
+    // power menu IPC: shutdown, reboot, or cowards way out
     IpcHandler {
         target: "power"
         function toggle(): void { Settings.requestPowerMenuToggle(); }
@@ -239,7 +275,7 @@ ShellRoot {
         function close(): void { Settings.requestPowerMenuClose(); }
     }
 
-    // Clock & Calendar IPC
+    // clock & calendar IPC: watch your mortal lifespan tick away in real time
     IpcHandler {
         target: "clock"
         function toggle(): void { Settings.requestClockToggle(); }
@@ -254,7 +290,7 @@ ShellRoot {
         function close(): void { Settings.requestClockClose(); }
     }
 
-    // Clipboard Manager IPC
+    // clipboard manager IPC: saving your accidental ctrl+c disasters
     IpcHandler {
         target: "clipboard"
         function toggle(): void { Settings.requestClipboardToggle(); }
@@ -269,7 +305,7 @@ ShellRoot {
         function close(): void { Settings.requestClipboardClose(); }
     }
 
-    // Wallpaper Browser IPC
+    // wallpaper browser IPC: live matugen color extraction roulette
     IpcHandler {
         target: "wallpaper"
         function toggle(): void { Settings.requestWallpaperToggle(); }
@@ -277,7 +313,7 @@ ShellRoot {
         function close(): void { Settings.requestWallpaperClose(); }
     }
 
-    // Quick Notes IPC
+    // quick notes IPC: unhinged midnight thoughts storage
     IpcHandler {
         target: "notes"
         function toggle(): void { Settings.requestQuickNotesToggle(); }
@@ -292,7 +328,30 @@ ShellRoot {
         function close(): void { Settings.requestQuickNotesClose(); }
     }
 
-    // Workspaces Overview IPC
+    // tasks & to-do list IPC: flex on brain_shell kanban without bash subshells
+    IpcHandler {
+        target: "tasks"
+        function toggle(): void { Settings.requestQuickNotesToggle(); }
+        function open(): void { Settings.requestQuickNotesOpen(); }
+        function close(): void { Settings.requestQuickNotesClose(); }
+    }
+
+    IpcHandler {
+        target: "todo"
+        function toggle(): void { Settings.requestQuickNotesToggle(); }
+        function open(): void { Settings.requestQuickNotesOpen(); }
+        function close(): void { Settings.requestQuickNotesClose(); }
+    }
+
+    // screen capture & recorder hub IPC
+    IpcHandler {
+        target: "capture"
+        function toggle(): void { Settings.requestCaptureToggle(); }
+        function open(): void { Settings.requestCaptureOpen(); }
+        function close(): void { Settings.requestCaptureClose(); }
+    }
+
+    // workspaces overview IPC: hyprland workspace hyperjump
     IpcHandler {
         target: "workspaces"
         function toggle(): void { Settings.requestWorkspacesToggle(); }
@@ -307,7 +366,7 @@ ShellRoot {
         function close(): void { Settings.requestWorkspacesClose(); }
     }
 
-    // Idle & Caffeine IPC
+    // idle & caffeine IPC: pumping intravenous espresso straight into wayland
     IpcHandler {
         target: "caffeine"
         function toggle(): bool {
@@ -334,7 +393,7 @@ ShellRoot {
         }
     }
 
-    // Keybinds Preview IPC
+    // keybinds preview IPC: muscle memory or bust
     IpcHandler {
         target: "keybinds"
         function toggle(): void { Settings.requestKeybindsToggle(); }
@@ -342,7 +401,7 @@ ShellRoot {
         function close(): void { Settings.requestKeybindsClose(); }
     }
 
-    // Welcome Wizard IPC
+    // welcome wizard IPC: onboarding the newly initiated into the asylum
     IpcHandler {
         target: "welcome"
         function toggle(): void { Settings.requestWelcomeToggle(); }

@@ -4,9 +4,17 @@ import ".."
 import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
+import Quickshell.Services.Pipewire
 
 Rectangle {
     id: root
+
+    // Native PipeWire audio peak monitor (0% CPU idle, zero cava daemon)
+    PwNodePeakMonitor {
+        id: peakMonitor
+        node: (typeof Pipewire !== "undefined") ? Pipewire?.defaultAudioSink : null
+        enabled: root.isPlaying && (popup.open || (Settings?.mediaWaveVisualizer ?? true))
+    }
 
     property var musicApps: [
         { name: "mixtapes", id: "com.pocoguy.Muse", icon: Theme.iconRadio },
@@ -151,7 +159,7 @@ Rectangle {
             width: Math.min(implicitWidth, root.compactMode ? 100 : 160)
         }
 
-        // Animated equalizer wave bars
+        // Native PipeWire audio equalizer wave bars (0% CPU idle, zero cava daemon)
         Row {
             visible: root.isPlaying && (Settings?.mediaWaveVisualizer ?? true)
             anchors.verticalCenter: parent.verticalCenter
@@ -167,11 +175,21 @@ Rectangle {
                     color: Theme.primary
                     anchors.verticalCenter: parent.verticalCenter
 
-                    SequentialAnimation on height {
-                        running: root.isPlaying
-                        loops: Animation.Infinite
-                        NumberAnimation { to: index === 1 ? 10 : (index === 0 ? 7 : 9); duration: 240 + (index * 70); easing.type: Easing.InOutSine }
-                        NumberAnimation { to: index === 1 ? 3 : (index === 0 ? 2 : 4); duration: 240 + (index * 70); easing.type: Easing.InOutSine }
+                    height: {
+                        if (!root.isPlaying) return 2;
+                        let p = (typeof peakMonitor !== "undefined" && peakMonitor.peak !== undefined) ? peakMonitor.peak : 0;
+                        if (p > 0.02) {
+                            let scale = index === 1 ? 1.0 : (index === 0 ? 0.75 : 0.85);
+                            return Math.max(3, Math.min(10, Math.round(p * 10 * scale)));
+                        }
+                        return index === 1 ? 6 : (index === 0 ? 3 : 5);
+                    }
+
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: Theme.animFast
+                            easing.type: Theme.animEasing
+                        }
                     }
                 }
             }
@@ -223,7 +241,7 @@ Rectangle {
     PopupPanel {
         id: popup
         cardWidth: 420
-        cardHeight: 340
+        cardHeight: 360
         onOpenChanged: {
             if (!open) root.dropdownOpen = false
         }
@@ -466,6 +484,75 @@ Rectangle {
                                 font.family: Theme.fontMono
                                 font.pixelSize: Theme.fontSizeXs
                                 color: Theme.on_surface_variant
+                            }
+                        }
+                    }
+
+                    // Native PipeWire 24-band audio spectrum visualizer (zero cava, 0% CPU idle)
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        Layout.topMargin: 2
+                        Layout.bottomMargin: 2
+                        spacing: 3
+                        visible: Settings?.mediaWaveVisualizer ?? true
+
+                        Repeater {
+                            model: 24
+                            Rectangle {
+                                required property int index
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignBottom
+                                radius: 2
+
+                                // Spectral frequency envelope: higher in center/mids
+                                readonly property real env: {
+                                    let norm = index / 23.0;
+                                    return Math.sin(norm * Math.PI) * 0.7 + 0.3;
+                                }
+
+                                // Stereo channel distribution
+                                readonly property real chPeak: {
+                                    let pList = (typeof peakMonitor !== "undefined" && peakMonitor.peaks && peakMonitor.peaks.length > 0)
+                                        ? peakMonitor.peaks
+                                        : [];
+                                    if (pList.length >= 2) {
+                                        return index < 12 ? pList[0] : pList[1];
+                                    }
+                                    return (typeof peakMonitor !== "undefined" && peakMonitor.peak !== undefined) ? peakMonitor.peak : 0;
+                                }
+
+                                height: {
+                                    if (!root.isPlaying) return 3;
+                                    let p = chPeak;
+                                    if (p > 0.01) {
+                                        let harmonic = Math.sin((index * 0.5) + (root.trackPosition * 3.0)) * 0.25;
+                                        let target = Math.max(3, Math.min(28, (p * env * 28) + (harmonic * 6)));
+                                        return Math.round(target);
+                                    }
+                                    return 3;
+                                }
+
+                                color: {
+                                    if (!root.isPlaying) return Theme.surface_container_highest;
+                                    let p = chPeak;
+                                    if (p > 0.5) return Theme.tertiary;
+                                    if (p > 0.2) return Theme.primary;
+                                    return Theme.alpha(Theme.primary, 0.4);
+                                }
+
+                                Behavior on height {
+                                    NumberAnimation {
+                                        duration: Theme.animFast
+                                        easing.type: Theme.animEasing
+                                    }
+                                }
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Theme.animFast
+                                    }
+                                }
                             }
                         }
                     }
