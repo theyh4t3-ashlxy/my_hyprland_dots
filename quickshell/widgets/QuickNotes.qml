@@ -5,6 +5,7 @@ import ".."
 import "../controls"
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 
 // QuickNotes & Tasks — because keeping thoughts in /dev/null is only funny until you miss a deadline.
 // Native Quickshell FileView JSON persistence: zero bash subshells, zero waybar clunk, pure QtQuick speed.
@@ -25,11 +26,26 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
     Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
 
+    property var barScreen: null
+    property var barMonitor: null
     property int activeIndex: 0
     property bool copiedFeedback: false
     property string activeTab: "notes"       // "notes" | "tasks"
     property string taskFilter: "all"        // "all" | "todo" | "done"
     property string newPriority: "normal"    // "urgent" | "normal" | "low"
+
+    function updatePosition() {
+        let pt = root.mapToItem(null, 0, 0);
+        let barFloats = Settings?.barFloating ?? false;
+        let barMarg = barFloats ? ((Settings?.barMargin > 0) ? Settings.barMargin : 8) : 0;
+        if (pt && pt.x > 0 && root.visible) {
+            popup.targetRelativeX = pt.x + (root.width / 2) + barMarg;
+            popup.targetRelativeY = pt.y + (root.height / 2);
+        } else {
+            popup.targetRelativeX = 0;
+            popup.targetRelativeY = 0;
+        }
+    }
 
     readonly property int pendingTasksCount: {
         let count = 0;
@@ -277,18 +293,7 @@ Rectangle {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
-            popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
-            popup.open = !popup.open;
-        }
-    }
-
-    Connections {
-        target: Settings
-        function onRequestQuickNotesToggle() {
-            let pt = root.mapToItem(null, 0, 0);
-            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
-            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+            root.updatePosition();
             popup.open = !popup.open;
             if (popup.open) {
                 root.notesFile.reload();
@@ -297,15 +302,31 @@ Rectangle {
                 root.loadTasks(root.tasksFile.text());
             }
         }
+    }
+
+    Connections {
+        target: Settings
+        function onRequestQuickNotesToggle() {
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.updatePosition();
+                popup.open = !popup.open;
+                if (popup.open) {
+                    root.notesFile.reload();
+                    root.loadNotes(root.notesFile.text());
+                    root.tasksFile.reload();
+                    root.loadTasks(root.tasksFile.text());
+                }
+            }
+        }
         function onRequestQuickNotesOpen() {
-            let pt = root.mapToItem(null, 0, 0);
-            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
-            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
-            popup.open = true;
-            root.notesFile.reload();
-            root.loadNotes(root.notesFile.text());
-            root.tasksFile.reload();
-            root.loadTasks(root.tasksFile.text());
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.updatePosition();
+                popup.open = true;
+                root.notesFile.reload();
+                root.loadNotes(root.notesFile.text());
+                root.tasksFile.reload();
+                root.loadTasks(root.tasksFile.text());
+            }
         }
         function onRequestQuickNotesClose() {
             popup.open = false;
@@ -314,11 +335,12 @@ Rectangle {
 
     PopupPanel {
         id: popup
+        screen: root.barScreen
         wantsFocus: true
         cardWidth: 460
         cardHeight: 560
-        targetRelativeX: (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2)
-        targetRelativeY: (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2)
+        targetRelativeX: 0
+        targetRelativeY: 0
 
         content: ColumnLayout {
             anchors.fill: parent
@@ -943,6 +965,7 @@ Rectangle {
                             Repeater {
                                 model: tasksModel
                                 delegate: Rectangle {
+                                    id: taskItemDelegate
                                     required property int index
                                     required property int id
                                     required property string text
@@ -969,18 +992,19 @@ Rectangle {
 
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 8
-                                        anchors.rightMargin: 8
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
                                         spacing: 8
 
                                         // Checkbox
                                         Rectangle {
-                                            width: 20
-                                            height: 20
+                                            Layout.preferredWidth: 20
+                                            Layout.preferredHeight: 20
+                                            Layout.alignment: Qt.AlignVCenter
                                             radius: 5
-                                            color: done ? Theme.primary : "transparent"
-                                            border.color: done ? Theme.primary : Theme.outline
-                                            border.width: done ? 0 : 1.5
+                                            color: taskItemDelegate.done ? Theme.primary : "transparent"
+                                            border.color: taskItemDelegate.done ? Theme.primary : Theme.outline
+                                            border.width: taskItemDelegate.done ? 0 : 1.5
 
                                             Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
@@ -990,14 +1014,14 @@ Rectangle {
                                                 font.family: Theme.fontIcon
                                                 font.pixelSize: 12
                                                 color: Theme.on_primary
-                                                visible: done
+                                                visible: taskItemDelegate.done
                                             }
 
                                             MouseArea {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    tasksModel.setProperty(index, "done", !done);
+                                                    tasksModel.setProperty(taskItemDelegate.index, "done", !taskItemDelegate.done);
                                                     root.saveTasks();
                                                 }
                                             }
@@ -1005,17 +1029,18 @@ Rectangle {
 
                                         // Priority Badge
                                         Rectangle {
-                                            height: 18
-                                            implicitWidth: pBadgeText.implicitWidth + 8
+                                            Layout.preferredWidth: pBadgeText.implicitWidth + 12
+                                            Layout.preferredHeight: 20
+                                            Layout.alignment: Qt.AlignVCenter
                                             radius: Theme.radiusPill
                                             color: {
-                                                if (priority === "urgent") return Theme.alpha(Theme.error ?? "#ff5449", 0.15);
-                                                if (priority === "low") return Theme.surface_container_highest;
+                                                if (taskItemDelegate.priority === "urgent") return Theme.alpha(Theme.error ?? "#ff5449", 0.15);
+                                                if (taskItemDelegate.priority === "low") return Theme.surface_container_highest;
                                                 return Theme.alpha(Theme.primary, 0.15);
                                             }
                                             border.color: {
-                                                if (priority === "urgent") return Theme.error ?? "#ff5449";
-                                                if (priority === "low") return Theme.outline;
+                                                if (taskItemDelegate.priority === "urgent") return Theme.error ?? "#ff5449";
+                                                if (taskItemDelegate.priority === "low") return Theme.outline;
                                                 return Theme.primary;
                                             }
                                             border.width: 1
@@ -1023,13 +1048,13 @@ Rectangle {
                                             Text {
                                                 id: pBadgeText
                                                 anchors.centerIn: parent
-                                                text: priority
+                                                text: taskItemDelegate.priority
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: 9
                                                 font.weight: Font.Bold
                                                 color: {
-                                                    if (priority === "urgent") return Theme.error ?? "#ff5449";
-                                                    if (priority === "low") return Theme.on_surface_variant;
+                                                    if (taskItemDelegate.priority === "urgent") return Theme.error ?? "#ff5449";
+                                                    if (taskItemDelegate.priority === "low") return Theme.on_surface_variant;
                                                     return Theme.primary;
                                                 }
                                             }
@@ -1038,8 +1063,8 @@ Rectangle {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    let nextP = priority === "normal" ? "urgent" : (priority === "urgent" ? "low" : "normal");
-                                                    tasksModel.setProperty(index, "priority", nextP);
+                                                    let nextP = taskItemDelegate.priority === "normal" ? "urgent" : (taskItemDelegate.priority === "urgent" ? "low" : "normal");
+                                                    tasksModel.setProperty(taskItemDelegate.index, "priority", nextP);
                                                     root.saveTasks();
                                                 }
                                             }
@@ -1048,16 +1073,20 @@ Rectangle {
                                         // Task Description
                                         Text {
                                             Layout.fillWidth: true
-                                            text: parent.parent.text
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: taskItemDelegate.text
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSm
-                                            font.strikeout: done
-                                            color: done ? Theme.on_surface_disabled : Theme.on_surface
+                                            font.strikeout: taskItemDelegate.done
+                                            color: taskItemDelegate.done ? Theme.on_surface_disabled : Theme.on_surface
                                             elide: Text.ElideRight
                                         }
 
                                         // Delete Task Button
                                         IconButton {
+                                            Layout.preferredWidth: 24
+                                            Layout.preferredHeight: 24
+                                            Layout.alignment: Qt.AlignVCenter
                                             icon: Theme.iconClose
                                             tooltip: "delete task"
                                             iconColor: Theme.error
@@ -1065,7 +1094,7 @@ Rectangle {
                                             opacity: taskMouse.containsMouse ? 1.0 : 0.2
                                             Behavior on opacity { NumberAnimation { duration: Theme.animFast } }
                                             onClicked: {
-                                                tasksModel.remove(index);
+                                                tasksModel.remove(taskItemDelegate.index);
                                                 root.saveTasks();
                                             }
                                         }

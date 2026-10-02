@@ -46,7 +46,8 @@ PopupPanel {
         "volume":        { name: "volume & sink",     icon: Theme?.iconVolHigh ?? "\uE050",   desc: "pipewire audio controls" },
         "battery":       { name: "battery & power",   icon: Theme?.iconBatFull ?? "\uE1A5",   desc: "upower level & charging" },
         "quickSettings": { name: "quick settings",    icon: Theme?.iconSettings ?? "\uE8B8",  desc: "system & appearance toggles" },
-        "powerMenu":     { name: "power menu",        icon: Theme?.iconPower ?? "\uF8C7",     desc: "lock, logout & power off" }
+        "powerMenu":     { name: "power menu",        icon: Theme?.iconPower ?? "\uF8C7",     desc: "lock, logout & power off" },
+        "dynamicNotch":  { name: "dynamic notch",     icon: Theme?.iconSparkles ?? "\uE65F",  desc: "reactive island carousel (clock, media, timer)" }
     })
 
     readonly property var unassignedModules: {
@@ -120,6 +121,7 @@ PopupPanel {
             case "battery": return Settings.showBattery ?? true;
             case "quickSettings": return Settings.showQuickSettings ?? true;
             case "powerMenu": return Settings.showPowerMenu ?? true;
+            case "dynamicNotch": case "notch": return Settings.showDynamicNotch ?? true;
             default: return true;
         }
     }
@@ -132,6 +134,7 @@ PopupPanel {
             case "workspaces": Settings.showWorkspaces = !Settings.showWorkspaces; break;
             case "windowTitle": Settings.showWindowTitle = !Settings.showWindowTitle; break;
             case "clock": Settings.showClock = !Settings.showClock; break;
+            case "dynamicNotch": case "notch": Settings.showDynamicNotch = !Settings.showDynamicNotch; break;
             case "media": Settings.showMedia = !Settings.showMedia; break;
             case "quickNotes": Settings.showQuickNotes = !Settings.showQuickNotes; break;
             case "clipboard": Settings.showClipboard = !Settings.showClipboard; break;
@@ -155,6 +158,7 @@ PopupPanel {
             case "workspaces": Settings.showWorkspaces = visible; break;
             case "windowTitle": Settings.showWindowTitle = visible; break;
             case "clock": Settings.showClock = visible; break;
+            case "dynamicNotch": case "notch": Settings.showDynamicNotch = visible; break;
             case "media": Settings.showMedia = visible; break;
             case "quickNotes": Settings.showQuickNotes = visible; break;
             case "clipboard": Settings.showClipboard = visible; break;

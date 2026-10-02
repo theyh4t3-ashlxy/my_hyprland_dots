@@ -9,6 +9,7 @@ singleton IdleService       services/IdleService.qml
 singleton BrightnessService services/BrightnessService.qml
 singleton ScreenshotService services/ScreenshotService.qml
 singleton ScreenRecService services/ScreenRecService.qml
+singleton TimerService     services/TimerService.qml
 
 # bar, corners & overlays
 StatusBar                bar/StatusBar.qml
@@ -29,6 +30,7 @@ ScreenshotActions        controls/ScreenshotActions.qml
 Dropdown                 controls/Dropdown.qml
 Slider                   controls/Slider.qml
 CollapsibleSection       controls/CollapsibleSection.qml
+ColorStudioModal         controls/ColorStudioModal.qml
 
 # widgets
 Workspaces               widgets/Workspaces.qml
@@ -55,4 +57,5 @@ MotionSandbox            widgets/MotionSandbox.qml
 KeybindsPreview          widgets/KeybindsPreview.qml
 WelcomeWizard            widgets/WelcomeWizard.qml
 ScreenCapture            widgets/ScreenCapture.qml
+DynamicNotch             widgets/DynamicNotch.qml
 

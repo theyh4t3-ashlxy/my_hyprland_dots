@@ -30,6 +30,7 @@ def find_binary(name: str, fallback_paths: List[str] = None) -> Optional[str]:
 QMLLINT_BIN = find_binary(
     "qmllint",
     [
+        "/nix/store/4mi5rvszxy1xhy73gq1hm8y2fh7j6vam-qtdeclarative-6.11.2/bin/qmllint",
         "/nix/store/10553j4116y6jllliqpg5kz7d35bblab-qtdeclarative-6.11.2/bin/qmllint",
         "/nix/store/dbnyhkzcp2bnmm7gqlwrslbawqlkam96-qtdeclarative-6.11.2/bin/qmllint"
     ]
@@ -281,8 +282,8 @@ class QmlCodeInspector:
         cmd = [
             QMLLINT_BIN,
             "-I", str(REPO_ROOT),
-            "-I", "/nix/store/xxn0r8g13ynxc9sx7bf56v735a8bshan-quickshell-0.3.0/lib/qt-6/qml",
-            "-I", "/nix/store/dbnyhkzcp2bnmm7gqlwrslbawqlkam96-qtdeclarative-6.11.2/lib/qt-6/qml",
+            "-I", "/nix/store/6q6kk7wr9k00c3dhgi9in4wlp0qw63gc-quickshell-0.3.1/lib/qt-6/qml",
+            "-I", "/nix/store/4mi5rvszxy1xhy73gq1hm8y2fh7j6vam-qtdeclarative-6.11.2/lib/qt-6/qml",
             str(filepath)
         ]
         try:

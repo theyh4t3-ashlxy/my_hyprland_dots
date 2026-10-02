@@ -37,6 +37,21 @@ QtObject {
     property string workspaceMode: "slide"
     property string fontNerd: "JetBrainsMono Nerd Font"
 
+    property bool customColorsEnabled: false
+    property string customBg: ""
+    property string customActive: ""
+    property string customText: ""
+    property string customSubtext: ""
+    property string customBorder: ""
+    property string customWidgetBg: ""
+
+    property bool showDynamicNotch: true
+    property bool dynamicNotchEnabled: true
+    property string dynamicNotchMode: "auto"
+    property int bentoGap: 8
+    property bool bentoHoverLift: true
+    property bool barIslandMode: true
+
     signal requestLauncherToggle()
     signal requestLauncherOpen()
     signal requestLauncherClose()
@@ -479,7 +494,7 @@ QtObject {
         { key: "lockscreenShowMedia", type: "bool", def: true },
         { key: "barModulesLeft", type: "json", def: ["launcher", "wallpaper", "workspaces", "windowTitle"] },
         { key: "barModulesCenter", type: "json", def: ["clock"] },
-        { key: "barModulesRight", type: "json", def: ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"] },
+        { key: "barModulesRight", type: "json", def: ["media", "quickNotes", "screenCapture", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"] },
         { key: "iconSet", type: "string", def: "material" },
         { key: "clockFormat", type: "string", def: "HH:mm" },
         { key: "dateFormat", type: "string", def: "ddd, MMM d" },
@@ -547,7 +562,20 @@ QtObject {
         { key: "cardOpacity", type: "float", def: 0.95 },
         { key: "surfaceOpacity", type: "float", def: 0.90 },
         { key: "cornerFillets", type: "bool", def: true },
-        { key: "cornerSmoothing", type: "float", def: 0.7 }
+        { key: "cornerSmoothing", type: "float", def: 0.7 },
+        { key: "customColorsEnabled", type: "bool", def: false },
+        { key: "customBg", type: "string", def: "" },
+        { key: "customActive", type: "string", def: "" },
+        { key: "customText", type: "string", def: "" },
+        { key: "customSubtext", type: "string", def: "" },
+        { key: "customBorder", type: "string", def: "" },
+        { key: "customWidgetBg", type: "string", def: "" },
+        { key: "showDynamicNotch", type: "bool", def: true },
+        { key: "dynamicNotchEnabled", type: "bool", def: true },
+        { key: "dynamicNotchMode", type: "string", def: "auto" },
+        { key: "bentoGap", type: "int", def: 8 },
+        { key: "bentoHoverLift", type: "bool", def: true },
+        { key: "barIslandMode", type: "bool", def: true }
     ]
 
     function loadObject(data) {
@@ -761,6 +789,13 @@ QtObject {
             let item = _schema[i];
             root[item.key] = (item.type === "json") ? (Array.isArray(item.def) ? item.def.slice() : Object.assign({}, item.def)) : item.def;
         }
+        root.showScreenCapture = true;
+        root.showWelcomeWizard = false;
+        if (typeof ScreenRecService !== "undefined" && ScreenRecService) {
+            ScreenRecService.activeAudio = "both";
+            ScreenRecService.activeTarget = "screen";
+            ScreenRecService.framerate = 60;
+        }
         root._loading = false;
         root.save();
     }
@@ -795,7 +830,7 @@ QtObject {
     function resetBarLayout() {
         barModulesLeft = ["launcher", "wallpaper", "workspaces", "windowTitle"];
         barModulesCenter = ["clock"];
-        barModulesRight = ["media", "quickNotes", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
+        barModulesRight = ["media", "quickNotes", "screenCapture", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"];
     }
 
     function dispatchCloseWindow() {

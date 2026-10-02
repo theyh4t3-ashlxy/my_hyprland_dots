@@ -11,6 +11,8 @@ import Quickshell.Hyprland
 Rectangle {
     id: root
 
+    property var barScreen: null
+    property var barMonitor: null
     property bool isRecording: ScreenRecService.isRecording
     property string activeAudio: ScreenRecService.activeAudio
 
@@ -115,19 +117,30 @@ Rectangle {
 
     function syncAnchor() {
         const pt = root.mapToItem(null, 0, 0);
-        popup.targetRelativeX = (pt?.x ?? 0) + (root.width / 2);
-        popup.targetRelativeY = (pt?.y ?? 0) + (root.height / 2);
+        let barFloats = Settings?.barFloating ?? false;
+        let barMarg = barFloats ? ((Settings?.barMargin > 0) ? Settings.barMargin : 8) : 0;
+        if (pt && pt.x > 0 && root.visible) {
+            popup.targetRelativeX = pt.x + (root.width / 2) + barMarg;
+            popup.targetRelativeY = pt.y + (root.height / 2);
+        } else {
+            popup.targetRelativeX = 0;
+            popup.targetRelativeY = 0;
+        }
     }
 
     Connections {
         target: Settings
         function onRequestCaptureToggle() {
-            root.syncAnchor();
-            popup.open = !popup.open;
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.syncAnchor();
+                popup.open = !popup.open;
+            }
         }
         function onRequestCaptureOpen() {
-            root.syncAnchor();
-            popup.open = true;
+            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+                root.syncAnchor();
+                popup.open = true;
+            }
         }
         function onRequestCaptureClose() {
             popup.open = false;
@@ -136,10 +149,11 @@ Rectangle {
 
     PopupPanel {
         id: popup
+        screen: root.barScreen
         cardWidth: 380
         cardHeight: Math.round(captureLayout.implicitHeight + ((Theme.popupPadding ?? 16) * 2))
-        targetRelativeX: (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2)
-        targetRelativeY: (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2)
+        targetRelativeX: 0
+        targetRelativeY: 0
 
         content: ColumnLayout {
             id: captureLayout

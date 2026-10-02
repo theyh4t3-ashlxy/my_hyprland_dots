@@ -557,7 +557,11 @@ Singleton {
     readonly property string fontMaterialOutlined:  (loaderMatOutlined.status === FontLoader.Ready && loaderMatOutlined.name) ? loaderMatOutlined.name : "Material Symbols Outlined"
     readonly property string fontMaterialSharp:     (loaderMatSharp.status === FontLoader.Ready && loaderMatSharp.name) ? loaderMatSharp.name : "Material Symbols Sharp"
     readonly property string fontSegoe:             (loaderSegoe.status === FontLoader.Ready && loaderSegoe.name) ? loaderSegoe.name : (cfg?.fontWindows ?? "Segoe Fluent Icons")
-    readonly property string fontAwesome:           (loaderFaSolid.status === FontLoader.Ready && loaderFaSolid.name) ? (loaderFaSolid.name.endsWith("Solid") ? loaderFaSolid.name : loaderFaSolid.name + " Solid") : (cfg?.fontAwesome ? (cfg.fontAwesome.endsWith("Solid") ? cfg.fontAwesome : cfg.fontAwesome + " Solid") : "Font Awesome 6 Free Solid")
+    // Font Awesome 6 Free uses the family name "Font Awesome 6 Free".
+    // "Solid" is the style/weight, not a second family name.
+    readonly property string fontAwesome:           (loaderFaSolid.status === FontLoader.Ready && loaderFaSolid.name)
+        ? loaderFaSolid.name
+        : (cfg?.fontAwesome ?? "Font Awesome 6 Free")
 
     // dodging qt.fontfamilies() so the main thread doesnt flatline
     readonly property string fontIcon: {
@@ -618,8 +622,114 @@ Singleton {
         "user": "user", "shield": "safe", "expand": "max", "collapse": "min"
     })
 
+    // semantic Font Awesome 6 Free glyph table.
+    // Keeping this keyed by meaning prevents stale per-call codepoints from
+    // leaking into the wrong font family.
+    readonly property var fontAwesomeMap: Object.freeze({
+        "nixos": "\uF17C",
+        "nix": "\uF17C",
+        "arch": "\uF17C",
+        "appLauncher": "\uF009",
+        "workspaces": "\uF108",
+        "search": "\uF002",
+        "close": "\uF00D",
+        "check": "\uF00C",
+        "checkCircle": "\uF058",
+        "settings": "\uF013",
+        "save": "\uF0C7",
+        "refresh": "\uF021",
+        "trash": "\uF2ED",
+        "clipboard": "\uF328",
+        "tray": "\uF01C",
+        "grid": "\uF00A",
+        "note": "\uF249",
+        "edit": "\uF044",
+        "coffee": "\uF0F4",
+        "clock": "\uF017",
+        "cpu": "\uF2DB",
+        "mem": "\uF538",
+        "thermo": "\uF2C7",
+        "eye": "\uF06E",
+        "eyeOff": "\uF070",
+        "heart": "\uF004",
+        "download": "\uF019",
+        "folder": "\uF07B",
+        "globe": "\uF0AC",
+        "camera": "\uF030",
+        "crop": "\uF125",
+        "screenshot": "\uF03E",
+        "volMute": "\uF026",
+        "volLow": "\uF027",
+        "volMid": "\uF027",
+        "volHigh": "\uF028",
+        "mic": "\uF130",
+        "micMute": "\uF131",
+        "palette": "\uF53F",
+        "headphones": "\uF025",
+        "equalizer": "\uF1DE",
+        "batFull": "\uF240",
+        "batHalf": "\uF242",
+        "batQuarter": "\uF243",
+        "batEmpty": "\uF244",
+        "batCharge": "\uF0E7",
+        "batCharging": "\uF0E7",
+        "sun": "\uF185",
+        "moon": "\uF186",
+        "brightness": "\uF185",
+        "music": "\uF001",
+        "play": "\uF04B",
+        "pause": "\uF04C",
+        "next": "\uF051",
+        "prev": "\uF048",
+        "shuffle": "\uF074",
+        "repeat": "\uF363",
+        "repeatOne": "\uF365",
+        "wallhaven": "\uF03E",
+        "wallpaper": "\uF03E",
+        "bell": "\uF0F3",
+        "bellOutline": "\uF0F3",
+        "bellOff": "\uF1F6",
+        "ethernet": "\uF796",
+        "wifi": "\uF1EB",
+        "wifiHigh": "\uF1EB",
+        "wifiMed": "\uF6AB",
+        "wifiLow": "\uF6AA",
+        "wifiOff": "\uF6AC",
+        "bluetooth": "\uF293",
+        "bluetoothConnected": "\uF294",
+        "bluetoothOff": "\uF293",
+        "power": "\uF011",
+        "shutdown": "\uF011",
+        "lock": "\uF023",
+        "logout": "\uF2F5",
+        "reboot": "\uF021",
+        "suspend": "\uF186",
+        "hibernate": "\uF236",
+        "chevronRight": "\uF054",
+        "chevronLeft": "\uF053",
+        "chevronDown": "\uF078",
+        "chevronUp": "\uF077",
+        "flame": "\uF06D",
+        "sparkles": "\uE2CA",
+        "radio": "\uF8D7",
+        "sliders": "\uF1DE",
+        "terminal": "\uF120",
+        "calendar": "\uF133",
+        "history": "\uF1DA",
+        "copy": "\uF0C5",
+        "externalLink": "\uF35D",
+        "signal": "\uF012",
+        "filter": "\uF0B0",
+        "user": "\uF007",
+        "shield": "\uF132",
+        "expand": "\uF065",
+        "collapse": "\uF066",
+        "keyboard": "\uF11C"
+    })
+
+    // Nerd Fonts v3.5 distro logo codepoints: Arch F303, NixOS F313, Tux F31A.
     readonly property var nerdMap: Object.freeze({
-        "arch": "", "nix": "", "nixos": "", "distro": "", "appLauncher": "󰀻", "workspaces": "󱂬", "search": "", "close": "",
+        "arch": "\uF303", "nix": "\uF313", "nixos": "\uF313", "distro": "\uF313", "appLauncher": "󰀻", "workspaces": "󱂬", "search": "", "close": "",
         "check": "", "checkCircle": "", "settings": "", "gear": "", "save": "",
         "refresh": "", "trash": "", "clipboard": "󰅌", "tray": "󱊖", "grid": "󰕰",
         "note": "󰏫", "edit": "󰏫", "coffee": "󰛊", "clock": "󰥔", "cpu": "󰍛",
@@ -654,11 +764,14 @@ Singleton {
         }
         if (iconSet === "nerd") {
             if (key && nerdMap[key]) return nerdMap[key];
-            if (typeof fa === "string" && fa !== "") return fa;
-            return mat;
+            return "󰋼";
         }
         if (iconSet === "windows") return win;
-        if (iconSet === "awesome") return fa;
+        if (iconSet === "awesome") {
+            if (key && fontAwesomeMap[key]) return fontAwesomeMap[key];
+            if (typeof fa === "string" && fa !== "") return fa;
+            return "\uF128";
+        }
         return mat;
     }
 
@@ -715,12 +828,12 @@ Singleton {
         }
 
         if (iconSet === "awesome") {
-            if (lvl < 0) return "";
-            if (isCharging) return "";
-            if (lvl >= 9) return "";
-            if (lvl >= 7) return "";
-            if (lvl >= 5) return "";
-            if (lvl >= 2) return "";
+            if (lvl < 0) return fontAwesomeMap.batEmpty;
+            if (isCharging) return fontAwesomeMap.batCharge;
+            if (lvl >= 9) return fontAwesomeMap.batFull;
+            if (lvl >= 7) return "\uF241";
+            if (lvl >= 5) return fontAwesomeMap.batHalf;
+            if (lvl >= 2) return fontAwesomeMap.batQuarter;
             return "";
         }
 
@@ -789,21 +902,25 @@ Singleton {
             if (sig < 75) return "\uE873";
             return "\uE874";
         }
-        if (iconSet === "awesome") return "";
+        if (iconSet === "awesome") {
+            if (sig < 35) return fontAwesomeMap.wifiLow;
+            if (sig < 70) return fontAwesomeMap.wifiMed;
+            return fontAwesomeMap.wifiHigh;
+        }
         if (sig < 35) return "\uE4CA";
         if (sig < 70) return "\uE4D9";
         return "\uE63E";
     }
 
-    // hardcoded unicode hieroglyphs
-    readonly property string iconDistro:            getIcon("\uE5C3", "\uE71D", "", "nixos")
-    readonly property string iconNix:               iconDistro
-    readonly property string iconArch:              iconDistro
+    // semantic icon mappings across Material, Nerd Font, Segoe Fluent, and Font Awesome
+    readonly property string iconDistro:            getIcon("\uE30A", "\uE71D", "\uF17C", "nixos")
+    readonly property string iconNix:               getIcon("\uE30A", "\uE71D", "\uF17C", "nix")
+    readonly property string iconArch:              getIcon("\uE30A", "\uE71D", "\uF17C", "arch")
     readonly property string iconAppLauncher:       getIcon("\uE5C3", "\uE71D", "", "appLauncher")
     readonly property string iconWorkspaces:        getIcon("\uE1A0", "\uE7C4", "", "workspaces")
     readonly property string iconSearch:            getIcon("\uE8B6", "\uE721", "", "search")
     readonly property string iconClose:             getIcon("\uE5CD", "\uE711", "", "close")
-    readonly property string iconCheck:             getIcon("\uE5CA", "\uE73E", "", "check")
+    readonly property string iconCheck:             getIcon("\uE668", "\uE73E", "", "check")
     readonly property string iconCheckCircle:       getIcon("\uF0BE", "\uF13E", "", "checkCircle")
     readonly property string iconSettings:          getIcon("\uE8B8", "\uE713", "", "settings")
     readonly property string iconGear:              iconSettings
@@ -811,24 +928,24 @@ Singleton {
     readonly property string iconRefresh:           getIcon("\uE5D5", "\uE72C", "", "refresh")
     readonly property string iconTrash:             getIcon("\uE92E", "\uE74D", "", "trash")
     readonly property string iconClipboard:         getIcon("\uE14F", "\uF0E3", "", "clipboard")
-    readonly property string iconTray:              getIcon("\uE5CE", "\uE971", "", "tray")
+    readonly property string iconTray:              getIcon("\uE156", "\uE971", "\uF01C", "tray")
     readonly property string iconGrid:              getIcon("\uE9B0", "\uF0E2", "", "grid")
-    readonly property string iconNote:              getIcon("\uF097", "\uE70F", "", "note")
+    readonly property string iconNote:              getIcon("\uE66D", "\uE70F", "\uF249", "note")
     readonly property string iconEdit:              iconNote
     readonly property string iconCoffee:            getIcon("\uEFEF", "\uEC32", "", "coffee")
     readonly property string iconClock:             getIcon("\uEFD6", "\uE823", "", "clock")
     readonly property string iconCpu:               getIcon("\uE322", "\uEEA1", "", "cpu")
     readonly property string iconMem:               getIcon("\uF7A3", "\uEEA0", "", "mem")
-    readonly property string iconThermo:            getIcon("\uF076", "\uE9CA", "", "thermo")
+    readonly property string iconThermo:            getIcon("\uE846", "\uE9CA", "\uF2C7", "thermo")
     readonly property string iconEye:               getIcon("\uE8F4", "\uE7B3", "", "eye")
     readonly property string iconEyeOff:            getIcon("\uE8F5", "\uED1A", "", "eyeOff")
     readonly property string iconHeart:             getIcon("\uE87E", "\uEB51", "", "heart")
     readonly property string iconDownload:          getIcon("\uF090", "\uE896", "", "download")
     readonly property string iconFolder:            getIcon("\uE2C7", "\uE838", "", "folder")
-    readonly property string iconGlobe:             getIcon("\uE80B", "\uE774", "", "globe")
+    readonly property string iconGlobe:             getIcon("\uE64C", "\uE774", "\uF0AC", "globe")
     readonly property string iconCamera:            getIcon("\uE3AF", "\uE722", "", "camera")
     readonly property string iconCrop:              getIcon("\uE3BE", "\uE7A8", "", "crop")
-    readonly property string iconScreenshot:        iconCamera
+    readonly property string iconScreenshot:        getIcon("\uF056", "\uE722", "\uF03E", "screenshot")
 
     readonly property string iconVolMute:           getIcon("\uE04F", "\uE74F", "", "volMute")
     readonly property string iconVolLow:            getIcon("\uE04E", "\uE993", "", "volLow")
@@ -858,7 +975,7 @@ Singleton {
     readonly property string iconPrev:              getIcon("\uE045", "\uE892", "", "prev")
     readonly property string iconShuffle:           getIcon("\uE043", "\uE8B1", "", "shuffle")
     readonly property string iconRepeat:            getIcon("\uE040", "\uE8EE", "", "repeat")
-    readonly property string iconRepeatOne:         getIcon("\uE041", "\uE8ED", "", "repeatOne")
+    readonly property string iconRepeatOne:         getIcon("\uE041", "\uE8ED", "\uF365", "repeatOne")
 
     readonly property string iconWallhaven:         getIcon("\uE1BC", "\uE91B", "", "wallhaven")
     readonly property string iconWallpaper:         getIcon("\uE1BC", "\uE91B", "", "wallpaper")
@@ -881,13 +998,13 @@ Singleton {
     readonly property string iconLock:              getIcon("\uE899", "\uE72E", "", "lock")
     readonly property string iconLogout:            getIcon("\uE9BA", "\uF3B1", "", "logout")
     readonly property string iconReboot:            getIcon("\uF053", "\uE777", "", "reboot")
-    readonly property string iconSuspend:           getIcon("\uF159", "\uE708", "", "suspend")
-    readonly property string iconHibernate:         getIcon("\uEB3B", "\uE9CA", "", "hibernate")
+    readonly property string iconSuspend:           getIcon("\uF159", "\uE708", "\uF186", "suspend")
+    readonly property string iconHibernate:         getIcon("\uF236", "\uE9CA", "\uF236", "hibernate")
 
     readonly property string iconChevronRight:      getIcon("\uE5CC", "\uE974", "", "chevronRight")
     readonly property string iconChevronLeft:       getIcon("\uE5CB", "\uE973", "", "chevronLeft")
     readonly property string iconChevronDown:       getIcon("\uE5CF", "\uE972", "", "chevronDown")
-    readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE971", "", "chevronUp")
+    readonly property string iconChevronUp:         getIcon("\uE5CE", "\uE971", "\uF077", "chevronUp")
     readonly property string iconFlame:             getIcon("\uEF55", "\uE945", "", "flame")
     readonly property string iconSparkles:          getIcon("\uE65F", "\uE794", "", "sparkles")
     readonly property string iconRadio:             getIcon("\uE03E", "\uE93E", "📻", "radio")
@@ -902,7 +1019,7 @@ Singleton {
     readonly property string iconUser:              getIcon("\uF0D3", "\uE77B", "", "user")
     readonly property string iconShield:            getIcon("\uE9E0", "\uEA18", "", "shield")
     readonly property string iconExpand:            getIcon("\uE5D0", "\uE740", "", "expand")
-    readonly property string iconCollapse:          getIcon("\uE5D1", "\uE73F", "", "collapse")
+    readonly property string iconCollapse:          getIcon("\uE94D", "\uE73F", "\uF066", "collapse")
     readonly property string iconKeyboard:          getIcon("\uE30C", "\uEA08", "", "keyboard")
 
     // emotional support ascii faces for terminal burnout

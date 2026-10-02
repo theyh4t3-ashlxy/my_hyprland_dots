@@ -46,3 +46,9 @@ output_path = "~/.config/yazi/theme.toml"
 [templates.nvim]
 input_path = "~/.config/matugen/templates/nvim-colors.lua"
 output_path = "~/.config/nvim/lua/config/colors.lua"
+
+# inject dynamic matugen palette into qt/kde applications
+[templates.kde]
+input_path = "~/.config/matugen/templates/kde-colors.colors"
+output_path = "~/.local/share/color-schemes/Matugen.colors"
+post_hook = "$HOME/.config/matugen/post-hook-scripts/qt-kde-theme-reload.zsh 2>/dev/null || true"

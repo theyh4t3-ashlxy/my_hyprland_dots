@@ -27,6 +27,8 @@ PanelWindow {
     readonly property bool isVertical: isLeft || isRight
 
     readonly property bool isFloating: Settings?.barFloating ?? false
+    readonly property int barMargin: Settings?.barMargin ?? 0
+    readonly property int effectiveBarMargin: isFloating ? (barMargin > 0 ? barMargin : 8) : 0
 
     readonly property real scoopW: isFloating ? 0 : Math.max(8, Theme?.scoopRadiusX ?? Settings?.scoopRadius ?? 16)
     readonly property real scoopH: isFloating ? 0 : Math.max(8, Theme?.scoopRadiusY ?? Settings?.scoopRadius ?? 16)
@@ -103,12 +105,12 @@ PanelWindow {
         right: true
     }
 
-    // Dock window precisely against the bar edge
+    // Dock window precisely against the bar edge (with clean spacing when floating)
     margins {
-        top: root.isTop ? root.barSize : 0
-        bottom: root.isBottom ? root.barSize : 0
-        left: root.isLeft ? root.barSize : 0
-        right: root.isRight ? root.barSize : 0
+        top: root.isTop ? (root.barSize + (root.isFloating ? (root.effectiveBarMargin + 6) : 0)) : 0
+        bottom: root.isBottom ? (root.barSize + (root.isFloating ? (root.effectiveBarMargin + 6) : 0)) : 0
+        left: root.isLeft ? (root.barSize + (root.isFloating ? (root.effectiveBarMargin + 6) : 0)) : 0
+        right: root.isRight ? (root.barSize + (root.isFloating ? (root.effectiveBarMargin + 6) : 0)) : 0
     }
 
     property bool wantsFocus: true

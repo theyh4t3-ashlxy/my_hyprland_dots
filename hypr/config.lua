@@ -24,6 +24,8 @@ hl.env("XCURSOR_SIZE", "24")
 hl.env("TZDIR", "/etc/zoneinfo")
 hl.env("TZ", "America/Chicago")
 hl.env("QT_LOGGING_RULES", "quickshell.dbus.warning=false;quickshell.service.powerprofiles.warning=false")
+hl.env("QT_QPA_PLATFORMTHEME", "kde")
+hl.env("QT_STYLE_OVERRIDE", "Breeze")
 
 hl.config({
 	general = {

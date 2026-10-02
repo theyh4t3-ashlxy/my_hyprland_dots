@@ -96,11 +96,12 @@ PanelWindow {
         let halfScreen = root.width / 2;
         let centerHalf = (centerRowH.visible ? centerRowH.width : 0) / 2;
         let clockRight = halfScreen - centerHalf;
-        return Math.max(160, clockRight - (Theme.widgetPaddingH * 2));
+        return Math.max(380, clockRight - (Theme.widgetPaddingH * 2));
     }
     readonly property bool isVertical: isLeft || isRight
 
-    readonly property bool isFloating: Settings?.barFloating ?? false
+    readonly property bool isFloating: (Settings?.barFloating ?? false) || (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating")
+    readonly property bool isIslandMode: (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating") || (root.isFloating && (Settings?.barIslandMode ?? true))
     readonly property int barMargin: Settings?.barMargin ?? 0
     readonly property int effectiveBarMargin: root.isFloating ? (root.barMargin > 0 ? root.barMargin : 8) : 0
     readonly property int barRadius: Settings?.barRadius ?? 0
@@ -232,7 +233,7 @@ PanelWindow {
     Component { id: compWindowTitle; WindowTitle { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compClock; Clock {} }
     Component { id: compMedia; NowPlaying {} }
-    Component { id: compQuickNotes; QuickNotes {} }
+    Component { id: compQuickNotes; QuickNotes { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compClipboard; Clipboard {} }
     Component { id: compIdleInhibitor; IdleInhibitor { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compNotifications; Notifications {} }
@@ -243,7 +244,7 @@ PanelWindow {
     Component { id: compBattery; Battery { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compQuickSettings; QuickSettings { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compPowerMenu; PowerMenu {} }
-    Component { id: compScreenCapture; ScreenCapture {} }
+    Component { id: compScreenCapture; ScreenCapture { barScreen: root.screen; barMonitor: root.hyprMonitor } }
 
     function getModuleComponent(modId) {
         if (modId === "launcher") return compLauncher;
@@ -251,6 +252,7 @@ PanelWindow {
         if (modId === "workspaces") return compWorkspaces;
         if (modId === "windowTitle") return compWindowTitle;
         if (modId === "clock") return compClock;
+        if (modId === "dynamicNotch" || modId === "notch") return compDynamicNotch;
         if (modId === "media") return compMedia;
         if (modId === "quickNotes") return compQuickNotes;
         if (modId === "clipboard") return compClipboard;
@@ -273,6 +275,7 @@ PanelWindow {
         if (modId === "workspaces") return Settings?.showWorkspaces ?? true;
         if (modId === "windowTitle") return (Settings?.showWindowTitle ?? true) && !root.isVertical;
         if (modId === "clock") return Settings?.showClock ?? true;
+        if (modId === "dynamicNotch" || modId === "notch") return Settings?.showDynamicNotch ?? true;
         if (modId === "media") return Settings?.showMedia ?? true;
         if (modId === "quickNotes") return Settings?.showQuickNotes ?? true;
         if (modId === "clipboard") return Settings?.showClipboard ?? true;
@@ -293,6 +296,16 @@ PanelWindow {
         id: barRootItem
         anchors.fill: parent
 
+        // Ambient underglow for accent-glow style
+        Rectangle {
+            visible: (Theme?.isAccentGlow ?? false) && !root.isVertical && !root.isIslandMode
+            anchors.fill: barBg
+            anchors.margins: -4
+            radius: root.effectiveBarRadius + 4
+            color: Theme.alpha(Theme.primary, 0.28)
+            z: -2
+        }
+
         Rectangle {
             id: barBg
             x: root.isRight && root.hasBarScoops && root.scoopRadius > 0 ? root.scoopRadius : 0
@@ -300,22 +313,30 @@ PanelWindow {
             width: root.isVertical ? Theme.barHeight : parent.width
             height: root.isVertical ? parent.height : Theme.barHeight
             radius: root.effectiveBarRadius
-            clip: root.isFloating && root.effectiveBarRadius > 0
-            color: Theme.barBg
-            border.width: 0
+            clip: root.isFloating && root.effectiveBarRadius > 0 && !root.isIslandMode
+            color: root.isIslandMode ? "transparent" : Theme.barBg
+            border.color: root.isIslandMode ? "transparent" : ((Theme?.isPureBlack ?? false) ? "#222222" : ((Theme?.isCyberNeon ?? false) ? Theme.alpha(Theme.primary, 0.60) : (root.isFloating ? Theme.barBorderColor : "transparent")))
+            border.width: root.isIslandMode ? 0 : (((Theme?.isPureBlack ?? false) || (Theme?.isCyberNeon ?? false)) ? 1 : (root.isFloating && Theme.barBorderColor !== "transparent" ? 1 : 0))
 
             Rectangle {
-                visible: Settings?.barStyle === "accent-glow" || Settings?.barStyle === "cyber-neon"
+                visible: ((Theme?.isCyberNeon ?? false) || (Theme?.isAccentGlow ?? false)) && !root.isIslandMode
                 x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 2 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
                 y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 2 : 0))
                 width: Math.round(root.isVertical ? 2 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
                 height: Math.round(root.isVertical ? (parent.height - ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopBottomV.visible) ? (root.borderWidth + root.scoopRadius) : 0)) : 2)
                 color: Theme.primary
-                opacity: Settings?.barStyle === "cyber-neon" ? 1.0 : 0.90
+                opacity: (Theme?.isCyberNeon ?? false) ? 1.0 : 0.85
+
+                SequentialAnimation on opacity {
+                    loops: Animation.Infinite
+                    running: (Theme?.isCyberNeon ?? false) && !root.isIslandMode
+                    NumberAnimation { from: 0.55; to: 1.0; duration: 1200; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 1.0; to: 0.55; duration: 1200; easing.type: Easing.InOutQuad }
+                }
             }
 
             Rectangle {
-                visible: Settings?.barStyle === "glass" || Settings?.barStyle === "glass-frost"
+                visible: (Theme?.isGlass ?? false) && !root.isIslandMode
                 x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 1 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
                 y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 1 : 0))
                 width: Math.round(root.isVertical ? 1 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
@@ -375,6 +396,121 @@ PanelWindow {
         Item {
             anchors.fill: barBg
             visible: !root.isVertical
+
+            // Bento Floating Island: Left
+            Rectangle {
+                id: bentoLeftIsland
+                visible: root.isIslandMode && !root.isVertical && leftRowH.visible && (leftRowH.implicitWidth > 0)
+                anchors.verticalCenter: leftRowH.verticalCenter
+                anchors.left: leftRowH.left
+                anchors.leftMargin: -6
+                width: leftRowH.implicitWidth + 12
+                height: Theme.barHeight - 6
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: (Theme?.isCyberNeon ?? false) ? Theme.primary : Theme.cardBorder
+                border.width: 1
+                z: -1
+                scale: (Settings?.bentoHoverLift ?? true) && bentoLeftHover.hovered ? 1.015 : 1.0
+                HoverHandler { id: bentoLeftHover }
+                Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
+                Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
+                // Ambient underglow
+                Rectangle {
+                    visible: Theme?.isAccentGlow ?? false
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    radius: parent.radius + 4
+                    color: Theme.alpha(Theme.primary, 0.22)
+                    z: -2
+                }
+                // Glass specular highlight
+                Rectangle {
+                    visible: Theme?.isGlass ?? false
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 1
+                    color: Theme.glassHighlight
+                }
+            }
+
+            // Bento Floating Island: Center
+            Rectangle {
+                id: bentoCenterIsland
+                visible: root.isIslandMode && !root.isVertical && centerRowH.visible && (centerRowH.implicitWidth > 0)
+                anchors.centerIn: centerRowH
+                width: centerRowH.implicitWidth + 24
+                height: Theme.barHeight - 6
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: (Theme?.isCyberNeon ?? false) ? Theme.primary : Theme.cardBorder
+                border.width: 1
+                z: -1
+                scale: (Settings?.bentoHoverLift ?? true) && bentoCenterHover.hovered ? 1.015 : 1.0
+                HoverHandler { id: bentoCenterHover }
+                Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
+                Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
+                // Ambient underglow
+                Rectangle {
+                    visible: Theme?.isAccentGlow ?? false
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    radius: parent.radius + 4
+                    color: Theme.alpha(Theme.primary, 0.22)
+                    z: -2
+                }
+                // Glass specular highlight
+                Rectangle {
+                    visible: Theme?.isGlass ?? false
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 1
+                    color: Theme.glassHighlight
+                }
+            }
+
+            // Bento Floating Island: Right
+            Rectangle {
+                id: bentoRightIsland
+                visible: root.isIslandMode && !root.isVertical && rightRowContainer.visible && (rightRowContainer.width > 0)
+                anchors.verticalCenter: rightRowContainer.verticalCenter
+                anchors.right: rightRowContainer.right
+                anchors.rightMargin: -6
+                width: rightRowContainer.width + 12
+                height: Theme.barHeight - 6
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: (Theme?.isCyberNeon ?? false) ? Theme.primary : Theme.cardBorder
+                border.width: 1
+                z: -1
+                scale: (Settings?.bentoHoverLift ?? true) && bentoRightHover.hovered ? 1.015 : 1.0
+                HoverHandler { id: bentoRightHover }
+                Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
+                Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
+
+                // Ambient underglow
+                Rectangle {
+                    visible: Theme?.isAccentGlow ?? false
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    radius: parent.radius + 4
+                    color: Theme.alpha(Theme.primary, 0.22)
+                    z: -2
+                }
+                // Glass specular highlight
+                Rectangle {
+                    visible: Theme?.isGlass ?? false
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 1
+                    color: Theme.glassHighlight
+                }
+            }
 
             Row {
                 id: leftRowH
@@ -494,7 +630,8 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.min(rightRowH.implicitWidth, root.maxRightRowWidth)
                 height: rightRowH.implicitHeight
-                clip: true
+                clip: rightRowH.implicitWidth > root.maxRightRowWidth
+                Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
                 Row {
                     id: rightRowH
@@ -531,6 +668,49 @@ PanelWindow {
         Item {
             anchors.fill: barBg
             visible: root.isVertical
+
+            // Bento Floating Island: Top V
+            Rectangle {
+                visible: root.isIslandMode && root.isVertical && leftRowV.visible && (leftRowV.implicitHeight > 0)
+                anchors.horizontalCenter: leftRowV.horizontalCenter
+                anchors.top: leftRowV.top
+                anchors.topMargin: -6
+                width: Theme.barHeight - 6
+                height: leftRowV.implicitHeight + 12
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: Theme.cardBorder
+                border.width: 1
+                z: -1
+            }
+
+            // Bento Floating Island: Center V
+            Rectangle {
+                visible: root.isIslandMode && root.isVertical && centerRowV.visible && (centerRowV.implicitHeight > 0)
+                anchors.centerIn: centerRowV
+                width: Theme.barHeight - 6
+                height: centerRowV.implicitHeight + 16
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: Theme.cardBorder
+                border.width: 1
+                z: -1
+            }
+
+            // Bento Floating Island: Bottom V
+            Rectangle {
+                visible: root.isIslandMode && root.isVertical && rightRowV.visible && (rightRowV.implicitHeight > 0)
+                anchors.horizontalCenter: rightRowV.horizontalCenter
+                anchors.bottom: rightRowV.bottom
+                anchors.bottomMargin: -6
+                width: Theme.barHeight - 6
+                height: rightRowV.implicitHeight + 12
+                radius: Theme.radiusMd > 4 ? Theme.radiusMd : 8
+                color: Theme.cardBg
+                border.color: Theme.cardBorder
+                border.width: 1
+                z: -1
+            }
 
             Column {
                 id: leftRowV

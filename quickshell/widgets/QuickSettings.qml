@@ -11,12 +11,13 @@ Rectangle {
     implicitWidth: Theme.isVertical ? Theme.barHeight - 8 : qsRow.implicitWidth + 24
     implicitHeight: Theme.barHeight - 8
     radius: Theme.radiusPill
-    color: popup.open ? Theme.primary_overlay : (qsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
+    color: popup.open ? Theme.primary_container : (qsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
-    border.width: Theme.pillBorder === "transparent" ? 0 : 1
+    border.width: Theme.pillBorder === "transparent" ? 0 : Theme.popupBorderWidth
+    // Scope safety guard for dynamic signal connections
 
-    Behavior on color { ColorAnimation { duration: Theme.animFast } }
-    Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
     property var barScreen: null
     property var barMonitor: null
@@ -25,6 +26,46 @@ Rectangle {
     property string fontSearchQuery: ""
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
+
+    readonly property string activeTabTitle: ({
+        layout: "layout",
+        style: "appearance",
+        behavior: "behavior",
+        capture: "capture",
+        keybinds: "keybinds",
+        advanced: "system"
+    })[root.activeTab] || "settings"
+
+    readonly property bool usingMaterialIcons: Settings.iconSet === "material" || Settings.iconSet === "material-outlined" || Settings.iconSet === "material-sharp"
+    // Material 3 / Matugen semantic surfaces used throughout this panel.
+    readonly property color uiSurface0: Theme.surface_container_lowest
+    readonly property color uiSurface1: Theme.surface_container_low
+    readonly property color uiSurface2: Theme.surface_container
+    readonly property color uiSurface3: Theme.surface_container_high
+    readonly property color uiSurface4: Theme.surface_container_highest
+    readonly property color uiAccentContainer: Theme.primary_container
+    readonly property color uiAccentText: Theme.on_primary_container
+    readonly property color uiOutline: Theme.outline_variant
+    readonly property color uiSubtleText: Theme.on_surface_variant
+
+
+    readonly property string activeTabSubtitle: ({
+        layout: "arrange the bar and choose what lives on it",
+        style: "shape, color, typography, and visual personality",
+        behavior: "motion, hover behavior, feedback, and interaction",
+        capture: "screenshots, recording, and selection overlays",
+        keybinds: "view and manage your shell shortcuts",
+        advanced: "shell profiles, cache, aliases, and recovery tools"
+    })[root.activeTab] || ""
+
+    onActiveTabChanged: {
+        // Keep each page feeling like a fresh workspace instead of a stale scroll position.
+        if (root.activeTab === "layout" && flickLayout) flickLayout.contentY = 0;
+        else if (root.activeTab === "style" && flickStyle) flickStyle.contentY = 0;
+        else if (root.activeTab === "behavior" && flickBehavior) flickBehavior.contentY = 0;
+        else if (root.activeTab === "capture" && flickScreenshot) flickScreenshot.contentY = 0;
+        else if (root.activeTab === "advanced" && flickAdvanced) flickAdvanced.contentY = 0;
+    }
 
     Connections {
         target: Settings
@@ -92,319 +133,499 @@ Rectangle {
 
     // --- INLINE COMPONENTS (Safely inside root) ---
 
-    component CategoryHeader: RowLayout {
-        id: catHdr
-        property string title: ""
-        property string icon: ""
+    component CategoryHeader: ColumnLayout {
+    id: catHdr
+    property string title: ""
+    property string icon: ""
+    property string subtitle: ""
+
+    Layout.fillWidth: true
+    Layout.topMargin: 14
+    Layout.bottomMargin: 2
+    spacing: 5
+
+    RowLayout {
         Layout.fillWidth: true
         spacing: 8
-        Layout.topMargin: 12
-        Layout.bottomMargin: 4
 
-        Text {
+        Rectangle {
             visible: catHdr.icon !== ""
-            text: catHdr.icon
-            font.family: Theme.fontIcon
-            font.pixelSize: Theme.fontSizeSm
-            color: Theme.primary
+            width: 26
+            height: 26
+            radius: Theme.radiusSm
+            color: Theme.primary_container
+            border.color: Theme.alpha(Theme.outline_variant, 0.45)
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: catHdr.icon
+                font.family: Theme.fontIcon
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.on_primary_container
+            }
         }
 
         Text {
             text: catHdr.title
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeSm
-            font.weight: Font.Black
-            color: Theme.primary
+            font.weight: Theme.fontWeightBold
+            color: Theme.on_surface
+            Layout.alignment: Qt.AlignVCenter
         }
 
         Rectangle {
             Layout.fillWidth: true
             height: 1
-            color: Theme.alpha(Theme.primary, 0.2)
+            color: Theme.outline_variant
+            opacity: 0.55
+            Layout.alignment: Qt.AlignVCenter
         }
     }
+
+    Text {
+        visible: catHdr.subtitle !== ""
+        text: catHdr.subtitle
+        Layout.leftMargin: 34
+        Layout.fillWidth: true
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.fontSizeXs
+        font.weight: Theme.fontWeightRegular
+        color: Theme.on_surface_variant
+        wrapMode: Text.Wrap
+    }
+}
 
     component SettingCard: Rectangle {
-        default property alias content: cardCol.data
-            Layout.fillWidth: true
-            width: parent ? parent.width : undefined
-            implicitHeight: cardCol.implicitHeight + 16
-            radius: Theme.widgetRadius
-            color: Theme.cardBg
-            border.color: Theme.cardBorder
-            border.width: 1
-            clip: true
+    default property alias content: cardCol.data
+    Layout.fillWidth: true
+    width: parent ? parent.width : undefined
+    implicitHeight: cardCol.implicitHeight + 18
+    radius: Theme.radiusMd
+    color: Theme.cardBg
+    border.color: Theme.outline_variant
+    border.width: Theme.popupBorderWidth
+    clip: true
 
-            Column {
-                id: cardCol
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: 8
-                spacing: 2
-            }
+    Column {
+        id: cardCol
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: Theme.widgetPaddingH
+        anchors.rightMargin: Theme.widgetPaddingH
+        anchors.topMargin: Theme.widgetPaddingV
+        anchors.bottomMargin: Theme.widgetPaddingV
+        spacing: 2
     }
+}
 
     component RowDivider: Rectangle {
-        width: parent ? parent.width - 24 : 0
-        anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
-        height: 1
-        color: Theme.widgetBorder
-        opacity: 0.7
-    }
+    width: parent ? parent.width - 24 : 0
+    anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+    height: 1
+    color: Theme.outline_variant
+    opacity: 0.42
+}
 
     component ToggleRow: Rectangle {
-        id: trRoot
-        property string icon: ""
-        property string title: ""
-        property string subtitle: ""
-        property bool checked: false
-        signal toggled()
+    id: trRoot
+    property string icon: ""
+    property string title: ""
+    property string subtitle: ""
+    property bool checked: false
+    signal toggled()
 
-        width: parent ? parent.width : 0
-        implicitHeight: subtitle !== "" ? 48 : 38
-        height: implicitHeight
+    width: parent ? parent.width : 0
+    implicitHeight: subtitle !== "" ? 50 : 40
+    height: implicitHeight
+    radius: Theme.radiusSm
+    color: trMouse.containsMouse ? Theme.widgetHover : "transparent"
+    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+
+    Rectangle {
+        id: trIcon
+        visible: trRoot.icon !== ""
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        width: 28
+        height: 28
         radius: Theme.radiusSm
-        color: trMouse.containsMouse ? Theme.surface_container_highest : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+        color: trRoot.checked ? Theme.primary_container : Theme.surface_container_high
+        border.color: trRoot.checked ? Theme.alpha(Theme.primary, 0.26) : Theme.outline_disabled
+        border.width: 1
+
+        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
         Text {
-            id: trIcon
-            visible: trRoot.icon !== ""
-            anchors.left: parent.left
-            anchors.leftMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            width: visible ? 20 : 0
+            anchors.centerIn: parent
             text: trRoot.icon
             font.family: Theme.fontIcon
-            font.pixelSize: Theme.fontSizeSm
-            color: trRoot.checked ? Theme.primary : Theme.on_surface_variant
-            horizontalAlignment: Text.AlignHCenter
-        }
-
-        ToggleSwitch {
-            id: trSwitch
-            anchors.right: parent.right
-            anchors.rightMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            checked: trRoot.checked
-            onToggled: { trRoot.toggled(); }
-        }
-
-        Column {
-            anchors.left: trIcon.visible ? trIcon.right : parent.left
-            anchors.leftMargin: trIcon.visible ? 12 : 8
-            anchors.right: trSwitch.left
-            anchors.rightMargin: 12
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
-
-            Text {
-                width: parent.width
-                text: trRoot.title
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeSm
-                font.weight: trRoot.checked ? Font.Bold : Font.Medium
-                color: trRoot.checked ? Theme.on_surface : Theme.on_surface_variant
-                elide: Text.ElideRight
-            }
-
-            Text {
-                visible: trRoot.subtitle !== ""
-                width: parent.width
-                text: trRoot.subtitle
-                font.family: Theme.fontFamily
-                font.pixelSize: 9
-                color: Theme.on_surface_variant
-                opacity: 0.8
-                elide: Text.ElideRight
-            }
-        }
-
-        MouseArea {
-            id: trMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: { trRoot.toggled(); }
+            font.pixelSize: Theme.fontSizeXs
+            color: trRoot.checked ? Theme.on_primary_container : Theme.on_surface_variant
         }
     }
 
-    component ChoiceRow: ColumnLayout {
-        id: crRoot
-        property string title: ""
-        property var model: []
-        property var currentValue
-        property int buttonHeight: 30
-        signal selected(var value)
+    ToggleSwitch {
+        id: trSwitch
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        checked: trRoot.checked
+        onToggled: trRoot.toggled()
+    }
 
-        Layout.fillWidth: true
-        spacing: 6
+    Column {
+        anchors.left: trIcon.visible ? trIcon.right : parent.left
+        anchors.leftMargin: trIcon.visible ? 12 : 8
+        anchors.right: trSwitch.left
+        anchors.rightMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 2
 
         Text {
-            visible: crRoot.title !== ""
-            text: crRoot.title
+            width: parent.width
+            text: trRoot.title
             font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeXs
-            font.weight: Font.Bold
-            color: Theme.on_surface_variant
+            font.pixelSize: Theme.fontSizeSm
+            font.weight: trRoot.checked ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
+            color: Theme.on_surface
+            elide: Text.ElideRight
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            height: crRoot.buttonHeight + 8
-            radius: Theme.radiusSm
-            color: Theme.surface_container_lowest
-            border.color: Theme.widgetBorder
-            border.width: 1
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 4
-                spacing: 4
-
-                Repeater {
-                    model: crRoot.model
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        readonly property var itemVal: modelData && typeof modelData === "object"
-                        ? (modelData.value !== undefined ? modelData.value : (modelData.pos !== undefined ? modelData.pos : (modelData.s !== undefined ? modelData.s : (modelData.w !== undefined ? modelData.w : (modelData.c !== undefined ? modelData.c : (modelData.fmt !== undefined ? modelData.fmt : modelData))))))
-                        : modelData
-                        readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
-                        ? String(modelData.label)
-                        : (typeof modelData === "number" ? (modelData === 0 ? "none" : modelData + "px") : String(modelData || ""))
-                        readonly property bool isSelected: (typeof crRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
-                        ? Math.abs(crRoot.currentValue - itemVal) < 0.04
-                        : crRoot.currentValue === itemVal
-
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        radius: Theme.radiusSm - 2
-                        color: isSelected ? Theme.primary : (crMouse.containsMouse ? Theme.surface_container_highest : "transparent")
-
-                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: itemText
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 10
-                            font.weight: isSelected ? Font.Bold : Font.Medium
-                            color: isSelected ? Theme.on_primary : Theme.on_surface
-                            elide: Text.ElideRight
-                        }
-
-                        MouseArea {
-                            id: crMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: { crRoot.selected(itemVal); }
-                        }
-                    }
-                }
-            }
+        Text {
+            visible: trRoot.subtitle !== ""
+            width: parent.width
+            text: trRoot.subtitle
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            color: Theme.on_surface_variant
+            opacity: 0.9
+            elide: Text.ElideRight
         }
     }
 
-    component SliderRow: ColumnLayout {
-        id: slRoot
-        property string title: ""
-        property real from: 0
-        property real to: 100
-        property real value: 0
-        property real stepSize: 1
-        property string suffix: "px"
-        property var formatter: null
-        signal moved(real val)
+    MouseArea {
+        id: trMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: trRoot.toggled()
+    }
+}
 
-        Layout.fillWidth: true
-        spacing: 6
+    component ColorRow: Rectangle {
+    id: colRowRoot
+    property string title: ""
+    property string subtitle: ""
+    property color swatchColor: Theme.primary
+    signal clicked()
 
-        readonly property string displayText: slRoot.formatter
-        ? slRoot.formatter(slRoot.value)
-        : ((Math.round(slRoot.value * 100) / 100) + slRoot.suffix)
+    width: parent ? parent.width : 0
+    implicitHeight: subtitle !== "" ? 50 : 40
+    height: implicitHeight
+    radius: Theme.radiusSm
+    color: colRowMouse.containsMouse ? Theme.widgetHover : "transparent"
+    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
-        RowLayout {
+    Rectangle {
+        id: colRowSwatch
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        width: 36
+        height: 24
+        radius: Theme.radiusSm
+        color: colRowRoot.swatchColor
+        border.color: Theme.alpha(Theme.outline, 0.55)
+        border.width: 1
+    }
+
+    Column {
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.right: colRowSwatch.left
+        anchors.rightMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 2
+
+        Text {
+            width: parent.width
+            text: colRowRoot.title
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeSm
+            font.weight: Theme.fontWeightMedium
+            color: Theme.on_surface
+            elide: Text.ElideRight
+        }
+
+        Text {
+            visible: colRowRoot.subtitle !== ""
+            width: parent.width
+            text: colRowRoot.subtitle
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            color: Theme.on_surface_variant
+            elide: Text.ElideRight
+        }
+    }
+
+    MouseArea {
+        id: colRowMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: colRowRoot.clicked()
+    }
+}
+
+    component ColorTile: Rectangle {
+    id: colorTileRoot
+    property string title: ""
+    property string subtitle: ""
+    property color swatchColor: Theme.primary
+    signal clicked()
+
+    width: parent ? parent.width : 0
+    Layout.fillWidth: true
+    height: 58
+    radius: Theme.radiusMd
+    color: colorTileMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_low
+    border.color: colorTileMouse.containsMouse ? Theme.primary : Theme.outline_variant
+    border.width: 1
+
+    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+    Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+
+    RowLayout {
+        anchors.fill: parent
+        anchors.margins: 8
+        spacing: 8
+
+        Rectangle {
+            width: 32
+            height: 32
+            radius: Theme.radiusSm
+            color: colorTileRoot.swatchColor
+            border.color: Theme.alpha(Theme.outline, 0.6)
+            border.width: 1
+        }
+
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 1
 
             Text {
-                visible: slRoot.title !== ""
-                text: slRoot.title
+                text: colorTileRoot.title
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontSizeXs
-                font.weight: Font.Bold
-                color: Theme.on_surface_variant
+                font.weight: Theme.fontWeightDemiBold
+                color: Theme.on_surface
+                elide: Text.ElideRight
                 Layout.fillWidth: true
             }
 
             Text {
-                text: slRoot.displayText
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontSizeXs
-                font.weight: Font.Black
-                color: Theme.primary
-            }
-        }
-
-        Rectangle {
-            id: track
-            Layout.fillWidth: true
-            height: 8
-            radius: 4
-            color: Theme.surface_container_highest
-
-            readonly property real ratio: slRoot.to > slRoot.from
-            ? Math.max(0, Math.min(1, (slRoot.value - slRoot.from) / (slRoot.to - slRoot.from)))
-            : 0
-
-            Rectangle {
-                width: parent.width * track.ratio
-                height: parent.height
-                radius: parent.radius
-                color: Theme.primary
-            }
-
-            Rectangle {
-                id: handle
-                width: 18
-                height: 18
-                radius: 9
-                y: (track.height - height) / 2
-                x: Math.max(0, Math.min(track.width - width, track.width * track.ratio - width / 2))
-                color: Theme.primary
-                border.color: Theme.surface_container_highest
-                border.width: 2
-                scale: dragArea.pressed ? 1.2 : 1.0
-
-                Behavior on scale { NumberAnimation { duration: Theme.animFast } }
-            }
-
-            MouseArea {
-                id: dragArea
-                anchors.fill: parent
-                anchors.margins: -10
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                preventStealing: true
-
-                function commit(localX) {
-                    const t = Math.max(0, Math.min(1, localX / track.width));
-                    let raw = slRoot.from + t * (slRoot.to - slRoot.from);
-                    if (slRoot.stepSize > 0) {
-                        raw = Math.round(raw / slRoot.stepSize) * slRoot.stepSize;
-                    }
-                    raw = Math.max(slRoot.from, Math.min(slRoot.to, raw));
-                    if (Math.abs(raw - slRoot.value) > 1e-9) slRoot.moved(raw);
-                }
-
-                onPressed: { commit(mouseX - 10); }
-                onPositionChanged: { if (pressed) commit(mouseX - 10); }
+                text: colorTileRoot.subtitle
+                font.family: Theme.fontMono
+                font.pixelSize: 8
+                color: Theme.on_surface_variant
+                elide: Text.ElideRight
+                Layout.fillWidth: true
             }
         }
     }
+
+    MouseArea {
+        id: colorTileMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: colorTileRoot.clicked()
+    }
+}
+
+    component ChoiceRow: ColumnLayout {
+    id: crRoot
+    property string title: ""
+    property var model: []
+    property var currentValue
+    property int buttonHeight: 30
+    signal selected(var value)
+
+    width: parent ? parent.width : 0
+    implicitWidth: width
+    Layout.fillWidth: true
+    spacing: 6
+
+    Text {
+        visible: crRoot.title !== ""
+        text: crRoot.title
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.fontSizeXs
+        font.weight: Theme.fontWeightDemiBold
+        color: Theme.on_surface_variant
+    }
+
+    Rectangle {
+        Layout.fillWidth: true
+        height: crRoot.buttonHeight + 8
+        radius: Theme.radiusMd
+        color: Theme.surface_container_lowest
+        border.color: Theme.outline_variant
+        border.width: 1
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: 4
+
+            Repeater {
+                model: crRoot.model
+
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property var itemVal: modelData && typeof modelData === "object"
+                        ? (modelData.value !== undefined ? modelData.value : (modelData.pos !== undefined ? modelData.pos : (modelData.s !== undefined ? modelData.s : (modelData.w !== undefined ? modelData.w : (modelData.c !== undefined ? modelData.c : (modelData.fmt !== undefined ? modelData.fmt : modelData))))))
+                        : modelData
+                    readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
+                        ? String(modelData.label)
+                        : (typeof modelData === "number" ? (modelData === 0 ? "none" : modelData + "px") : String(modelData || ""))
+                    readonly property bool isSelected: (typeof crRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
+                        ? Math.abs(crRoot.currentValue - itemVal) < 0.04
+                        : crRoot.currentValue === itemVal
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: Math.max(1, Theme.radiusSm)
+                    color: isSelected
+                        ? Theme.primary_container
+                        : (crMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+
+                    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: itemText
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        font.weight: isSelected ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
+                        color: isSelected ? Theme.on_primary_container : Theme.on_surface
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        id: crMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: crRoot.selected(itemVal)
+                    }
+                }
+            }
+        }
+    }
+}
+
+    component SliderRow: ColumnLayout {
+    id: slRoot
+    property string title: ""
+    property real from: 0
+    property real to: 100
+    property real value: 0
+    property real stepSize: 1
+    property string suffix: "px"
+    property var formatter: null
+    signal moved(real val)
+
+    width: parent ? parent.width : 0
+    implicitWidth: width
+    Layout.fillWidth: true
+    spacing: 7
+
+    readonly property string displayText: slRoot.formatter
+        ? slRoot.formatter(slRoot.value)
+        : ((Math.round(slRoot.value * 100) / 100) + slRoot.suffix)
+
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 6
+
+        Text {
+            visible: slRoot.title !== ""
+            text: slRoot.title
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            font.weight: Theme.fontWeightDemiBold
+            color: Theme.on_surface_variant
+            Layout.fillWidth: true
+        }
+
+        Text {
+            text: slRoot.displayText
+            font.family: Theme.fontMono
+            font.pixelSize: Theme.fontSizeXs
+            font.weight: Theme.fontWeightBold
+            color: Theme.primary
+        }
+    }
+
+    Rectangle {
+        id: track
+        Layout.fillWidth: true
+        height: 8
+        radius: 4
+        color: Theme.surface_container_highest
+
+        readonly property real ratio: slRoot.to > slRoot.from
+            ? Math.max(0, Math.min(1, (slRoot.value - slRoot.from) / (slRoot.to - slRoot.from)))
+            : 0
+
+        Rectangle {
+            width: parent.width * track.ratio
+            height: parent.height
+            radius: parent.radius
+            color: Theme.primary
+        }
+
+        Rectangle {
+            id: handle
+            width: 18
+            height: 18
+            radius: 9
+            y: (track.height - height) / 2
+            x: Math.max(0, Math.min(track.width - width, track.width * track.ratio - width / 2))
+            color: Theme.primary
+            border.color: Theme.surface_bright
+            border.width: 2
+            scale: dragArea.pressed ? 1.12 : 1.0
+            Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+        }
+
+        MouseArea {
+            id: dragArea
+            anchors.fill: parent
+            anchors.margins: -10
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            preventStealing: true
+
+            function commit(localX) {
+                const t = Math.max(0, Math.min(1, localX / track.width));
+                let raw = slRoot.from + t * (slRoot.to - slRoot.from);
+                if (slRoot.stepSize > 0) raw = Math.round(raw / slRoot.stepSize) * slRoot.stepSize;
+                raw = Math.max(slRoot.from, Math.min(slRoot.to, raw));
+                if (Math.abs(raw - slRoot.value) > 1e-9) slRoot.moved(raw);
+            }
+
+            onPressed: commit(mouseX - 10)
+            onPositionChanged: if (pressed) commit(mouseX - 10)
+        }
+    }
+}
 
     component ChoiceGrid: ColumnLayout {
         id: cgRoot
@@ -415,6 +636,8 @@ Rectangle {
         property int buttonHeight: 28
         signal selected(var value)
 
+        width: parent ? parent.width : 0
+        implicitWidth: width
         Layout.fillWidth: true
         spacing: 6
 
@@ -423,13 +646,15 @@ Rectangle {
             text: cgRoot.title
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontSizeXs
-            font.weight: Font.Bold
+            font.weight: Theme.fontWeightDemiBold
             color: Theme.on_surface_variant
         }
 
-        GridLayout {
+        Grid {
+            id: choiceGrid
+            width: parent.width
             Layout.fillWidth: true
-            columns: cgRoot.columns
+            columns: Math.max(1, cgRoot.columns)
             rowSpacing: 6
             columnSpacing: 6
 
@@ -438,32 +663,62 @@ Rectangle {
 
                 delegate: Rectangle {
                     required property var modelData
-                    readonly property var itemVal: modelData && typeof modelData === "object"
-                    ? (modelData.value !== undefined ? modelData.value : (modelData.id !== undefined ? modelData.id : (modelData.s !== undefined ? modelData.s : (modelData.m !== undefined ? modelData.m : (modelData.fmt !== undefined ? modelData.fmt : modelData)))))
-                    : modelData
-                    readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
-                    ? String(modelData.label)
-                    : String(modelData || "")
-                    readonly property bool isSelected: (typeof cgRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
-                    ? Math.abs(cgRoot.currentValue - itemVal) < 0.04
-                    : cgRoot.currentValue === itemVal
 
-                    Layout.fillWidth: true
+                    readonly property var itemVal:
+                        modelData && typeof modelData === "object"
+                            ? (modelData.value !== undefined ? modelData.value
+                            : (modelData.id !== undefined ? modelData.id
+                            : (modelData.s !== undefined ? modelData.s
+                            : (modelData.m !== undefined ? modelData.m
+                            : (modelData.fmt !== undefined ? modelData.fmt : modelData)))))
+                            : modelData
+
+                    readonly property string itemText:
+                        modelData && typeof modelData === "object" && modelData.label !== undefined
+                            ? String(modelData.label)
+                            : String(modelData || "")
+
+                    readonly property bool isSelected:
+                        (typeof cgRoot.currentValue === "number" &&
+                         typeof itemVal === "number" &&
+                         !Number.isInteger(itemVal))
+                            ? Math.abs(cgRoot.currentValue - itemVal) < 0.04
+                            : cgRoot.currentValue === itemVal
+
+                    width: Math.max(
+                        1,
+                        (choiceGrid.width - choiceGrid.columnSpacing * (choiceGrid.columns - 1))
+                        / choiceGrid.columns
+                    )
                     height: cgRoot.buttonHeight
                     radius: Theme.radiusSm
-                    color: isSelected ? Theme.primary : (cgMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_lowest)
-                    border.color: isSelected ? "transparent" : Theme.widgetBorder
-                    border.width: isSelected ? 0 : 1
+                    color: isSelected
+                        ? Theme.primary_container
+                        : (cgMouse.containsMouse
+                            ? Theme.surface_container_highest
+                            : Theme.surface_container_low)
+                    border.color: isSelected ? Theme.primary : Theme.outline_variant
+                    border.width: 1
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Theme.animFast
+                            easing.type: Theme.animColorEasing
+                        }
+                    }
 
                     Text {
-                        anchors.centerIn: parent
+                        id: choiceText
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
                         text: itemText
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: isSelected ? Font.Bold : Font.Medium
-                        color: isSelected ? Theme.on_primary : Theme.on_surface
+                        font.pixelSize: Theme.fontSizeXs
+                        font.weight: isSelected ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
+                        color: isSelected ? Theme.on_primary_container : Theme.on_surface
                         elide: Text.ElideRight
                     }
 
@@ -472,7 +727,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { cgRoot.selected(itemVal); }
+                        onClicked: cgRoot.selected(itemVal)
                     }
                 }
             }
@@ -480,28 +735,28 @@ Rectangle {
     }
 
     component TabScrollTrack: Rectangle {
-        id: stRoot
-        required property Flickable target
-        anchors.right: target ? target.right : undefined
-        anchors.top: target ? target.top : undefined
-        anchors.bottom: target ? target.bottom : undefined
-        anchors.margins: 2
-        width: 4
+    id: stRoot
+    required property Flickable target
+    anchors.right: target ? target.right : undefined
+    anchors.top: target ? target.top : undefined
+    anchors.bottom: target ? target.bottom : undefined
+    anchors.margins: 2
+    width: 4
+    radius: 2
+    color: "transparent"
+    visible: target ? (target.visible && target.visibleArea.heightRatio < 1.0) : false
+
+    Rectangle {
+        width: parent.width
+        readonly property real trackH: stRoot.height
+        readonly property real thumbH: Math.max(20, Math.min(trackH, (stRoot.target ? stRoot.target.visibleArea.heightRatio : 1) * trackH))
+        height: thumbH
+        y: Math.max(0, Math.min(trackH - thumbH, (stRoot.target ? stRoot.target.visibleArea.yPosition : 0) * trackH))
         radius: 2
-        color: "transparent"
-        visible: target ? (target.visible && target.visibleArea.heightRatio < 1.0) : false
-
-        Rectangle {
-            width: parent.width
-            readonly property real trackH: stRoot.height
-            readonly property real thumbH: Math.max(20, Math.min(trackH, (stRoot.target ? stRoot.target.visibleArea.heightRatio : 1) * trackH))
-            height: thumbH
-            y: Math.max(0, Math.min(trackH - thumbH, (stRoot.target ? stRoot.target.visibleArea.yPosition : 0) * trackH))
-            radius: 2
-            color: Theme.primary_overlay
-        }
+        color: Theme.primary
+        opacity: 0.75
     }
-
+}
     // --- MAIN UI ---
 
     Row {
@@ -514,7 +769,7 @@ Rectangle {
             text: Theme.iconSettings
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
-            color: popup.open ? Theme.primary : Theme.on_surface
+            color: popup.open ? Theme.on_primary_container : Theme.on_surface
         }
     }
 
@@ -578,31 +833,62 @@ Rectangle {
         screen: root.barScreen
         wantsFocus: true
         keyboardFocusMode: WlrKeyboardFocus.OnDemand
-        cardWidth: 480
-        cardHeight: 660
+        cardWidth: Theme.popupWidth
+        cardHeight: Theme.popupHeight
 
-        content: ColumnLayout {
+        ColumnLayout {
             anchors.fill: parent
+            anchors.margins: Theme.popupPadding
             spacing: Theme.popupSpacing
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Math.max(8, Theme.popupSpacing)
 
-                Text {
-                    text: "settings & customization"
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontSizeLg
-                    font.weight: Font.Black
-                    color: Theme.on_surface
+                Rectangle {
+                    width: 42
+                    height: 42
+                    radius: Theme.radiusMd
+                    color: popup.open ? Theme.primary_container : Theme.surface_container_high
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Theme.iconSettings
+                        font.family: Theme.fontIcon
+                        font.pixelSize: Theme.fontSizeLg
+                        color: Theme.on_primary_container
+                    }
+                }
+
+                ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 1
+
+                    Text {
+                        text: "settings & customization"
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeTitle
+                        font.weight: Theme.fontWeightBold
+                        color: Theme.on_surface
+                    }
+
+                    Text {
+                        text: root.activeTabTitle + "  •  " + root.activeTabSubtitle
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.on_surface_variant
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
 
                 Rectangle {
-                    height: 24
+                    height: 26
                     implicitWidth: saveBadgeRow.implicitWidth + 16
                     radius: Theme.radiusPill
-                    color: Theme.primary_overlay
+                    color: Theme.primary_container
+                    border.color: Theme.alpha(Theme.outline_variant, 0.45)
+                    border.width: 1
 
                     RowLayout {
                         id: saveBadgeRow
@@ -613,17 +899,24 @@ Rectangle {
                             text: Theme.iconCheck
                             font.family: Theme.fontIcon
                             font.pixelSize: 10
-                            color: Theme.primary
+                            color: Theme.on_primary_container
                         }
 
                         Text {
-                            text: "auto-saved"
+                            text: "saved"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
-                            font.weight: Font.Bold
-                            color: Theme.primary
+                            font.weight: Theme.fontWeightDemiBold
+                            color: Theme.on_primary_container
                         }
                     }
+                }
+
+                IconButton {
+                    icon: Theme.iconClose
+                    iconSize: Theme.fontSizeSm
+                    tooltip: "close"
+                    onClicked: popup.open = false
                 }
             }
 
@@ -650,17 +943,17 @@ Rectangle {
 
                 RowLayout {
                     id: tabRow
-                    spacing: 6
+                    spacing: Math.max(4, Theme.widgetSpacing)
                     anchors.verticalCenter: parent.verticalCenter
 
                     Repeater {
                         model: [
-                            { id: "layout", label: "layout & modules", icon: Theme.iconGrid },
-                            { id: "style", label: "style & themes", icon: Theme.iconSparkles },
-                            { id: "behavior", label: "behavior & motion", icon: Theme.iconFlame },
-                            { id: "capture", label: "capture & media", icon: Theme.iconCamera },
+                            { id: "layout", label: "layout", icon: Theme.iconGrid },
+                            { id: "style", label: "appearance", icon: Theme.iconSparkles },
+                            { id: "behavior", label: "behavior", icon: Theme.iconFlame },
+                            { id: "capture", label: "capture", icon: Theme.iconCamera },
                             { id: "keybinds", label: "keybinds", icon: Theme.iconKeyboard },
-                            { id: "advanced", label: "advanced", icon: Theme.iconSliders }
+                            { id: "advanced", label: "system", icon: Theme.iconSliders }
                         ]
 
                         delegate: Rectangle {
@@ -671,12 +964,12 @@ Rectangle {
                             readonly property bool isSelected: root.activeTab === modelData.id
 
                             color: isSelected
-                            ? Theme.primary
+                            ? Theme.primary_container
                             : (tabMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
-                            border.color: isSelected ? "transparent" : Theme.widgetBorder
-                            border.width: isSelected ? 0 : 1
+                            border.color: isSelected ? Theme.primary : Theme.outline_variant
+                            border.width: 1
 
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                             RowLayout {
                                 id: tabItemRow
@@ -687,15 +980,15 @@ Rectangle {
                                     text: modelData.icon
                                     font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeSm
-                                    color: isSelected ? Theme.on_primary : Theme.on_surface_variant
+                                    color: isSelected ? Theme.on_primary_container : Theme.on_surface_variant
                                 }
 
                                 Text {
                                     text: modelData.label
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontSizeSm
-                                    font.weight: isSelected ? Font.Bold : Font.Medium
-                                    color: isSelected ? Theme.on_primary : Theme.on_surface_variant
+                                    font.weight: isSelected ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
+                                    color: isSelected ? Theme.on_primary_container : Theme.on_surface_variant
                                 }
                             }
 
@@ -729,7 +1022,7 @@ Rectangle {
                     visible: root.activeTab === "layout"
                     clip: true
                     contentWidth: width
-                    contentHeight: layoutCol.implicitHeight + 24
+                    contentHeight: layoutCol.implicitHeight + 32
                     boundsBehavior: Flickable.StopAtBounds
 
                     function isModAssigned(modId) {
@@ -754,11 +1047,77 @@ Rectangle {
 
                     ColumnLayout {
                         id: layoutCol
-                        width: parent.width - 8
-                        spacing: 12
+                        width: parent.width
+                        spacing: Theme.popupSpacing
+
+                        SettingCard {
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+
+                                Rectangle {
+                                    width: 42
+                                    height: 42
+                                    radius: 12
+                                    color: Theme.primary_container
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Theme.iconGrid
+                                        font.family: Theme.fontIcon
+                                        font.pixelSize: Theme.fontSizeMd
+                                        color: Theme.primary
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+
+                                    Text {
+                                        text: (Settings.barPosition === "up" ? "top" : (Settings.barPosition === "down" ? "bottom" : Settings.barPosition)) + " bar"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeSm
+                                        font.weight: Theme.fontWeightBold
+                                        color: Theme.on_surface
+                                    }
+
+                                    Text {
+                                        text: Settings.barHeight + "px  •  " + Settings.widgetSpacing + "px gap  •  " + Settings.widgetRadius + "px widgets"
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 9
+                                        color: Theme.on_surface_variant
+                                    }
+                                }
+
+                                Rectangle {
+                                    height: 28
+                                    implicitWidth: layoutStudioQuickText.implicitWidth + 18
+                                    radius: Theme.radiusPill
+                                    color: Theme.primary
+
+                                    Text {
+                                        id: layoutStudioQuickText
+                                        anchors.centerIn: parent
+                                        text: "open studio"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 9
+                                        font.weight: Theme.fontWeightBold
+                                        color: Theme.on_primary
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: { Settings.showBarStudio = true; }
+                                    }
+                                }
+                            }
+                        }
 
                         CategoryHeader {
-                            title: "bar placement & geometry"
+                            title: "bar"
+                            subtitle: "position, size, spacing, and global geometry"
                             icon: Theme.iconGrid
                         }
 
@@ -799,7 +1158,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "granular density & metrics"
+                            title: "layout density"
+                            subtitle: "spacing and radii that affect the whole shell"
                             icon: Theme.iconSliders
                         }
 
@@ -847,7 +1207,81 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "bar layout studio"
+                            title: "floating bar"
+                            subtitle: "detach the bar from the screen edge and tune its breathing room"
+                            icon: Theme.iconGrid
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconGrid
+                                title: "floating bar"
+                                subtitle: "detach status bar from screen edge"
+                                checked: Settings.barFloating
+                                onToggled: { Settings.barFloating = !Settings.barFloating; }
+                            }
+
+                            RowDivider { visible: Settings.barFloating }
+
+                            Item {
+                                visible: Settings.barFloating
+                                width: parent.width
+                                implicitHeight: floatRadiusRow.implicitHeight + 16
+
+                                SliderRow {
+                                    id: floatRadiusRow
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 8
+                                    title: "floating bar corner radius"
+                                    from: 0
+                                    to: 24
+                                    stepSize: 2
+                                    suffix: "px"
+                                    value: Settings.barRadius
+                                    onMoved: function(v) { Settings.barRadius = v; }
+                                }
+                            }
+
+                            RowDivider { visible: Settings.barFloating }
+
+                            Item {
+                                visible: Settings.barFloating
+                                width: parent.width
+                                implicitHeight: floatMarginRow.implicitHeight + 16
+
+                                SliderRow {
+                                    id: floatMarginRow
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 8
+                                    title: "floating breathing room (margin)"
+                                    from: 0
+                                    to: 32
+                                    stepSize: 2
+                                    suffix: "px"
+                                    value: Settings.barMargin
+                                    onMoved: function(v) { Settings.barMargin = v; }
+                                }
+                            }
+
+                            RowDivider { visible: Settings.barFloating }
+
+                            ToggleRow {
+                                visible: Settings.barFloating
+                                icon: Theme.iconSparkles
+                                title: "bento island hover lift"
+                                subtitle: "elevate capsules slightly on hover"
+                                checked: Settings.bentoHoverLift
+                                onToggled: function() { Settings.bentoHoverLift = !Settings.bentoHoverLift; }
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "layout studio"
+                            subtitle: "visually reorder modules and move them between bar zones"
                             icon: Theme.iconSliders
                         }
 
@@ -884,10 +1318,10 @@ Rectangle {
                                     spacing: 2
 
                                     Text {
-                                        text: "bar layout studio"
+                                        text: "layout studio"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
                                     Text {
@@ -910,7 +1344,7 @@ Rectangle {
                                         text: Settings.showBarStudio ? "active ✓" : "open studio"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Settings.showBarStudio ? Theme.on_primary : Theme.primary
                                     }
                                 }
@@ -926,7 +1360,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "launcher & workspaces"
+                            title: "navigation modules"
+                            subtitle: "the things you keep within reach on the bar"
                             icon: Theme.iconWorkspaces
                         }
 
@@ -981,7 +1416,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "media & status widgets"
+                            title: "status & information"
                             icon: Theme.iconMusic
                         }
 
@@ -1016,7 +1451,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "connectivity & hardware"
+                            title: "connectivity"
                             icon: Theme.iconWifi
                         }
 
@@ -1051,7 +1486,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "tools & system utilities"
+                            title: "utilities"
                             icon: Theme.iconSliders
                         }
 
@@ -1109,36 +1544,100 @@ Rectangle {
                     visible: root.activeTab === "style"
                     clip: true
                     contentWidth: width
-                    contentHeight: styleCol.implicitHeight + 24
+                    contentHeight: styleCol.implicitHeight + 32
                     boundsBehavior: Flickable.StopAtBounds
 
                     ColumnLayout {
                         id: styleCol
-                        width: parent.width - 8
-                        spacing: 12
+                        width: parent.width
+                        spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "bar appearance & materials"
+                            title: "surface & material"
+                            subtitle: "bar material, transparency, and visual density"
                             icon: Theme.iconSparkles
                         }
 
-                        Dropdown {
-                            Layout.fillWidth: true
-                            label: "bar style material"
-                            icon: Theme.iconSparkles
+                        ChoiceGrid {
+                            columns: 3
+                            buttonHeight: 34
+                            title: "bar material"
                             model: [
-                                { label: "regular (solid)", value: "regular" },
+                                { label: "regular", value: "regular" },
                                 { label: "frosted glass", value: "glass" },
-                                { label: "glass frost (blur)", value: "glass-frost" },
-                                { label: "pure black (oled)", value: "pure-black" },
-                                { label: "cyber neon (glow)", value: "cyber-neon" },
-                                { label: "bento floating", value: "bento-floating" },
-                                { label: "translucent (tint)", value: "translucent" },
-                                { label: "accent glow (cyber)", value: "accent-glow" },
+                                { label: "glass frost", value: "glass-frost" },
+                                { label: "pure black", value: "pure-black" },
+                                { label: "cyber neon", value: "cyber-neon" },
+                                { label: "bento", value: "bento-floating" },
+                                { label: "translucent", value: "translucent" },
+                                { label: "accent glow", value: "accent-glow" },
                                 { label: "monochrome", value: "monochrome" }
                             ]
                             currentValue: Settings.barStyle
-                            onSelected: { Settings.barStyle = value; }
+                            onSelected: function(val) { Settings.barStyle = val; }
+                        }
+
+                        SettingCard {
+                            implicitHeight: appearancePreviewCol.implicitHeight + 20
+
+                            ColumnLayout {
+                                id: appearancePreviewCol
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 8
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    Text {
+                                        text: "live style"
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.fontSizeXs
+                                        font.weight: Theme.fontWeightBold
+                                        color: Theme.on_surface
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Text {
+                                        text: Settings.barStyle + "  •  " + Math.round(Settings.barOpacity * 100) + "% opacity"
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 9
+                                        color: Theme.primary
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 34
+                                    radius: Math.min(Settings.widgetRadius, 16)
+                                    color: Theme.alpha(Theme.surface_container_highest, Settings.barOpacity)
+                                    border.color: Theme.alpha(Theme.primary, 0.28)
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        spacing: 8
+
+                                        Text {
+                                            text: Theme.iconGrid
+                                            font.family: Theme.fontIcon
+                                            font.pixelSize: Theme.fontSizeXs
+                                            color: Theme.primary
+                                        }
+                                        Rectangle { width: 54; height: 8; radius: 4; color: Theme.primary_container }
+                                        Rectangle { Layout.fillWidth: true; height: 8; radius: 4; color: Theme.outline_variant }
+                                        Rectangle { width: 34; height: 18; radius: 9; color: Theme.primary_container }
+                                        Text {
+                                            text: Settings.barHeight + "px"
+                                            font.family: Theme.fontMono
+                                            font.pixelSize: 8
+                                            color: Theme.on_surface_variant
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         SliderRow {
@@ -1161,41 +1660,117 @@ Rectangle {
                             onMoved: { Settings.popupOpacity = val; }
                         }
 
+                        CategoryHeader {
+                            title: "color system"
+                            icon: Theme.iconSparkles
+                        }
+
                         SettingCard {
                             ToggleRow {
-                                icon: Theme.iconGrid
-                                title: "floating bar"
-                                subtitle: "detach status bar from screen edge"
-                                checked: Settings.barFloating
-                                onToggled: { Settings.barFloating = !Settings.barFloating; }
+                                icon: Theme.iconSparkles
+                                title: "use custom colors"
+                                subtitle: "override system wallpaper colors with custom palette"
+                                checked: Settings.customColorsEnabled
+                                onToggled: {
+                                    Settings.customColorsEnabled = !Settings.customColorsEnabled;
+                                    Settings.save();
+                                }
                             }
 
-                            RowDivider { visible: Settings.barFloating }
-
-                            Item {
-                                visible: Settings.barFloating
+                            GridLayout {
+                                id: colorGrid
+                                visible: Settings.customColorsEnabled
                                 width: parent.width
-                                implicitHeight: floatRadiusRow.implicitHeight + 16
+                                columns: 2
+                                columnSpacing: 6
+                                rowSpacing: 6
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
 
-                                SliderRow {
-                                    id: floatRadiusRow
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.margins: 8
-                                    title: "floating bar corner radius"
-                                    from: 0
-                                    to: 24
-                                    stepSize: 2
-                                    suffix: "px"
-                                    value: Settings.barRadius
-                                    onMoved: { Settings.barRadius = val; }
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "background"
+                                    subtitle: Settings.customBg !== "" ? Settings.customBg : "default"
+                                    swatchColor: Settings.customBg !== "" ? Settings.customBg : Theme.background
+                                    onClicked: colorStudioModal.open("customBg", "Background Color", "Main background surface color", Settings.customBg, Theme.background)
+                                }
+
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "accent"
+                                    subtitle: Settings.customActive !== "" ? Settings.customActive : "default"
+                                    swatchColor: Settings.customActive !== "" ? Settings.customActive : Theme.primary
+                                    onClicked: colorStudioModal.open("customActive", "Active Accent Color", "Primary highlight color for active items", Settings.customActive, Theme.primary)
+                                }
+
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "text"
+                                    subtitle: Settings.customText !== "" ? Settings.customText : "default"
+                                    swatchColor: Settings.customText !== "" ? Settings.customText : Theme.on_surface
+                                    onClicked: colorStudioModal.open("customText", "Text Color", "Primary typography & foreground glyphs", Settings.customText, Theme.on_surface)
+                                }
+
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "subtext"
+                                    subtitle: Settings.customSubtext !== "" ? Settings.customSubtext : "default"
+                                    swatchColor: Settings.customSubtext !== "" ? Settings.customSubtext : Theme.on_surface_variant
+                                    onClicked: colorStudioModal.open("customSubtext", "Subtext Color", "Secondary text labels and inactive icons", Settings.customSubtext, Theme.on_surface_variant)
+                                }
+
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "border"
+                                    subtitle: Settings.customBorder !== "" ? Settings.customBorder : "default"
+                                    swatchColor: Settings.customBorder !== "" ? Settings.customBorder : Theme.outline
+                                    onClicked: colorStudioModal.open("customBorder", "Border Color", "Outlines, dividers, and card borders", Settings.customBorder, Theme.outline)
+                                }
+
+                                ColorTile {
+                                    Layout.minimumWidth: 0
+                                    Layout.fillWidth: true
+                                    title: "widget & pill"
+                                    subtitle: Settings.customWidgetBg !== "" ? Settings.customWidgetBg : "default"
+                                    swatchColor: Settings.customWidgetBg !== "" ? Settings.customWidgetBg : Theme.pillBg
+                                    onClicked: colorStudioModal.open("customWidgetBg", "Widget & Pill Color", "Background color for bar pills & widgets", Settings.customWidgetBg, Theme.pillBg)
                                 }
                             }
                         }
 
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconSparkles
+                                title: "reactive dynamic notch"
+                                subtitle: "interactive center island (clock, media wave & timer)"
+                                checked: Settings.dynamicNotchEnabled
+                                onToggled: function() { Settings.dynamicNotchEnabled = !Settings.dynamicNotchEnabled; }
+                            }
+
+                            RowDivider { visible: Settings.dynamicNotchEnabled }
+
+                            ChoiceGrid {
+                                visible: Settings.dynamicNotchEnabled
+                                title: "dynamic notch carousel mode"
+                                model: [
+                                    { label: "adaptive auto", value: "auto" },
+                                    { label: "clock only", value: "clock" },
+                                    { label: "media only", value: "media" },
+                                    { label: "timer only", value: "timer" }
+                                ]
+                                currentValue: Settings.dynamicNotchMode
+                                onSelected: function(val) { Settings.dynamicNotchMode = val; }
+                            }
+                        }
+
                         CategoryHeader {
-                            title: "screen corners & scoops"
+                            title: "screen shape"
+                            subtitle: "fillets, scoops, curvature, and frame treatment"
                             icon: Theme.iconGrid
                         }
 
@@ -1313,7 +1888,7 @@ Rectangle {
                             radius: Theme.radiusSm
                             color: syncMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
 
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                             Text {
                                 id: syncText
@@ -1321,7 +1896,7 @@ Rectangle {
                                 text: "match scoops (" + Settings.scoopRadius + "px)"
                                 font.family: Theme.fontFamily
                                 font.pixelSize: 9
-                                font.weight: Font.Bold
+                                font.weight: Theme.fontWeightBold
                                 color: Theme.primary
                             }
 
@@ -1335,7 +1910,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "font target & search"
+                            title: "typography"
+                            subtitle: "pick a font target, browse installed families, and preview them live"
                             icon: Theme.iconNote
                         }
 
@@ -1353,7 +1929,7 @@ Rectangle {
                                     text: "interface: " + Settings.fontFamily
                                     font.family: Settings.fontFamily
                                     font.pixelSize: Theme.fontSizeXs
-                                    font.weight: Font.Bold
+                                    font.weight: Theme.fontWeightBold
                                     color: root.fontTarget === "sans" ? Theme.on_primary : Theme.on_surface
                                     anchors.centerIn: parent
                                     elide: Text.ElideRight
@@ -1376,7 +1952,7 @@ Rectangle {
                                     text: "monospace: " + Settings.fontMono
                                     font.family: Settings.fontMono
                                     font.pixelSize: Theme.fontSizeXs
-                                    font.weight: Font.Bold
+                                    font.weight: Theme.fontWeightBold
                                     color: root.fontTarget === "mono" ? Theme.on_primary : Theme.on_surface
                                     anchors.centerIn: parent
                                     elide: Text.ElideRight
@@ -1453,7 +2029,7 @@ Rectangle {
                             height: 220
                             color: Theme.cardBg
                             radius: Theme.widgetRadius
-                            border.color: Theme.widgetBorder
+                            border.color: Theme.outline_variant
                             border.width: 1
                             clip: true
 
@@ -1536,7 +2112,7 @@ Rectangle {
                             implicitHeight: prevCol.implicitHeight + 24
                             color: Theme.cardBg
                             radius: Theme.widgetRadius
-                            border.color: Theme.cardBorder
+                            border.color: Theme.outline_variant
                             border.width: 1
 
                             ColumnLayout {
@@ -1551,7 +2127,7 @@ Rectangle {
                                         text: "preview: " + (root.fontTarget === "sans" ? Settings.fontFamily : Settings.fontMono)
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.primary
                                         Layout.fillWidth: true
                                     }
@@ -1585,7 +2161,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "typography scale & weight"
+                            title: "type scale"
                             icon: Theme.iconSliders
                         }
 
@@ -1609,64 +2185,70 @@ Rectangle {
                                 { label: "bold", value: "bold" }
                             ]
                             currentValue: Settings.fontWeight
-                            onSelected: { Settings.fontWeight = value; }
+                            onSelected: function(val) { Settings.fontWeight = val; }
                         }
 
                         CategoryHeader {
-                            title: "icon glyph pack"
+                            title: "icon system"
+                            subtitle: "choose one icon family; variants appear only for families that support them"
                             icon: Theme.iconSparkles
                         }
 
-                        ChoiceGrid {
-                            columns: 3
-                            buttonHeight: 32
-                            model: [
-                                { label: "material (rounded)", value: "material" },
-                                { label: "material (outlined)", value: "material-outlined" },
-                                { label: "material (sharp)", value: "material-sharp" },
-                                { label: "nerd fonts", value: "nerd" },
-                                { label: "windows segoe", value: "windows" },
-                                { label: "font awesome", value: "awesome" },
-                                { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", value: "kaomoji" },
-                                { label: "plain text", value: "text" }
-                            ]
-                            currentValue: (Settings.iconSet === "material" && Settings.fontMaterial === "Material Symbols Outlined") ? "material-outlined"
-                            : (Settings.iconSet === "material" && Settings.fontMaterial === "Material Symbols Sharp") ? "material-sharp"
-                            : Settings.iconSet
-                            onSelected: {
-                                Settings.iconSet = value;
-                                if (value === "material-outlined") Settings.fontMaterial = "Material Symbols Outlined";
-                                else if (value === "material-sharp") Settings.fontMaterial = "Material Symbols Sharp";
-                                else if (value === "material") Settings.fontMaterial = "Material Symbols Rounded";
-                                Settings.vibeStyle = (value === "kaomoji" || value === "text") ? value : "nerd";
+                        SettingCard {
+                            ChoiceGrid {
+                                columns: 2
+                                buttonHeight: 34
+                                title: "icon family"
+                                model: [
+                                    { label: "material", value: "material" },
+                                    { label: "nerd fonts", value: "nerd" },
+                                    { label: "windows segoe", value: "windows" },
+                                    { label: "font awesome", value: "awesome" },
+                                    { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", value: "kaomoji" },
+                                    { label: "plain text", value: "text" }
+                                ]
+                                currentValue: (root.usingMaterialIcons)
+                                    ? "material"
+                                    : Settings.iconSet
+                                onSelected: {
+                                    Settings.iconSet = value;
+                                    if (value === "material") {
+                                        if (Settings.fontMaterial !== "Material Symbols Rounded" &&
+                                            Settings.fontMaterial !== "Material Symbols Outlined" &&
+                                            Settings.fontMaterial !== "Material Symbols Sharp") {
+                                            Settings.fontMaterial = "Material Symbols Rounded";
+                                        }
+                                    }
+                                    Settings.vibeStyle = (value === "kaomoji" || value === "text") ? value : "nerd";
+                                }
                             }
-                        }
 
-                        ChoiceRow {
-                            visible: Settings.iconSet === "nerd"
-                            title: "nerd font family"
-                            model: [
-                                { label: "jetbrains mono nerd", value: "JetBrainsMono Nerd Font" },
-                                { label: "jetbrains mono nf", value: "JetBrainsMono NF" }
-                            ]
-                            currentValue: Settings.fontNerd
-                            onSelected: { Settings.fontNerd = value; }
-                        }
+                            RowDivider { visible: root.usingMaterialIcons }
 
-                        ChoiceRow {
-                            visible: Settings.iconSet === "material" || Settings.iconSet.startsWith("material")
-                            title: "material symbols style"
-                            model: [
-                                { label: "rounded", value: "Material Symbols Rounded" },
-                                { label: "outlined", value: "Material Symbols Outlined" },
-                                { label: "sharp", value: "Material Symbols Sharp" }
-                            ]
-                            currentValue: Settings.fontMaterial
-                            onSelected: {
-                                Settings.fontMaterial = value;
-                                if (value === "Material Symbols Outlined") Settings.iconSet = "material-outlined";
-                                else if (value === "Material Symbols Sharp") Settings.iconSet = "material-sharp";
-                                else Settings.iconSet = "material";
+                            ChoiceRow {
+                                visible: root.usingMaterialIcons
+                                title: "material variant"
+                                model: [
+                                    { label: "rounded", value: "Material Symbols Rounded" },
+                                    { label: "outlined", value: "Material Symbols Outlined" },
+                                    { label: "sharp", value: "Material Symbols Sharp" }
+                                ]
+                                currentValue: Settings.fontMaterial || "Material Symbols Rounded"
+                                onSelected: {
+                                    Settings.iconSet = "material";
+                                    Settings.fontMaterial = value;
+                                }
+                            }
+
+                            ChoiceRow {
+                                visible: Settings.iconSet === "nerd"
+                                title: "nerd font family"
+                                model: [
+                                    { label: "jetbrains mono nerd", value: "JetBrainsMono Nerd Font" },
+                                    { label: "jetbrains mono nf", value: "JetBrainsMono NF" }
+                                ]
+                                currentValue: Settings.fontNerd
+                                onSelected: { Settings.fontNerd = value; }
                             }
                         }
                     }
@@ -1680,16 +2262,17 @@ Rectangle {
                     visible: root.activeTab === "behavior"
                     clip: true
                     contentWidth: width
-                    contentHeight: behaviorCol.implicitHeight + 24
+                    contentHeight: behaviorCol.implicitHeight + 32
                     boundsBehavior: Flickable.StopAtBounds
 
                     ColumnLayout {
                         id: behaviorCol
-                        width: parent.width - 8
-                        spacing: 12
+                        width: parent.width
+                        spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "shell animation profiles"
+                            title: "motion presets"
+                            subtitle: "start with a personality preset before fine-tuning individual behavior"
                             icon: Theme.iconFlame
                         }
 
@@ -1717,7 +2300,7 @@ Rectangle {
                                         ? Theme.primary_overlay
                                         : (aMouse.containsMouse ? Theme.surface_container_highest : "transparent")
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.fill: parent
@@ -1740,7 +2323,7 @@ Rectangle {
                                                     text: modelData.label
                                                     font.family: Theme.fontFamily
                                                     font.pixelSize: Theme.fontSizeSm
-                                                    font.weight: Font.Bold
+                                                    font.weight: Theme.fontWeightBold
                                                     color: Theme.on_surface
                                                 }
 
@@ -1767,7 +2350,7 @@ Rectangle {
 
                         CollapsibleSection {
                             Layout.fillWidth: true
-                            title: "workspace animation modes"
+                            title: "workspace motion"
                             subtitle: "motion physics & trail duration"
                             icon: Theme.iconWorkspaces
                             badge: Settings.workspaceMode
@@ -1799,7 +2382,7 @@ Rectangle {
 
                         CollapsibleSection {
                             Layout.fillWidth: true
-                            title: "hover gestures & auto-open"
+                            title: "hover & interaction"
                             subtitle: "pill hover triggers & delay"
                             icon: Theme.iconEye
                             badge: Settings.hoverToOpen ? "enabled" : "click only"
@@ -1838,7 +2421,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "clock, volume & alerts"
+                            title: "system feedback"
                             icon: Theme.iconSliders
                         }
 
@@ -1968,7 +2551,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "personality & physics"
+                            title: "personality"
                             icon: Theme.iconSparkles
                         }
 
@@ -1990,8 +2573,8 @@ Rectangle {
                             border.color: Settings.showMotionSandbox ? Theme.primary : Theme.widgetBorder
                             border.width: 1
 
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -2021,7 +2604,7 @@ Rectangle {
                                         text: "motion sandbox"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
                                     Text {
@@ -2044,7 +2627,7 @@ Rectangle {
                                         text: Settings.showMotionSandbox ? "active ✓" : "launch"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: 10
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Settings.showMotionSandbox ? Theme.on_primary : Theme.primary
                                     }
                                 }
@@ -2068,16 +2651,17 @@ Rectangle {
                     visible: root.activeTab === "capture"
                     clip: true
                     contentWidth: width
-                    contentHeight: screenshotCol.implicitHeight + 24
+                    contentHeight: screenshotCol.implicitHeight + 32
                     boundsBehavior: Flickable.StopAtBounds
 
                     ColumnLayout {
                         id: screenshotCol
-                        width: parent.width - 8
-                        spacing: 12
+                        width: parent.width
+                        spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "quick capture triggers"
+                            title: "capture"
+                            subtitle: "instant actions first; behavior and visuals live underneath"
                             icon: Theme.iconCamera
                         }
 
@@ -2099,7 +2683,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2111,10 +2695,10 @@ Rectangle {
                                                 color: regMouse.pressed ? Theme.on_primary : Theme.primary
                                             }
                                             Text {
-                                                text: "region"
+                                                text: "capture region"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: regMouse.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2139,7 +2723,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2151,10 +2735,10 @@ Rectangle {
                                                 color: winMouse.pressed ? Theme.on_primary : Theme.primary
                                             }
                                             Text {
-                                                text: "window"
+                                                text: "capture window"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: winMouse.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2179,7 +2763,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2194,7 +2778,7 @@ Rectangle {
                                                 text: "fullscreen"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: fullMouse.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2216,7 +2800,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "screen recording (gpu-screen-recorder)"
+                            title: "recording"
+                            subtitle: "gpu-screen-recorder controls and audio sources"
                             icon: Theme.iconCamera
                         }
 
@@ -2235,15 +2820,15 @@ Rectangle {
                                         width: 10
                                         height: 10
                                         radius: 5
-                                        color: Theme.error || "#ff5449"
+                                        color: Theme.error
                                     }
 
                                     Text {
                                         text: "recording (" + ScreenRecService.elapsedTimeString + ")"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
-                                        color: Theme.error || "#ff5449"
+                                        font.weight: Theme.fontWeightBold
+                                        color: Theme.error
                                         Layout.fillWidth: true
                                     }
 
@@ -2251,7 +2836,7 @@ Rectangle {
                                         height: 36
                                         implicitWidth: stopBtnTxt.implicitWidth + 24
                                         radius: Theme.radiusSm
-                                        color: Theme.error || "#ff5449"
+                                        color: Theme.error
 
                                         Text {
                                             id: stopBtnTxt
@@ -2259,8 +2844,8 @@ Rectangle {
                                             text: "stop & save"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
-                                            color: "#ffffff"
+                                            font.weight: Theme.fontWeightBold
+                                            color: Theme.on_error
                                         }
 
                                         MouseArea {
@@ -2275,7 +2860,7 @@ Rectangle {
                                         implicitWidth: discBtnTxt.implicitWidth + 20
                                         radius: Theme.radiusSm
                                         color: "transparent"
-                                        border.color: Theme.error || "#ff5449"
+                                        border.color: Theme.error
                                         border.width: 1
 
                                         Text {
@@ -2284,8 +2869,8 @@ Rectangle {
                                             text: "discard"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
-                                            color: Theme.error || "#ff5449"
+                                            font.weight: Theme.fontWeightBold
+                                            color: Theme.error
                                         }
 
                                         MouseArea {
@@ -2310,7 +2895,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2325,7 +2910,7 @@ Rectangle {
                                                 text: "region"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: recRegM.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2350,7 +2935,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2365,7 +2950,7 @@ Rectangle {
                                                 text: "screen"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: recScrM.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2390,7 +2975,7 @@ Rectangle {
                                         border.color: Theme.outline_variant || Theme.primary
                                         border.width: 1
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.centerIn: parent
@@ -2405,7 +2990,7 @@ Rectangle {
                                                 text: "window"
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Medium
+                                                font.weight: Theme.fontWeightMedium
                                                 color: recWinM.pressed ? Theme.on_primary : Theme.on_surface
                                             }
                                         }
@@ -2438,7 +3023,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "capture behavior & feedback"
+                            title: "after capture"
                             icon: Theme.iconSliders
                         }
 
@@ -2495,7 +3080,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "overlay visuals & geometry"
+                            title: "selection overlay"
+                            subtitle: "everything the capture selector draws while you aim"
                             icon: Theme.iconSliders
                         }
 
@@ -2560,7 +3146,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "storage directories"
+                            title: "storage"
                             icon: Theme.iconFolder
                         }
 
@@ -2592,7 +3178,7 @@ Rectangle {
                                             text: "screenshots & recordings"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Font.Bold
+                                            font.weight: Theme.fontWeightBold
                                             color: Theme.on_surface
                                         }
 
@@ -2620,7 +3206,7 @@ Rectangle {
                                             text: "open files"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: 10
-                                            font.weight: Font.Bold
+                                            font.weight: Theme.fontWeightBold
                                             color: Theme.primary
                                         }
 
@@ -2650,16 +3236,16 @@ Rectangle {
                     visible: root.activeTab === "advanced"
                     clip: true
                     contentWidth: width
-                    contentHeight: advancedCol.implicitHeight + 24
+                    contentHeight: advancedCol.implicitHeight + 32
                     boundsBehavior: Flickable.StopAtBounds
 
                     ColumnLayout {
                         id: advancedCol
-                        width: parent.width - 8
-                        spacing: 12
+                        width: parent.width
+                        spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "desktop shell profiles"
+                            title: "shell"
                             icon: Theme.iconTerminal
                         }
 
@@ -2697,7 +3283,7 @@ Rectangle {
                                         ? Theme.primary_overlay
                                         : (shMouse.containsMouse ? Theme.surface_container_highest : "transparent")
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                         RowLayout {
                                             anchors.fill: parent
@@ -2729,7 +3315,7 @@ Rectangle {
                                                         text: modelData.name
                                                         font.family: Theme.fontFamily
                                                         font.pixelSize: Theme.fontSizeSm
-                                                        font.weight: Font.Bold
+                                                        font.weight: Theme.fontWeightBold
                                                         color: Theme.on_surface
                                                     }
                                                     Rectangle {
@@ -2745,7 +3331,7 @@ Rectangle {
                                                             text: "active"
                                                             font.family: Theme.fontFamily
                                                             font.pixelSize: 9
-                                                            font.weight: Font.Bold
+                                                            font.weight: Theme.fontWeightBold
                                                             color: Theme.on_primary
                                                         }
                                                     }
@@ -2776,14 +3362,14 @@ Rectangle {
                                                 border.color: root.activeShell === modelData.id ? Theme.primary : "transparent"
                                                 border.width: 1
 
-                                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                                Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                                 Text {
                                                     anchors.centerIn: parent
                                                     text: root.activeShell === modelData.id ? "current" : "switch"
                                                     font.family: Theme.fontFamily
                                                     font.pixelSize: 10
-                                                    font.weight: Font.Bold
+                                                    font.weight: Theme.fontWeightBold
                                                     color: root.activeShell === modelData.id ? Theme.primary : (shBtnMouse.containsMouse ? Theme.on_primary : Theme.on_surface)
                                                 }
 
@@ -2820,7 +3406,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "process controls & cache"
+                            title: "process & cache"
+                            subtitle: "restart, persistence, and shell state diagnostics"
                             icon: Theme.iconSliders
                         }
 
@@ -2836,8 +3423,8 @@ Rectangle {
                                 border.color: rstMouse.containsMouse ? Theme.primary : Theme.widgetBorder
                                 border.width: 1
 
-                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                                Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                                Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                                Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                                 RowLayout {
                                     anchors.centerIn: parent
@@ -2854,7 +3441,7 @@ Rectangle {
                                         text: switchProc.running ? "restarting shell..." : "restart active shell process"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
                                 }
@@ -2883,7 +3470,7 @@ Rectangle {
                                     RowLayout {
                                         spacing: 8
                                         Text {
-                                            text: "󰈙"
+                                            text: Theme.iconNote
                                             font.family: Theme.fontIcon
                                             font.pixelSize: Theme.fontSizeSm
                                             color: Theme.primary
@@ -2892,7 +3479,7 @@ Rectangle {
                                             text: "state cache:"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
+                                            font.weight: Theme.fontWeightBold
                                             color: Theme.on_surface
                                         }
                                         Text {
@@ -2917,7 +3504,7 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "local network aliases"
+                            title: "network aliases"
                             icon: Theme.iconWifi
                         }
 
@@ -2928,7 +3515,7 @@ Rectangle {
                             height: 48
                             radius: Theme.widgetRadius
                             color: Theme.cardBg
-                            border.color: Theme.widgetBorder
+                            border.color: Theme.outline_variant
                             border.width: 1
                             visible: advancedCol.aliasKeys.length === 0
 
@@ -3008,7 +3595,7 @@ Rectangle {
                                                 text: (Settings.networkAliases && Settings.networkAliases[modelData]) || ""
                                                 font.family: Theme.fontFamily
                                                 font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Font.Bold
+                                                font.weight: Theme.fontWeightBold
                                                 color: Theme.on_surface
                                             }
 
@@ -3027,7 +3614,8 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "onboarding & factory reset"
+                            title: "onboarding & reset"
+                            subtitle: "small setup tools and the irreversible stuff"
                             icon: Theme.iconSparkles
                         }
 
@@ -3044,7 +3632,7 @@ Rectangle {
                                         text: "desktop shell profiles tab"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
 
@@ -3090,7 +3678,7 @@ Rectangle {
                                             text: "reopen welcome guide"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Font.Bold
+                                            font.weight: Theme.fontWeightBold
                                             color: Theme.on_surface
                                         }
 
@@ -3113,7 +3701,7 @@ Rectangle {
                                             text: "launch"
                                             font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Font.Bold
+                                            font.weight: Theme.fontWeightBold
                                             color: Theme.on_primary
                                         }
                                     }
@@ -3137,11 +3725,11 @@ Rectangle {
                             height: 58
                             radius: Theme.widgetRadius
                             color: nukeMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_highest
-                            border.color: nukeMouse.containsMouse ? (Theme.error || "#ff5449") : Theme.widgetBorder
+                            border.color: nukeMouse.containsMouse ? (Theme.error) : Theme.widgetBorder
                             border.width: 1
 
-                            Behavior on color { ColorAnimation { duration: Theme.animFast } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
+                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -3152,7 +3740,7 @@ Rectangle {
                                     text: Theme.iconFlame
                                     font.family: Theme.fontIcon
                                     font.pixelSize: Theme.fontSizeMd
-                                    color: Theme.error || "#ff5449"
+                                    color: Theme.error
                                 }
 
                                 ColumnLayout {
@@ -3160,10 +3748,10 @@ Rectangle {
                                     spacing: 2
 
                                     Text {
-                                        text: "nuke all custom settings"
+                                        text: "reset all custom settings"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Font.Bold
+                                        font.weight: Theme.fontWeightBold
                                         color: Theme.on_surface
                                     }
 
@@ -3179,14 +3767,14 @@ Rectangle {
                                     width: 64
                                     height: 30
                                     radius: Theme.radiusSm
-                                    color: Theme.error || "#ff5449"
+                                    color: Theme.error
 
                                     Text {
                                         text: "nuke"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
-                                        font.weight: Font.Bold
-                                        color: Theme.on_error || "#ffffff"
+                                        font.weight: Theme.fontWeightBold
+                                        color: Theme.on_error
                                         anchors.centerIn: parent
                                     }
                                 }
@@ -3214,6 +3802,34 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: 8
                     }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                    text: Theme.iconCheck
+                    font.family: Theme.fontIcon
+                    font.pixelSize: 9
+                    color: Theme.primary
+                }
+
+                Text {
+                    text: "changes apply immediately"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    color: Theme.on_surface_variant
+                    Layout.fillWidth: true
+                }
+
+                Text {
+                    text: "esc  close"
+                    font.family: Theme.fontMono
+                    font.pixelSize: 8
+                    color: Theme.on_surface_variant
+                    opacity: 0.75
                 }
             }
         }
@@ -3245,22 +3861,22 @@ Rectangle {
                     width: 56
                     height: 56
                     radius: Theme.radiusPill
-                    color: Theme.error_overlay
+                    color: Theme.error_container
 
                     Text {
                         anchors.centerIn: parent
                         text: Theme.iconFlame
                         font.family: Theme.fontIcon
                         font.pixelSize: Theme.fontSizeXl
-                        color: Theme.error || "#ff5449"
+                        color: Theme.error
                     }
                 }
 
                 Text {
-                    text: "nuke all custom settings?"
+                    text: "reset all custom settings?"
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeLg
-                    font.weight: Font.Black
+                    font.weight: Theme.fontWeightBold
                     color: Theme.on_surface
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -3284,14 +3900,14 @@ Rectangle {
                         height: 40
                         radius: Theme.radiusSm
                         color: cancelMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
-                        border.color: Theme.widgetBorder
+                        border.color: Theme.outline_variant
                         border.width: 1
 
                         Text {
                             text: "nevermind"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
-                            font.weight: Font.Bold
+                            font.weight: Theme.fontWeightBold
                             color: Theme.on_surface
                             anchors.centerIn: parent
                         }
@@ -3309,14 +3925,14 @@ Rectangle {
                         Layout.fillWidth: true
                         height: 40
                         radius: Theme.radiusSm
-                        color: confirmMouse.containsMouse ? Theme.error_container : (Theme.error || "#ff5449")
+                        color: confirmMouse.containsMouse ? Theme.error_container : (Theme.error)
 
                         Text {
-                            text: "nuke everything"
+                            text: "reset everything"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
-                            font.weight: Font.Bold
-                            color: confirmMouse.containsMouse ? Theme.on_error_container : (Theme.on_error || "#ffffff")
+                            font.weight: Theme.fontWeightBold
+                            color: confirmMouse.containsMouse ? Theme.on_error_container : (Theme.on_error)
                             anchors.centerIn: parent
                         }
 
@@ -3333,6 +3949,10 @@ Rectangle {
                     }
                 }
             }
+        }
+
+        ColorStudioModal {
+            id: colorStudioModal
         }
     }
 }

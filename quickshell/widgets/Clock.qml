@@ -114,6 +114,38 @@ Rectangle {
             font.weight: Font.Medium
             color: calPopup.open ? Theme.primary : Theme.on_surface
         }
+
+        Row {
+            visible: !(Theme?.isVertical ?? false) && (typeof TimerService !== "undefined" && TimerService) && (TimerService.timerRunning || TimerService.timerPaused || TimerService.stopwatchRunning)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "•"
+                font.pixelSize: Theme?.fontSizeSm ?? 12
+                color: (TimerService?.timerRunning && TimerService?.timerRemaining <= 30) ? Theme.error : Theme.primary
+                SequentialAnimation on opacity {
+                    loops: Animation.Infinite
+                    running: TimerService?.timerRunning && TimerService?.timerRemaining <= 30
+                    NumberAnimation { from: 1.0; to: 0.2; duration: 400; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: 0.2; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
+                }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: {
+                    if (typeof TimerService === "undefined" || !TimerService) return "";
+                    if (TimerService.stopwatchRunning) return TimerService.stopwatchDisplay;
+                    return TimerService.timerDisplay;
+                }
+                font.family: Theme?.fontMono ?? "monospace"
+                font.pixelSize: Theme?.fontSizeSm ?? 11
+                font.weight: Font.Bold
+                color: (TimerService?.timerRunning && TimerService?.timerRemaining <= 30) ? Theme.error : Theme.primary
+            }
+        }
     }
 
     MouseArea {
@@ -200,21 +232,105 @@ Rectangle {
     PopupPanel {
         id: calPopup
         cardWidth: 360
-        cardHeight: 480
+        cardHeight: 520
         targetRelativeX: clockRoot.x + (clockRoot.width / 2)
+        property string activeTab: "calendar"
+        onOpenChanged: {
+            if (open) {
+                activeTab = "calendar";
+            }
+        }
 
         content: ColumnLayout {
             anchors.fill: parent
             spacing: Theme?.widgetSpacing ?? 10
 
-            // Calendar Header: Current Date & Time
-            Rectangle {
+            // Segmented Header Tab Bar: Calendar (Default & First) | Timer (Second)
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 64
-                radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
-                color: Theme?.cardBg ?? Theme.surface_container_highest
-                border.color: Theme.widgetBorder
-                border.width: 1
+                spacing: 8
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 32
+                    radius: Theme?.radiusPill ?? 16
+                    color: calPopup.activeTab === "calendar" ? Theme.primary : Theme.cardBg
+                    border.color: calPopup.activeTab === "calendar" ? Theme.primary : Theme.cardBorder
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                            text: Theme?.iconCalendar ?? "\uE935"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            color: calPopup.activeTab === "calendar" ? Theme.on_primary : Theme.on_surface
+                        }
+                        Text {
+                            text: "calendar"
+                            font.family: Theme?.fontSans ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            font.weight: Font.DemiBold
+                            color: calPopup.activeTab === "calendar" ? Theme.on_primary : Theme.on_surface
+                        }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: calPopup.activeTab = "calendar"
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 32
+                    radius: Theme?.radiusPill ?? 16
+                    color: calPopup.activeTab === "timer" ? Theme.primary : Theme.cardBg
+                    border.color: calPopup.activeTab === "timer" ? Theme.primary : Theme.cardBorder
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                            text: Theme?.iconClock ?? "\uEFD6"
+                            font.family: Theme?.fontIcon ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            color: calPopup.activeTab === "timer" ? Theme.on_primary : Theme.on_surface
+                        }
+                        Text {
+                            text: "timer"
+                            font.family: Theme?.fontSans ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeSm ?? 12
+                            font.weight: Font.DemiBold
+                            color: calPopup.activeTab === "timer" ? Theme.on_primary : Theme.on_surface
+                        }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: calPopup.activeTab = "timer"
+                    }
+                }
+            }
+
+            // Calendar View (First)
+            ColumnLayout {
+                id: calendarSection
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: Theme?.widgetSpacing ?? 10
+                visible: calPopup.activeTab === "calendar"
+
+                // Calendar Header: Current Date & Time
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 64
+                    radius: Theme?.widgetRadius ?? Theme?.radiusMd ?? 8
+                    color: Theme?.cardBg ?? Theme.surface_container_highest
+                    border.color: Theme.widgetBorder
+                    border.width: 1
 
                 RowLayout {
                     anchors.fill: parent
@@ -498,5 +614,181 @@ Rectangle {
                 }
             }
         }
+
+        // Timer & Stopwatch View (Second)
+        ColumnLayout {
+            id: timerSection
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 14
+            visible: calPopup.activeTab === "timer"
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: Theme?.radiusMd ?? 10
+                color: Theme.cardBg
+                border.color: Theme.cardBorder
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 16
+
+                    // Giant Digital Readout
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: {
+                            if (typeof TimerService === "undefined" || !TimerService) return "00:00";
+                            if (TimerService.stopwatchRunning || TimerService.stopwatchElapsed > 0) {
+                                return TimerService.stopwatchDisplay;
+                            }
+                            return TimerService.timerDisplay;
+                        }
+                        font.family: Theme?.fontMono ?? "monospace"
+                        font.pixelSize: 46
+                        font.weight: Font.Bold
+                        color: (typeof TimerService !== "undefined" && TimerService?.timerRunning && TimerService.timerRemaining <= 30) ? Theme.error : Theme.primary
+                    }
+
+                    // Quick Preset Chips (+1m, +5m, +15m, +25m Pomodoro)
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 8
+
+                        Repeater {
+                            model: [
+                                { label: "+1m", val: 1 },
+                                { label: "+5m", val: 5 },
+                                { label: "+15m", val: 15 },
+                                { label: "+25m", val: 25 }
+                            ]
+                            delegate: Rectangle {
+                                width: 68; height: 32; radius: Theme?.radiusPill ?? 16
+                                color: Theme.surface_container_highest
+                                border.color: Theme.cardBorder
+                                border.width: 1
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.label
+                                    font.family: Theme?.fontMono ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
+                                    font.weight: Font.DemiBold
+                                    color: Theme.on_surface
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (typeof TimerService !== "undefined" && TimerService) {
+                                            TimerService.addTimerMinutes(modelData.val);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Start / Pause / Reset Controls
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 14
+
+                        Rectangle {
+                            width: 110; height: 40; radius: 20
+                            color: (typeof TimerService !== "undefined" && (TimerService?.timerRunning || TimerService?.stopwatchRunning)) ? Theme.error : Theme.primary
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Text {
+                                    text: (typeof TimerService !== "undefined" && (TimerService?.timerRunning || TimerService?.stopwatchRunning)) ? (Theme?.iconPause ?? "\uE034") : (Theme?.iconPlay ?? "\uE037")
+                                    font.family: Theme?.fontIcon ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
+                                    color: Theme.on_primary
+                                }
+                                Text {
+                                    text: (typeof TimerService !== "undefined" && (TimerService?.timerRunning || TimerService?.stopwatchRunning)) ? "pause" : "start"
+                                    font.family: Theme?.fontSans ?? "sans-serif"
+                                    font.pixelSize: Theme?.fontSizeSm ?? 12
+                                    font.weight: Font.Bold
+                                    color: Theme.on_primary
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (typeof TimerService === "undefined" || !TimerService) return;
+                                    if (TimerService.stopwatchRunning || TimerService.stopwatchElapsed > 0) {
+                                        TimerService.toggleStopwatch();
+                                    } else {
+                                        TimerService.toggleTimer();
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 96; height: 40; radius: 20
+                            color: Theme.surface_container_highest
+                            border.color: Theme.cardBorder
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "reset"
+                                font.family: Theme?.fontSans ?? "sans-serif"
+                                font.pixelSize: Theme?.fontSizeSm ?? 12
+                                font.weight: Font.Medium
+                                color: Theme.on_surface
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (typeof TimerService === "undefined" || !TimerService) return;
+                                    TimerService.resetTimer();
+                                    TimerService.resetStopwatch();
+                                }
+                            }
+                        }
+                    }
+
+                    // Mode Switcher: Timer vs Stopwatch
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 180; height: 32; radius: 16
+                        color: Theme.surface_container_high
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: (typeof TimerService !== "undefined" && (TimerService?.stopwatchRunning || TimerService?.stopwatchElapsed > 0)) ? "switch to timer" : "switch to stopwatch"
+                            font.family: Theme?.fontSans ?? "sans-serif"
+                            font.pixelSize: Theme?.fontSizeXs ?? 11
+                            color: Theme.primary
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (typeof TimerService === "undefined" || !TimerService) return;
+                                if (TimerService.stopwatchRunning || TimerService.stopwatchElapsed > 0) {
+                                    TimerService.resetStopwatch();
+                                } else {
+                                    TimerService.resetTimer();
+                                    TimerService.startStopwatch();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+}
 }
