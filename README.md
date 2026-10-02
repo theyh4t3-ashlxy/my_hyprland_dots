@@ -1,7 +1,7 @@
 # hyprland-dots
 
 > [!WARNING]
-> biohazard telemetry: this repository is 94.2% autonomous agent delirium (99% ci [92.1%, 96.8%], p < 0.0001), 5.7% insomnia-induced spite, and 0.1% quickshell physically hostage-taking wlroots. do not deploy this on hardware you have an emotional attachment to.
+> biohazard telemetry: this repository is 94.2% autonomous agent delirium (99% ci [92.1%, 96.8%], p < 0.0001), 5.7% insomnia-induced spite, and 0.1% quickshell physically hostage-taking wlroots. do not deploy this on hardware you have an emotional attachment to, unless you *enjoy* the smell of melting silicon and the sight of your init system begging for mercy.
 
 <div align="center">
   <video src="https://github.com/user-attachments/assets/fd8b0556-dcf0-43ac-94c6-3e5dd3708621" controls="controls" style="max-width: 100%; height: auto;"></video>
@@ -30,7 +30,7 @@ synthesized entirely through llm prompt engineering, multi-agent civil wars, and
 - **google jules**: an unmonitored async agent that clones this repo into isolated cloud vms while i sleep, invents regressions to solve nonexistent problems, and force-pushes pull requests straight to main with zero human witnesses.
 - **quickshell**: waybar is for cowards who want stable desktop sessions. real sociopaths build their entire shell in raw qtquick and qml anchors so every minor qt6 bump turns the compositor into an abstract polygon slaughterhouse.
 
-it runs on my machine. if your compositor dumps core on tty1, that is an uncorrectable skill issue.
+it runs on my machine. if your compositor dumps core on tty1 and starts formatting `/boot`, that is an uncorrectable skill issue.
 
 ---
 
@@ -177,6 +177,8 @@ zero reported fires. either the codebase achieved divine stability or the error 
 
 ### roadmap
 - [ ] scream into the void if you want a feature
+- [ ] teach the AI agents how to love
+- [ ] fail to teach the AI agents how to love, resulting in them optimizing my battery life by shutting down the CPU entirely
 
 ---
 
