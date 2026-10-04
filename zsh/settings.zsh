@@ -13,6 +13,8 @@ typeset -ga DEFAULT_PREFS=(
     "PROMPT_SYMBOL=❯"
     "PROMPT_ACCENT=primary"
     "KEY_BIND_MODE=emacs"
+    "AUTO_LS=false"
+    "KAOMOJI_SET=reactive"
 )
 
 _init_prefs() {
@@ -110,6 +112,18 @@ settings() {
             print -P "%F{green}󰄲 fastfetch on open -> %B${SHOW_FASTFETCH}%b%f"
             return 0
             ;;
+        autols|auto-ls)
+            [[ -n "$arg" ]] && _save_pref "AUTO_LS" "$arg" || _toggle_pref "AUTO_LS"
+            print -P "%F{green}󰄲 auto-ls on cd -> %B${AUTO_LS}%b%f"
+            return 0
+            ;;
+        kaomoji|mood)
+            if [[ -n "$arg" ]]; then
+                _save_pref "KAOMOJI_SET" "$arg"
+                print -P "%F{green}󰄲 kaomoji mood set -> %B$arg%b%f"
+                return 0
+            fi
+            ;;
         reset)
             _init_prefs
             source "$PREFS_FILE"
@@ -131,8 +145,10 @@ settings() {
             "󰞷 prompt style: [${PROMPT_STYLE:-two-line}]"
             "󰊠 prompt symbol: [${PROMPT_SYMBOL:-❯}]"
             "󰏘 prompt symbol accent: [${PROMPT_ACCENT:-primary}]"
+            "󰄛 kaomoji mood set: [${KAOMOJI_SET:-reactive}]"
             " git details in prompt: [${SHOW_GIT_PROMPT:-true}]"
             "󰁕 execution timer in prompt: [${SHOW_CMD_TIMER:-true}]"
+            "󰉋 auto-listing (ls) on cd: [${AUTO_LS:-false}]"
             "󰄛 fastfetch on open: [${SHOW_FASTFETCH:-false}]"
             "󰄛 existential greeting on open: [${SHOW_GREETING_ROAST:-false}]"
             "󰅚 psychological roaster on typo: [${ENABLE_PSYCHO_ROASTS:-true}]"
@@ -151,25 +167,42 @@ settings() {
             *"prompt style"*)
                 local s_choice
                 s_choice=$(printf "%s\n" \
-                    "two-line   (classic 2-line box with system, directory, and arrow)" \
-                    "single-line (compact user@host in path ❯)" \
-                    "minimal     (clean path ❯)" \
-                    "bracket     ([user@host path] ❯)" \
-                    "unhinged    (random mood kaomoji before prompt)" \
-                    | fzf --header="[choose your prompt layout style]" --reverse --height=35%)
+                    "unhinged       (reactive kaomoji: flips table on error, side-eyes dirty git)" \
+                    "gremlin        (the prompt symbol IS the reactive kaomoji)" \
+                    "kaomoji-speech (kaomoji speaking your path in japanese quotes)" \
+                    "cyberpunk      (sci-fi coordinates, power glyphs, neon delimiters)" \
+                    "capsule        (modern rounded nerd font pills)" \
+                    "two-line       (classic 2-line box with system, directory, and arrow)" \
+                    "single-line    (compact user@host in path ❯)" \
+                    "minimal        (clean path ❯)" \
+                    "bracket        ([user@host path] ❯)" \
+                    | fzf --header="[choose your prompt layout style]" --reverse --height=45%)
                 [[ -n "$s_choice" ]] && _save_pref "PROMPT_STYLE" "${s_choice%% *}"
+                ;;
+            *"kaomoji mood set"*)
+                local k_choice
+                k_choice=$(printf "%s\n" \
+                    "reactive  (dynamic: melts down on error, side-eyes dirty git, sleeps on slow cmds)" \
+                    "cats      (always cats: ᓚᘏᗢ, (=^･ω･^=), (=^･ｪ･^=))" \
+                    "rage      (always angry: (╯°□°)╯彡┻━┻, (ノಠ益ಠ)ノ, (╬ಠ益ಠ))" \
+                    "cute      (always cute: (◕‿◕✿), ( ˶•̀֊•́˶), (｡♥‿♥｡))" \
+                    | fzf --header="[choose your kaomoji mood personality]" --reverse --height=35%)
+                [[ -n "$k_choice" ]] && _save_pref "KAOMOJI_SET" "${k_choice%% *}"
                 ;;
             *"prompt symbol:"*)
                 local sym_choice
                 sym_choice=$(printf "%s\n" \
                     "❯  (default sharp arrow)" \
-                    "$  (unix classic)" \
+                    "▲  (cyberpunk triangle)" \
+                    "⚡ (high voltage)" \
                     "󰄛  (hypr cat)" \
                     "λ  (lambda)" \
+                    "$  (unix classic)" \
                     ">  (simple chevron)" \
                     "%  (zsh percent)" \
                     ">> (double chevron)" \
-                    | fzf --header="[choose your prompt symbol character]" --reverse --height=35%)
+                    "󰊠 (diamond)" \
+                    | fzf --header="[choose your prompt symbol character]" --reverse --height=40%)
                 [[ -n "$sym_choice" ]] && _save_pref "PROMPT_SYMBOL" "${sym_choice%% *}"
                 ;;
             *"prompt symbol accent"*)
@@ -188,6 +221,7 @@ settings() {
                 ;;
             *"git details"*)          _toggle_pref "SHOW_GIT_PROMPT" ;;
             *"execution timer"*)      _toggle_pref "SHOW_CMD_TIMER" ;;
+            *"auto-listing"*)         _toggle_pref "AUTO_LS" ;;
             *"fastfetch"*)            _toggle_pref "SHOW_FASTFETCH" ;;
             *"existential greeting"*) _toggle_pref "SHOW_GREETING_ROAST" ;;
             *"psychological roaster"*) _toggle_pref "ENABLE_PSYCHO_ROASTS" ;;

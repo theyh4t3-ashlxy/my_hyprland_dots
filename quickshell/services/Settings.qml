@@ -30,6 +30,7 @@ QtObject {
     property int workspaceTrailDuration: 240
     property bool launcherCalcEnabled: true
     property bool launcherCommandEnabled: true
+    property var launcherCustomCategories: []
     property bool mediaWaveVisualizer: true
     property bool hoverToOpen: false
     property int hoverDelay: 220
@@ -51,6 +52,14 @@ QtObject {
     property int bentoGap: 8
     property bool bentoHoverLift: true
     property bool barIslandMode: true
+    property bool adaptiveTransparency: true
+    property bool dynamicNotchFlared: true
+    property int notchFlareRadius: 16
+    property bool showLayoutSwitcher: true
+
+    signal requestLayoutSwitcherToggle()
+    signal requestLayoutSwitcherOpen()
+    signal requestLayoutSwitcherClose()
 
     signal requestLauncherToggle()
     signal requestLauncherOpen()
@@ -124,7 +133,7 @@ QtObject {
     signal requestCaptureOpen()
     signal requestCaptureClose()
 
-    property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "windowTitle"]
+    property var barModulesLeft: ["launcher", "wallpaper", "workspaces", "layout", "windowTitle"]
     property var barModulesCenter: ["clock"]
     property var barModulesRight: ["media", "quickNotes", "screenCapture", "clipboard", "idleInhibitor", "notifications", "systemTray", "bluetooth", "network", "volume", "battery", "quickSettings", "powerMenu"]
     property bool showBarStudio: false
@@ -296,6 +305,7 @@ QtObject {
     onUnhingedFlavorChanged: queueSave()
     onCurrentWallpaperChanged: queueSave()
     onShowWorkspacesChanged: queueSave()
+    onShowLayoutSwitcherChanged: queueSave()
     onShowWindowTitleChanged: queueSave()
     onShowClockChanged: queueSave()
     onShowBatteryChanged: queueSave()
@@ -389,6 +399,7 @@ QtObject {
     onWorkspaceTrailDurationChanged: queueSave()
     onLauncherCalcEnabledChanged: queueSave()
     onLauncherCommandEnabledChanged: queueSave()
+    onLauncherCustomCategoriesChanged: queueSave()
     onMediaWaveVisualizerChanged: queueSave()
     onHoverToOpenChanged: queueSave()
     onHoverDelayChanged: queueSave()
@@ -433,6 +444,9 @@ QtObject {
     }
     onHasCompletedWelcomeChanged: queueSave()
     onShowShellTabChanged: queueSave()
+    onAdaptiveTransparencyChanged: queueSave()
+    onDynamicNotchFlaredChanged: queueSave()
+    onNotchFlareRadiusChanged: queueSave()
 
     onRequestWelcomeToggle: showWelcomeWizard = !showWelcomeWizard
     onRequestWelcomeOpen: showWelcomeWizard = true
@@ -471,6 +485,7 @@ QtObject {
         { key: "animSpeed", type: "string", def: "snappy" },
         { key: "unhingedFlavor", type: "bool", def: true },
         { key: "showWorkspaces", type: "bool", def: true },
+        { key: "showLayoutSwitcher", type: "bool", def: true },
         { key: "showWindowTitle", type: "bool", def: true },
         { key: "showClock", type: "bool", def: true },
         { key: "showBattery", type: "bool", def: true },
@@ -575,7 +590,11 @@ QtObject {
         { key: "dynamicNotchMode", type: "string", def: "auto" },
         { key: "bentoGap", type: "int", def: 8 },
         { key: "bentoHoverLift", type: "bool", def: true },
-        { key: "barIslandMode", type: "bool", def: true }
+        { key: "barIslandMode", type: "bool", def: true },
+        { key: "launcherCustomCategories", type: "json", def: [] },
+        { key: "adaptiveTransparency", type: "bool", def: true },
+        { key: "dynamicNotchFlared", type: "bool", def: true },
+        { key: "notchFlareRadius", type: "int", def: 16 }
     ]
 
     function loadObject(data) {
@@ -632,6 +651,50 @@ QtObject {
             next[ssid] = trimmed;
         }
         root.networkAliases = next;
+    }
+
+    function addLauncherCategory(name, icon) {
+        if (!name || name.trim() === "") return null;
+        let trimmedName = name.trim();
+        let catId = "cat_" + Date.now();
+        let list = Array.isArray(root.launcherCustomCategories) ? root.launcherCustomCategories.slice() : [];
+        let newCat = {
+            id: catId,
+            name: trimmedName,
+            icon: icon || "folder",
+            appIds: []
+        };
+        list.push(newCat);
+        root.launcherCustomCategories = list;
+        queueSave();
+        return newCat;
+    }
+
+    function removeLauncherCategory(id) {
+        if (!id) return;
+        let list = Array.isArray(root.launcherCustomCategories) ? root.launcherCustomCategories.slice() : [];
+        let next = list.filter(c => c && c.id !== id);
+        root.launcherCustomCategories = next;
+        queueSave();
+    }
+
+    function toggleAppInLauncherCategory(catId, appId) {
+        if (!catId || !appId) return;
+        let list = Array.isArray(root.launcherCustomCategories) ? root.launcherCustomCategories.slice() : [];
+        let idx = list.findIndex(c => c && c.id === catId);
+        if (idx === -1) return;
+        let cat = Object.assign({}, list[idx]);
+        let appIds = Array.isArray(cat.appIds) ? cat.appIds.slice() : [];
+        let appIdx = appIds.indexOf(appId);
+        if (appIdx !== -1) {
+            appIds.splice(appIdx, 1);
+        } else {
+            appIds.push(appId);
+        }
+        cat.appIds = appIds;
+        list[idx] = cat;
+        root.launcherCustomCategories = list;
+        queueSave();
     }
 
     function loadConf(str) {

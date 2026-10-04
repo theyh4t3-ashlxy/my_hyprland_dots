@@ -836,9 +836,8 @@ Rectangle {
         cardWidth: Theme.popupWidth
         cardHeight: Theme.popupHeight
 
-        ColumnLayout {
+        content: ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Theme.popupPadding
             spacing: Theme.popupSpacing
 
             RowLayout {
@@ -1381,6 +1380,13 @@ Rectangle {
                             }
                             RowDivider {}
                             ToggleRow {
+                                icon: Theme.iconGrid ?? "⊞"
+                                title: "tiling layout switcher"
+                                checked: Settings.showLayoutSwitcher && flickLayout.isModAssigned("layout")
+                                onToggled: { flickLayout.toggleBarModule("layout", "showLayoutSwitcher"); }
+                            }
+                            RowDivider {}
+                            ToggleRow {
                                 icon: Theme.iconNote
                                 title: "window title"
                                 checked: Settings.showWindowTitle && flickLayout.isModAssigned("windowTitle")
@@ -1578,62 +1584,65 @@ Rectangle {
                         }
 
                         SettingCard {
-                            implicitHeight: appearancePreviewCol.implicitHeight + 20
+                            Item {
+                                width: parent.width
+                                implicitHeight: appearancePreviewCol.implicitHeight + 20
 
-                            ColumnLayout {
-                                id: appearancePreviewCol
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 8
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-
-                                    Text {
-                                        text: "live style"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                        Layout.fillWidth: true
-                                    }
-
-                                    Text {
-                                        text: Settings.barStyle + "  •  " + Math.round(Settings.barOpacity * 100) + "% opacity"
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: 9
-                                        color: Theme.primary
-                                    }
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 34
-                                    radius: Math.min(Settings.widgetRadius, 16)
-                                    color: Theme.alpha(Theme.surface_container_highest, Settings.barOpacity)
-                                    border.color: Theme.alpha(Theme.primary, 0.28)
-                                    border.width: 1
+                                ColumnLayout {
+                                    id: appearancePreviewCol
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 8
 
                                     RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 10
-                                        spacing: 8
+                                        Layout.fillWidth: true
 
                                         Text {
-                                            text: Theme.iconGrid
-                                            font.family: Theme.fontIcon
+                                            text: "live style"
+                                            font.family: Theme.fontFamily
                                             font.pixelSize: Theme.fontSizeXs
+                                            font.weight: Theme.fontWeightBold
+                                            color: Theme.on_surface
+                                            Layout.fillWidth: true
+                                        }
+
+                                        Text {
+                                            text: Settings.barStyle + "  •  " + Math.round(Settings.barOpacity * 100) + "% opacity"
+                                            font.family: Theme.fontMono
+                                            font.pixelSize: 9
                                             color: Theme.primary
                                         }
-                                        Rectangle { width: 54; height: 8; radius: 4; color: Theme.primary_container }
-                                        Rectangle { Layout.fillWidth: true; height: 8; radius: 4; color: Theme.outline_variant }
-                                        Rectangle { width: 34; height: 18; radius: 9; color: Theme.primary_container }
-                                        Text {
-                                            text: Settings.barHeight + "px"
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: 8
-                                            color: Theme.on_surface_variant
+                                    }
+
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        height: 34
+                                        radius: Math.min(Settings.widgetRadius, 16)
+                                        color: Theme.alpha(Theme.surface_container_highest, Settings.barOpacity)
+                                        border.color: Theme.alpha(Theme.primary, 0.28)
+                                        border.width: 1
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            spacing: 8
+
+                                            Text {
+                                                text: Theme.iconGrid
+                                                font.family: Theme.fontIcon
+                                                font.pixelSize: Theme.fontSizeXs
+                                                color: Theme.primary
+                                            }
+                                            Rectangle { width: 54; height: 8; radius: 4; color: Theme.primary_container }
+                                            Rectangle { Layout.fillWidth: true; height: 8; radius: 4; color: Theme.outline_variant }
+                                            Rectangle { width: 34; height: 18; radius: 9; color: Theme.primary_container }
+                                            Text {
+                                                text: Settings.barHeight + "px"
+                                                font.family: Theme.fontMono
+                                                font.pixelSize: 8
+                                                color: Theme.on_surface_variant
+                                            }
                                         }
                                     }
                                 }
@@ -1747,7 +1756,7 @@ Rectangle {
                             ToggleRow {
                                 icon: Theme.iconSparkles
                                 title: "reactive dynamic notch"
-                                subtitle: "interactive center island (clock, media wave & timer)"
+                                subtitle: "interactive center island (clock, calendar & timer)"
                                 checked: Settings.dynamicNotchEnabled
                                 onToggled: function() { Settings.dynamicNotchEnabled = !Settings.dynamicNotchEnabled; }
                             }
@@ -1760,7 +1769,6 @@ Rectangle {
                                 model: [
                                     { label: "adaptive auto", value: "auto" },
                                     { label: "clock only", value: "clock" },
-                                    { label: "media only", value: "media" },
                                     { label: "timer only", value: "timer" }
                                 ]
                                 currentValue: Settings.dynamicNotchMode
@@ -1905,7 +1913,29 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { Settings.screenCornerRadius = Settings.scoopRadius; }
+                            }
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconSparkles
+                                title: "dynamic notch concave flares"
+                                subtitle: "melt center notch directly into screen bezel"
+                                checked: Settings.dynamicNotchFlared
+                                onToggled: { Settings.dynamicNotchFlared = !Settings.dynamicNotchFlared; }
+                            }
+
+                            RowDivider { visible: Settings.dynamicNotchFlared }
+
+                            SliderRow {
+                                visible: Settings.dynamicNotchFlared
+                                title: "notch flare radius"
+                                from: 8
+                                to: 32
+                                stepSize: 2
+                                suffix: "px"
+                                value: Settings.notchFlareRadius
+                                onMoved: { Settings.notchFlareRadius = val; }
                             }
                         }
 

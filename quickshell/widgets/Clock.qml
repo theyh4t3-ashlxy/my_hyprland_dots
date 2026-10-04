@@ -2,20 +2,76 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../controls"
+import "../corners"
 
 Rectangle {
     id: clockRoot
+
+    // ── Concave Flare & Bezel Attachment ──────────────────────────────────
+    readonly property bool isBarFloating: Settings?.barFloating ?? false
+    readonly property bool isBarBottom: Settings?.barPosition === "bottom"
+    readonly property bool isCenterModule: (Settings?.barModulesCenter ?? []).indexOf("clock") !== -1
+    readonly property bool hasNotchInCenter: (Settings?.barModulesCenter ?? []).indexOf("dynamicnotch") !== -1
+    readonly property bool isFlared: (Settings?.dynamicNotchFlared ?? true) && !(Theme?.isVertical ?? false) && !isBarFloating && isCenterModule && !hasNotchInCenter
+    readonly property int flareRadius: Settings?.notchFlareRadius ?? 16
+
     implicitWidth: (Theme?.isVertical ?? false) ? ((Theme?.barHeight ?? 48) - 8) : (clockRow.implicitWidth + 24)
     implicitHeight: (Theme?.isVertical ?? false) ? 42 : ((Theme?.barHeight ?? 48) - 8)
-    radius: Theme?.radiusPill ?? 999
+    width: implicitWidth
+    height: isFlared ? ((Theme?.barHeight ?? 32) - 2) : implicitHeight
+    y: isFlared ? (isBarBottom ? 2 : - Math.round(((Theme?.barHeight ?? 32) - implicitHeight) / 2)) : 0
+
+    radius: isFlared ? 0 : (Theme?.radiusPill ?? 999)
+    topLeftRadius: isFlared ? (isBarBottom ? (Theme.radiusMd > 4 ? Theme.radiusMd : 12) : 0) : (Theme?.radiusPill ?? 999)
+    topRightRadius: isFlared ? (isBarBottom ? (Theme.radiusMd > 4 ? Theme.radiusMd : 12) : 0) : (Theme?.radiusPill ?? 999)
+    bottomLeftRadius: isFlared ? (!isBarBottom ? (Theme.radiusMd > 4 ? Theme.radiusMd : 12) : 0) : (Theme?.radiusPill ?? 999)
+    bottomRightRadius: isFlared ? (!isBarBottom ? (Theme.radiusMd > 4 ? Theme.radiusMd : 12) : 0) : (Theme?.radiusPill ?? 999)
+
     color: calPopup.open ? Theme.primary_overlay : (clkMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme?.pillBorder ?? "transparent"
     border.width: (Theme?.pillBorder ?? "transparent") === "transparent" ? 0 : 1
     visible: Settings?.showClock ?? true
+    clip: false
 
     Behavior on color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
     Behavior on border.color { ColorAnimation { duration: Theme?.animFast ?? 150 } }
+    Behavior on height { NumberAnimation { duration: Theme?.animNormal ?? 200; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
+    Behavior on y { NumberAnimation { duration: Theme?.animNormal ?? 200; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
     Behavior on implicitWidth { NumberAnimation { duration: Theme?.animFast ?? 150; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
+    Behavior on width { NumberAnimation { duration: Theme?.animFast ?? 150; easing.type: Theme?.animEasing ?? Easing.OutQuad } }
+
+    // ── Concave Flares (Ears) Melting Into Screen Bezel ──────────────────
+    ConcaveCorner {
+        id: flareLeft
+        visible: clockRoot.isFlared
+        x: -width
+        y: clockRoot.isBarBottom ? (clockRoot.height - height) : 0
+        radiusX: clockRoot.flareRadius
+        radiusY: clockRoot.flareRadius
+        fillColor: clockRoot.color
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: true
+        flipY: clockRoot.isBarBottom
+        showBorder: clockRoot.border.width > 0
+        borderWidth: clockRoot.border.width
+        borderColor: clockRoot.border.color
+    }
+
+    ConcaveCorner {
+        id: flareRight
+        visible: clockRoot.isFlared
+        x: clockRoot.width
+        y: clockRoot.isBarBottom ? (clockRoot.height - height) : 0
+        radiusX: clockRoot.flareRadius
+        radiusY: clockRoot.flareRadius
+        fillColor: clockRoot.color
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: false
+        flipY: clockRoot.isBarBottom
+        showBorder: clockRoot.border.width > 0
+        borderWidth: clockRoot.border.width
+        borderColor: clockRoot.border.color
+    }
 
     property date now: new Date()
     // breaking date parts out prevents the calendar from recreating 42 delegates every tick

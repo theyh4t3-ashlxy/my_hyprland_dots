@@ -63,6 +63,13 @@ case "$ACTION" in
     capture|screencapture)
         qs ipc call capture toggle 2>/dev/null || true
         ;;
+    layout|layoutswitcher)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call layout-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call layout toggle 2>/dev/null || true
+        fi
+        ;;
     wallpaper)
         if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
             qs ipc -p "$BRAIN_DIR" call wallpaper-toggle toggle 2>/dev/null || true

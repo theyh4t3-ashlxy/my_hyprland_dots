@@ -1,24 +1,32 @@
 # making zsh stop acting like it was born in 1989
 setopt AUTO_CD              # typing cd every 3 seconds is for cavemen
+setopt AUTO_PUSHD           # push directories to stack on cd (cd -1, cd -2, dirs -v)
+setopt PUSHD_IGNORE_DUPS    # don't push duplicates to directory stack
+setopt PUSHD_SILENT         # don't print directory stack after every pushd
+setopt PUSHD_TO_HOME        # pushd with no args goes home
 setopt INTERACTIVE_COMMENTS # paste broken snippets with # without terminal screaming
 setopt NO_BEEP              # if my pc beeps at me one more time im throwing it out the window
 setopt GLOB_COMPLETE        # auto-expand globs
 setopt EXTENDED_GLOB        # supercharged globs (#q, ^, ~, etc)
 setopt COMPLETE_IN_WORD     # tab complete from anywhere inside word
 setopt ALWAYS_TO_END        # move cursor to end of word on completion
+setopt MULTIOS              # pipe to multiple outputs simultaneously
+setopt RM_STAR_WAIT         # 10s safety delay if executing 'rm *' or 'rm path/*'
 
 # remembering the 50000 mistakes ive made in terminal
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
 
-setopt HIST_IGNORE_ALL_DUPS # stop recording the 40 times i spammed ls in 2 seconds
-setopt HIST_IGNORE_SPACE    # leading space hides secrets/tokens from history
-setopt HIST_SAVE_NO_DUPS    # omit older duplicates when writing history
-setopt HIST_FIND_NO_DUPS    # do not display duplicates when searching
-setopt HIST_REDUCE_BLANKS   # trim useless whitespace before saving
-setopt SHARE_HISTORY        # telepathically sync my bad decisions across tabs
-setopt HIST_VERIFY          # show history command before executing
+setopt HIST_IGNORE_ALL_DUPS   # stop recording the 40 times i spammed ls in 2 seconds
+setopt HIST_IGNORE_SPACE      # leading space hides secrets/tokens from history
+setopt HIST_SAVE_NO_DUPS      # omit older duplicates when writing history
+setopt HIST_FIND_NO_DUPS      # do not display duplicates when searching
+setopt HIST_REDUCE_BLANKS     # trim useless whitespace before saving
+setopt SHARE_HISTORY          # telepathically sync my bad decisions across tabs
+setopt HIST_VERIFY            # show history command before executing
+setopt HIST_EXPIRE_DUPS_FIRST # trim oldest duplicates first when history is full
+setopt EXTENDED_HISTORY       # record timestamps and execution duration in history
 
 # completion drip so i dont have to memorize flags
 zstyle ':completion:*' use-cache on
@@ -98,11 +106,19 @@ bindkey '^[[F'  end-of-line            # end
 bindkey '^[[3~' delete-char            # delete
 bindkey '^?'    backward-delete-char   # backspace
 
+# subword movement: stop at path and flag delimiters (/, _, -, .) instead of whole words
+autoload -U select-word-style && select-word-style bash
+
 # ctrl + left/right to skip words at lightspeed
 bindkey '^[[1;5D' backward-word
 bindkey '^[[1;5C' forward-word
+
+# magic url escaping (auto-escape ?, &, = when pasting urls without quotes)
+autoload -Uz bracketed-paste-magic && zle -N bracketed-paste bracketed-paste-magic
+autoload -Uz url-quote-magic && zle -N self-insert url-quote-magic
 
 # emergency ctrl+x ctrl+e escape hatch into micro
 autoload -z edit-command-line
 zle -N edit-command-line
 bindkey "^X^E" edit-command-line
+

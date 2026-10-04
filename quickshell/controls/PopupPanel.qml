@@ -136,7 +136,18 @@ PanelWindow {
             target: root
             property: "morphProgress"
             duration: root.open ? (Theme?.expressiveDefault ?? 260) : (Theme?.expressiveFast ?? 160)
-            easing.type: root.open ? (Theme?.animEasing ?? Easing.OutCubic) : Easing.InCubic
+            easing.type: {
+                if (root.open) {
+                    if (Theme?.animCurve === "expressive" || Theme?.animCurve === "spline" || Theme?.animCurve === "bezier") {
+                        return Easing.BezierSpline;
+                    }
+                    return Theme?.animEasing ?? Easing.OutCubic;
+                }
+                return Easing.InCubic;
+            }
+            easing.bezierCurve: (Theme?.animCurve === "expressive" || Theme?.animCurve === "spline" || Theme?.animCurve === "bezier")
+                ? (Theme?.motionExpressiveDefault ?? [0.34, 1.45, 0.22, 1.0, 1.0, 1.0])
+                : (Theme?.animBezierPoints ?? [0.25, 0.1, 0.25, 1.0, 1.0, 1.0])
         }
     }
 

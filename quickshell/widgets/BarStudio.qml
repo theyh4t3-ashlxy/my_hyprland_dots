@@ -47,7 +47,7 @@ PopupPanel {
         "battery":       { name: "battery & power",   icon: Theme?.iconBatFull ?? "\uE1A5",   desc: "upower level & charging" },
         "quickSettings": { name: "quick settings",    icon: Theme?.iconSettings ?? "\uE8B8",  desc: "system & appearance toggles" },
         "powerMenu":     { name: "power menu",        icon: Theme?.iconPower ?? "\uF8C7",     desc: "lock, logout & power off" },
-        "dynamicNotch":  { name: "dynamic notch",     icon: Theme?.iconSparkles ?? "\uE65F",  desc: "reactive island carousel (clock, media, timer)" }
+        "dynamicNotch":  { name: "dynamic notch",     icon: Theme?.iconSparkles ?? "\uE65F",  desc: "reactive island carousel (clock, calendar & timer)" }
     })
 
     readonly property var unassignedModules: {

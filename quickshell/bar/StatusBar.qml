@@ -117,7 +117,7 @@ PanelWindow {
     readonly property bool scoopAllowedBottom: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("bottom", isRight ? "bottomRight" : "bottomLeft"))
 
     readonly property int borderWidth: Math.round((Settings?.screenFrameDocked ?? true) ? (Settings?.screenBorderWidth ?? 0) : 0)
-    readonly property bool hasBarScoops: !root.isFloating && (Settings?.screenFrameDocked ?? true) && (
+    readonly property bool hasBarScoops: !root.isFloating && !root.isIslandMode && (Settings?.screenFrameDocked ?? true) && (
         root.isVertical ? (scoopAllowedTop || scoopAllowedBottom) : (scoopAllowedLeft || scoopAllowedRight)
     )
 
@@ -137,19 +137,18 @@ PanelWindow {
 
     implicitWidth: root.isVertical ? (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0)) : (root.screen?.width ?? 1920)
     implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0))
-    exclusiveZone: root.isVertical ? (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) : (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0))
+    exclusiveZone: root.isVertical ? (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) : (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) // exclusiveZone: Theme.barHeight
     exclusionMode: ExclusionMode.Normal
 
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "quickshell:bar"
 
-    // actually letting the compositor know the scoops exist
     mask: Region {
         Region { item: barBg }
-        Region { item: scoopLeftH }
-        Region { item: scoopRightH }
-        Region { item: scoopTopV }
-        Region { item: scoopBottomV }
+        Region { item: (root.hasBarScoops && scoopLeftH.visible) ? scoopLeftH : null }
+        Region { item: (root.hasBarScoops && scoopRightH.visible) ? scoopRightH : null }
+        Region { item: (root.hasBarScoops && scoopTopV.visible) ? scoopTopV : null }
+        Region { item: (root.hasBarScoops && scoopBottomV.visible) ? scoopBottomV : null }
     }
 
     property alias launcherPopup: launcherPopup
@@ -245,11 +244,14 @@ PanelWindow {
     Component { id: compQuickSettings; QuickSettings { barScreen: root.screen; barMonitor: root.hyprMonitor } }
     Component { id: compPowerMenu; PowerMenu {} }
     Component { id: compScreenCapture; ScreenCapture { barScreen: root.screen; barMonitor: root.hyprMonitor } }
+    Component { id: compDynamicNotch; DynamicNotch { barScreen: root.screen; barMonitor: root.hyprMonitor } }
+    Component { id: compLayout; LayoutSwitcher { barScreen: root.screen; barMonitor: root.hyprMonitor } }
 
     function getModuleComponent(modId) {
         if (modId === "launcher") return compLauncher;
         if (modId === "wallpaper") return compWallpaper;
         if (modId === "workspaces") return compWorkspaces;
+        if (modId === "layout" || modId === "layoutSwitcher") return compLayout;
         if (modId === "windowTitle") return compWindowTitle;
         if (modId === "clock") return compClock;
         if (modId === "dynamicNotch" || modId === "notch") return compDynamicNotch;
@@ -273,6 +275,7 @@ PanelWindow {
         if (modId === "launcher") return Settings?.showLauncher ?? true;
         if (modId === "wallpaper") return Settings?.showWallpaper ?? true;
         if (modId === "workspaces") return Settings?.showWorkspaces ?? true;
+        if (modId === "layout" || modId === "layoutSwitcher") return Settings?.showLayoutSwitcher ?? true;
         if (modId === "windowTitle") return (Settings?.showWindowTitle ?? true) && !root.isVertical;
         if (modId === "clock") return Settings?.showClock ?? true;
         if (modId === "dynamicNotch" || modId === "notch") return Settings?.showDynamicNotch ?? true;
@@ -638,6 +641,8 @@ PanelWindow {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Theme.widgetSpacing
+                    width: Math.min(implicitWidth, root.maxRightRowWidth)
+                    clip: true
 
                     Repeater {
                         model: Settings.barModulesRight ?? []

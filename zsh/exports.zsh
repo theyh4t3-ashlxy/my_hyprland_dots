@@ -34,3 +34,9 @@ export PATH
 # make nmtui/whiptail dark and sleek instead of 1993 ms-dos blue screen
 export NEWT_COLORS="root=white,black:border=gray,black:window=white,black:shadow=black,gray:title=cyan,black:button=black,lightgray:actbutton=black,cyan:compactbutton=lightgray,black:checkbox=lightgray,black:actcheckbox=black,cyan:entry=white,gray:disentry=gray,black:label=lightgray,black:listbox=lightgray,black:actlistbox=black,cyan:sellistbox=black,cyan:actsellistbox=black,cyan:textbox=lightgray,black:acttextbox=lightgray,black:helpline=gray,black:roottext=gray,black:emptyscale=gray,black:fullscale=cyan,black"
 
+# flatpak desktop applications and icons
+export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+# bat syntax theme
+export BAT_THEME="base16"
+

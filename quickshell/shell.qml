@@ -98,6 +98,14 @@ ShellRoot {
         function close(): void { Settings.requestLauncherClose(); }
     }
 
+    // layout switcher IPC: toggle tiling layout or popup
+    IpcHandler {
+        target: "layout"
+        function toggle(): void { Settings.requestLayoutSwitcherToggle(); }
+        function open(): void { Settings.requestLayoutSwitcherOpen(); }
+        function close(): void { Settings.requestLayoutSwitcherClose(); }
+    }
+
     // screenshot IPC: digital kleptomania and receipts for the group chat
     Variants {
         model: Quickshell.screens

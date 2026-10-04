@@ -58,24 +58,48 @@ extract() {
         return 1
     fi
     case "$1" in
-        *.tar.bz2)   tar xjf "$1"     ;;
-        *.tar.gz)    tar xzf "$1"     ;;
-        *.tar.xz)    tar xJf "$1"     ;;
-        *.tar.zst)   tar --zstd -xf "$1" ;;
-        *.bz2)       bunzip2 "$1"     ;;
-        *.rar)       unrar x "$1"     ;;
-        *.gz)        gunzip "$1"      ;;
-        *.tar)       tar xf "$1"      ;;
-        *.tbz2)      tar xjf "$1"     ;;
-        *.tgz)       tar xzf "$1"     ;;
-        *.zip)       unzip "$1"       ;;
-        *.Z)         uncompress "$1"  ;;
-        *.7z)        7z x "$1"        ;;
-        *.deb)       ar x "$1"        ;;
-        *.pkg)       tar xf "$1"      ;;
-        *)           print -P "%F{red}󰅚 unknown archive format:%f $1" ;;
+        *.tar.bz2)     tar xjf "$1"        ;;
+        *.tar.gz)      tar xzf "$1"        ;;
+        *.tar.xz)      tar xJf "$1"        ;;
+        *.tar.zst)     tar --zstd -xf "$1" ;;
+        *.zst|*.zstd)  unzstd "$1"         ;;
+        *.bz2)         bunzip2 "$1"        ;;
+        *.rar)         unrar x "$1"        ;;
+        *.gz)          gunzip "$1"         ;;
+        *.tar)         tar xf "$1"         ;;
+        *.tbz2)        tar xjf "$1"        ;;
+        *.tgz)         tar xzf "$1"        ;;
+        *.zip)         unzip "$1"          ;;
+        *.Z)           uncompress "$1"     ;;
+        *.7z)          7z x "$1"           ;;
+        *.deb)         ar x "$1"           ;;
+        *.pkg)         tar xf "$1"         ;;
+        *.lz4)         lz4 -d "$1"         ;;
+        *)             print -P "%F{red}󰅚 unknown archive format:%f $1" ;;
     esac
 }
+
+# smart archive compressor
+compress() {
+    if [[ $# -lt 2 ]]; then
+        print -P "%F{yellow}󰀦 usage: compress <archive_name.ext> <file_or_dir ...>%f"
+        print -P "  formats: .tar.gz, .tar.bz2, .tar.xz, .tar.zst, .zip, .7z"
+        return 1
+    fi
+    local archive="$1"
+    shift
+    case "$archive" in
+        *.tar.gz|*.tgz)   tar -czvf "$archive" "$@" ;;
+        *.tar.bz2|*.tbz2) tar -cjvf "$archive" "$@" ;;
+        *.tar.xz|*.txz)   tar -cJvf "$archive" "$@" ;;
+        *.tar.zst)        tar --zstd -cvf "$archive" "$@" ;;
+        *.tar)            tar -cvf "$archive" "$@" ;;
+        *.zip)            zip -r "$archive" "$@" ;;
+        *.7z)             7z a "$archive" "$@" ;;
+        *)                print -P "%F{red}󰅚 unsupported archive format:%f $archive" ;;
+    esac
+}
+
 
 # copy working directory path to clipboard
 cpwd() {

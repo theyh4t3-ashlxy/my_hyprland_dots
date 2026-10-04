@@ -20,6 +20,41 @@ Singleton {
         precision: SystemClock.Minutes
     }
 
+    // native hardware-accelerated wallpaper color quantizer for adaptive material vibrancy
+    ColorQuantizer {
+        id: wpQuantizer
+        depth: 2
+        source: {
+            let wp = cfg?.currentWallpaper ?? "";
+            if (!wp) return "";
+            if (wp.startsWith("/") || wp.startsWith("~")) {
+                let p = wp.startsWith("~") ? ((Quickshell.env("HOME") || "") + wp.slice(1)) : wp;
+                return "file://" + p;
+            }
+            return wp;
+        }
+    }
+
+    readonly property real wallpaperVibrancy: {
+        if (!wpQuantizer.colors || wpQuantizer.colors.length === 0) return 0.5;
+        let maxSat = 0.0;
+        for (let i = 0; i < wpQuantizer.colors.length; i++) {
+            let c = wpQuantizer.colors[i];
+            if (!c) continue;
+            let r = c.r, g = c.g, b = c.b;
+            let mx = Math.max(r, g, b);
+            let mn = Math.min(r, g, b);
+            let sat = mx === 0 ? 0 : (mx - mn) / mx;
+            if (sat > maxSat) maxSat = sat;
+        }
+        return Math.max(0.1, Math.min(1.0, maxSat));
+    }
+
+    readonly property real adaptiveSurfaceAlpha: {
+        if (!(cfg?.adaptiveTransparency ?? true)) return surfaceOpacity;
+        return Math.min(1.0, surfaceOpacity + (wallpaperVibrancy * 0.08));
+    }
+
     // raw hex slop scraped from the system matrix
     readonly property color primary:               "{{colors.primary.default.hex}}"
     readonly property color on_primary:            "{{colors.on_primary.default.hex}}"
@@ -134,6 +169,20 @@ Singleton {
     readonly property color on_warn_container:      on_tertiary_container
     readonly property color warn_overlay:           tertiary_overlay
 
+    // official material 3 interaction state layers (8% hover, 10% focus, 12% press, 16% drag)
+    function stateHover(baseColor: color, contentColor: color): color {
+        return blend(baseColor, (contentColor !== undefined && contentColor !== "" ? contentColor : on_surface), 0.08);
+    }
+    function stateFocus(baseColor: color, contentColor: color): color {
+        return blend(baseColor, (contentColor !== undefined && contentColor !== "" ? contentColor : on_surface), 0.10);
+    }
+    function statePress(baseColor: color, contentColor: color): color {
+        return blend(baseColor, (contentColor !== undefined && contentColor !== "" ? contentColor : on_surface), 0.12);
+    }
+    function stateDrag(baseColor: color, contentColor: color): color {
+        return blend(baseColor, (contentColor !== undefined && contentColor !== "" ? contentColor : on_surface), 0.16);
+    }
+
     readonly property color on_surface_disabled:    alpha(on_surface, 0.38)
     readonly property color outline_disabled:       alpha(outline, 0.12)
     readonly property color fontStrokeColor:        "#000000"
@@ -181,10 +230,14 @@ Singleton {
     // rounding corners until my screen turns into an oval pebble
     readonly property int    widgetRadius:          cfg?.widgetRadius ?? 2
     readonly property int    popupRadius:           cfg?.popupRadius ?? 8
+    readonly property int    radiusXs:              4
     readonly property int    radiusSm:              Math.max(1, Math.round(widgetRadius * 0.75))
     readonly property int    radiusMd:              Math.max(2, widgetRadius)
     readonly property int    radiusLg:              Math.max(4, popupRadius)
+    readonly property int    radiusXl:              Math.max(24, Math.round(popupRadius * 1.75))
+    readonly property int    radiusXxl:             Math.max(32, Math.round(popupRadius * 2.0))
     readonly property int    radiusPill:            9999
+    readonly property int    radiusFull:            9999
 
     readonly property int    barHeight:             cfg?.barHeight ?? 32
     readonly property int    barRadius:             cfg?.barRadius ?? 0
@@ -422,12 +475,18 @@ Singleton {
     readonly property bool   workspaceActiveTrail:  cfg?.workspaceActiveTrail ?? true
 
     // Cubic bezier control points [cx1, cy1, cx2, cy2, endx, endy] for Qt Quick Easing.BezierSpline
-    readonly property var    hyprlandBezier:        [0.05, 0.9, 0.1, 1.05, 1.0, 1.0]
-    readonly property var    hyprlandExitBezier:    [0.3, 0.0, 0.8, 0.15, 1.0, 1.0]
-    readonly property var    smoothBezier:          [0.16, 1.0, 0.3, 1.0, 1.0, 1.0]
-    readonly property var    snappyBezier:          [0.2, 0.0, 0.0, 1.0, 1.0, 1.0]
-    readonly property var    expressiveBezier:      [0.1, 1.15, 0.2, 1.0, 1.0, 1.0]
-    readonly property var    standardBezier:        [0.25, 0.1, 0.25, 1.0, 1.0, 1.0]
+    readonly property var    hyprlandBezier:            [0.05, 0.9, 0.1, 1.05, 1.0, 1.0]
+    readonly property var    hyprlandExitBezier:        [0.3, 0.0, 0.8, 0.15, 1.0, 1.0]
+    readonly property var    smoothBezier:              [0.16, 1.0, 0.3, 1.0, 1.0, 1.0]
+    readonly property var    snappyBezier:              [0.2, 0.0, 0.0, 1.0, 1.0, 1.0]
+    readonly property var    expressiveBezier:          [0.1, 1.15, 0.2, 1.0, 1.0, 1.0]
+    readonly property var    standardBezier:            [0.25, 0.1, 0.25, 1.0, 1.0, 1.0]
+    readonly property var    motionExpressiveFast:      [0.38, 1.25, 0.25, 1.0, 1.0, 1.0]
+    readonly property var    motionExpressiveDefault:   [0.34, 1.45, 0.22, 1.0, 1.0, 1.0]
+    readonly property var    motionExpressiveSlow:      [0.25, 1.35, 0.15, 1.0, 1.0, 1.0]
+    readonly property var    motionEmphasized:          [0.20, 0.0, 0.0, 1.0, 1.0, 1.0]
+    readonly property var    motionEmphasizedDecel:     [0.05, 0.7, 0.1, 1.0, 1.0, 1.0]
+    readonly property var    motionEmphasizedAccel:     [0.30, 0.0, 0.8, 0.15, 1.0, 1.0]
 
     function getBezierPoints(curve: var): var {
         if (!curve) return standardBezier;
@@ -441,6 +500,12 @@ Singleton {
         if (c === "smooth" || c === "cubic") return smoothBezier;
         if (c === "snappy") return snappyBezier;
         if (c === "expressive") return expressiveBezier;
+        if (c === "expressive-fast") return motionExpressiveFast;
+        if (c === "expressive-default") return motionExpressiveDefault;
+        if (c === "expressive-slow") return motionExpressiveSlow;
+        if (c === "emphasized") return motionEmphasized;
+        if (c === "emphasized-decel") return motionEmphasizedDecel;
+        if (c === "emphasized-accel") return motionEmphasizedAccel;
         if (c === "linear") return [0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
 
         // Parse custom cubic-bezier(x1, y1, x2, y2) or "x1, y1, x2, y2"

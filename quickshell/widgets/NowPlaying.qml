@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
+import "../controls"
 
 Rectangle {
     id: root
@@ -424,33 +425,20 @@ Rectangle {
                         Layout.fillWidth: true
                         spacing: 4
 
-                        Rectangle {
+                        WavyProgress {
                             id: progressTrack
                             Layout.fillWidth: true
-                            height: 6
-                            radius: Theme.radiusPill
-                            color: Theme.surface_container_highest
-
-                            Rectangle {
-                                width: {
-                                    if (!root.player || !root.player.length || root.player.length <= 0) return 0
-                                    return parent.width * Math.min(1.0, Math.max(0.0, root.trackPosition / root.player.length))
-                                }
-                                height: parent.height
-                                radius: Theme.radiusPill
-                                color: Theme.primary
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: (mouse) => {
-                                    if (root.player && (root.player.canSeek ?? true) && root.player.length > 0 && width > 0) {
-                                        let posFrac = Math.max(0.0, Math.min(1.0, mouse.x / width))
-                                        root.player.position = posFrac * root.player.length
-                                        root.trackPosition = root.player.position
-                                    }
+                            Layout.preferredHeight: 24
+                            from: 0
+                            to: (root.player && root.player.length > 0) ? root.player.length : 1
+                            value: root.trackPosition
+                            playing: root.isPlaying
+                            audioPeak: (typeof peakMonitor !== "undefined" && peakMonitor.peak !== undefined) ? peakMonitor.peak : 0.0
+                            interactive: root.player && (root.player.canSeek ?? true) && root.player.length > 0
+                            onSeekRequested: (pos) => {
+                                if (root.player && (root.player.canSeek ?? true) && root.player.length > 0) {
+                                    root.player.position = pos;
+                                    root.trackPosition = pos;
                                 }
                             }
                         }

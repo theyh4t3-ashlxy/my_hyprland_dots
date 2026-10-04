@@ -8,6 +8,9 @@ alias nrun="nix run nixpkgs#"
 alias nix-gens="nixos-rebuild list-generations"
 alias neovim="nvim"
 
+# sudo with a trailing space so zsh actually expands your aliases instead of choking
+alias sudo="sudo "
+
 # purge old dead nix store paths while keeping 7 days of rollbacks
 cleanup() {
     print -P "%F{cyan}󰄛 killing my own generations because i want my 512gb back ..%f"
@@ -19,8 +22,14 @@ cleanup() {
     print -P "%F{green}󰄲 nix store cleanup complete%f"
 }
 
-# text editor escape hatch
-alias mc="micro"
+# safe file destruction with mandatory speed bumps
+alias rm="rm -I"
+alias cp="cp -iv"
+alias mv="mv -iv"
+alias mkdir="mkdir -pv"
+alias chown="chown --preserve-root"
+alias chmod="chmod --preserve-root"
+alias chgrp="chgrp --preserve-root"
 
 # launch GUI file manager without hijacking stdout or locking directory
 fm() {
@@ -49,14 +58,28 @@ if (( $+commands[lazygit] )); then
 fi
 alias gs="git status -sb"
 alias gd="git diff"
+alias gds="git diff --staged"
 alias gp="git push"
+alias gpf="git push --force-with-lease"
+alias gpl="git pull --rebase"
 alias gc="git commit -m"
 alias gca="git commit --amend"
+alias gcam="git commit -am"
 alias ga="git add"
 alias gaa="git add -A"
 alias gl="git log --oneline --graph --decorate -n 15"
+alias glog="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias gco="git checkout"
 alias gcb="git checkout -b"
+alias gsw="git switch"
+alias gswc="git switch -c"
+alias gst="git stash"
+alias gstp="git stash pop"
+alias gstd="git stash drop"
+alias grh="git reset --hard"
+alias grs="git restore"
+alias grss="git restore --staged"
+alias gcount="git shortlog -sn"
 
 # steal color hex off screen
 alias color="hyprpicker -a"
@@ -64,13 +87,20 @@ alias color="hyprpicker -a"
 # type file name to edit it directly
 alias -s {qml,lua,conf,toml,json,zsh,sh,css,md,txt,yaml,yml}=${EDITOR:-micro}
 
-# pipe magic
+# pipe magic: lazy shorthand for unix plumbing
 alias -g G='| grep -i'
 alias -g L='| less'
 alias -g F='| fzf'
 alias -g B='| bat'
+alias -g H='| head'
+alias -g T='| tail'
+alias -g W='| wc -l'
+alias -g C='| wl-copy'
+alias -g N='>/dev/null 2>&1'
+alias -g E='2>&1'
 
-# fast jumps
+# directory stack & fast jumps
+alias d="dirs -v"
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
@@ -91,5 +121,6 @@ alias nmtui='NEWT_COLORS="root=black,black:border=gray,black:window=black,black:
 # fixed alias spacing and quoting for antigravity cli
 alias agy="nix run 'github:jacopone/antigravity-nix#google-antigravity-cli'"
 
-# mixtapes flatpak exports
-export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$XDG_DATA_DIRS"
+# quick shell reload
+alias reload="exec zsh"
+alias sz="source \${ZDOTDIR:-\$HOME/.config/zsh}/sources.zsh"
