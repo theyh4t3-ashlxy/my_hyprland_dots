@@ -124,3 +124,70 @@ alias agy="nix run 'github:jacopone/antigravity-nix#google-antigravity-cli'"
 # quick shell reload
 alias reload="exec zsh"
 alias sz="source \${ZDOTDIR:-\$HOME/.config/zsh}/sources.zsh"
+
+# git commit crimes with procedural chaotic messages
+yolo() {
+    local messages=(
+        "i have no idea why this works but it does"
+        "cursed fix for cursed code"
+        "revert this before anyone looks"
+        "it compiled on my machine so it's prod ready"
+        "wip: do not read this commit"
+        "fixing a bug i created 10 minutes ago"
+        "delete this branch and pretend it never happened"
+        "refactored into an even worse state"
+        "emergency commit before my laptop dies"
+        "pure vibes no thoughts"
+        "surely this won't break production"
+        "trust me bro"
+        "my code is beautiful don't look at it"
+        "temporary fix (permanent)"
+    )
+    local msg="${messages[$(( RANDOM % ${#messages[@]} + 1 ))]}"
+    if [[ -n "$1" ]]; then
+        msg="$*"
+    fi
+    print -P "%F{yellow}󰄛 yolo commit:%f %F{magenta}\"$msg\"%f"
+    git add -A && git commit -m "$msg" && git push
+}
+
+# explain last exit code with dry humiliation
+why() {
+    local code="${1:-$?}"
+    case "$code" in
+        0)   print -P "%F{green}󰄲 exit 0:%f nothing failed. you're panicking over a success." ;;
+        1)   print -P "%F{red}󰅚 exit 1:%f general failure. something choked and died without telling you why." ;;
+        2)   print -P "%F{red}󰅚 exit 2:%f syntax or misuse error. you fed bad arguments to a tool with zero patience." ;;
+        126) print -P "%F{red}󰅚 exit 126:%f permission denied. binary isn't executable or your kernel hates you." ;;
+        127) print -P "%F{red}󰅚 exit 127:%f command not found. you hallucinated a utility that doesn't exist." ;;
+        130) print -P "%F{yellow}󰀦 exit 130:%f sigint. you mashed ctrl+c in a blind panic." ;;
+        134) print -P "%F{red}󰅚 exit 134:%f sigabrt. program aborted itself in disgust." ;;
+        137) print -P "%F{red}󰅚 exit 137:%f sigkill / oom. the linux kernel took your process out back and shot it." ;;
+        139) print -P "%F{red}󰅚 exit 139:%f segfault. null pointer dereference. your memory is in shards." ;;
+        143) print -P "%F{yellow}󰀦 exit 143:%f sigterm. polite murder by systemd or process manager." ;;
+        *)   print -P "%F{red}󰅚 exit $code:%f esoteric failure code. consult a priest or stackoverflow." ;;
+    esac
+}
+alias ouch="why"
+
+# repeat last command with sudo
+please() {
+    local last_cmd=$(fc -ln -1 | sed 's/^[[:space:]]*//')
+    if [[ -n "$last_cmd" ]]; then
+        print -P "%F{yellow}󰀦 escalating with sudo:%f %F{cyan}sudo $last_cmd%f"
+        eval "sudo $last_cmd"
+    fi
+}
+
+# compile all zsh configs to zwc bytecode to keep startup sub-4ms
+compile-zsh() {
+    local zdir="${ZDOTDIR:-$HOME/.config/zsh}"
+    print -P "%F{cyan}󰄛 compiling zsh bytecode cache in $zdir...%f"
+    local count=0
+    for f in "$zdir"/*.zsh; do
+        if [[ -f "$f" ]]; then
+            zcompile -R "$f" && (( count++ ))
+        fi
+    done
+    print -P "%F{green}󰄲 compiled $count files into .zwc bytecode%f"
+}

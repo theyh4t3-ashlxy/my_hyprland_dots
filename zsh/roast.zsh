@@ -77,6 +77,14 @@ command_not_found_handler() {
         "'$cmd' does not exist. you migrated from bash to zsh just to make typos with slightly better completion."
         "error: '$cmd' unresolvable. you're two misfires away from running 'chmod 777' on your home directory."
         "failed to execute '$cmd'. you have three terminal splits open and not a single one has a clean exit code."
+        "command '$cmd' not found. declarative nixos setup won't save you from your own fingers."
+        "'$cmd' is undefined. you have dynamic matugen tokens extracted from anime wallpapers but no binary named '$cmd'."
+        "zsh: '$cmd' missing. you run a tiling window manager so you can fail commands in aesthetic splits."
+        "failed to execute '$cmd'. your keyboard has lubed switches and zero spellcheck."
+        "error: '$cmd' does not exist. maybe write another 50 lines of zsh config to cope."
+        "'$cmd' unresolvable. you're one missing package away from a three-hour nixos rebuild."
+        "command '$cmd' failed. your prompt is curved like an artisanal bowl and your commands are completely broken."
+        "zsh: cannot find '$cmd'. you have 14 uncommitted git crimes and you're inventing shell syntax."
     )
 
     # late night fatigue modifiers
@@ -92,7 +100,19 @@ command_not_found_handler() {
     fi
 
     # consecutive failure escalation
-    if (( _EXISTENTIAL_FAILS >= 3 )); then
+    if (( _EXISTENTIAL_FAILS >= 8 )); then
+        roasts+=(
+            "streak of ${_EXISTENTIAL_FAILS}. please stop typing. close the terminal tab. step outside. touch physical grass."
+            "${_EXISTENTIAL_FAILS} typos in a row. you've completely dissociated. your brain is running at 0hz."
+            "streak of ${_EXISTENTIAL_FAILS}. at this point the shell is actively filing a restraining order."
+        )
+    elif (( _EXISTENTIAL_FAILS >= 5 )); then
+        roasts+=(
+            "streak of ${_EXISTENTIAL_FAILS}. your switches are lubed but you're playing them like a toddler with wooden blocks."
+            "error: '$cmd' missing. that's ${_EXISTENTIAL_FAILS} consecutive misses. the terminal is feeling secondhand embarrassment."
+            "${_EXISTENTIAL_FAILS} failures in a row. are your hands on the keys or did a cat sit on the keyboard."
+        )
+    elif (( _EXISTENTIAL_FAILS >= 3 )); then
         roasts+=(
             "command '$cmd' failed. that's ${_EXISTENTIAL_FAILS} typos in a row. your hands aren't even on the home row."
             "'$cmd' not found. ${_EXISTENTIAL_FAILS} consecutive misses. step away from the keyboard and drink some water."
@@ -116,9 +136,44 @@ command_not_found_handler() {
     return 127
 }
 
-preexec() {
-    _EXISTENTIAL_FAILS=0
+autoload -Uz add-zsh-hook
+
+typeset -g _LAST_ROAST_CMD=""
+
+_roast_preexec() {
+    _LAST_ROAST_CMD="$1"
 }
+add-zsh-hook preexec _roast_preexec
+
+_roast_precmd() {
+    local last_status=$?
+
+    if (( last_status == 0 )); then
+        _EXISTENTIAL_FAILS=0
+    elif [[ -n "$_LAST_ROAST_CMD" && "$last_status" -ne 127 ]]; then
+        if [[ "${ENABLE_PSYCHO_ROASTS:-true}" == "true" ]]; then
+            case "$last_status" in
+                139)
+                    print -P "\n%F{red}󰅚%f %F{244}segmentation fault (exit 139). your pointers are pointing into the void and so is your future.%f"
+                    ;;
+                137)
+                    print -P "\n%F{red}󰅚%f %F{244}killed by oom-killer (exit 137). electron ate all your ram while you were tweaking blur shaders.%f"
+                    ;;
+                134)
+                    print -P "\n%F{red}󰅚%f %F{244}sigabrt (exit 134). the binary literally aborted itself in disgust after reading your input.%f"
+                    ;;
+                130)
+                    print -P "\n%F{yellow}󰀦%f %F{244}sigint (exit 130). mashed ctrl+c like the keyboard was on fire. take a breath.%f"
+                    ;;
+                126)
+                    print -P "\n%F{red}󰅚%f %F{244}permission denied (exit 126). chmod +x is three keys away, or maybe it refused on principle.%f"
+                    ;;
+            esac
+        fi
+    fi
+    _LAST_ROAST_CMD=""
+}
+add-zsh-hook precmd _roast_precmd
 
 greeting_roast() {
     zmodload -i zsh/datetime 2>/dev/null
@@ -152,6 +207,10 @@ greeting_roast() {
         "welcome back. matugen just extracted thirty tonal tokens from your wallpaper so your terminal looks pretty while you do nothing."
         "new shell. you purged hyprshot, built a native quickshell grabber, and you're still sitting here running 'ls'."
         "welcome back. your hyprland runs on lua, your bar has mathematical scoops, and your project readme is still empty."
+        "welcome back. three side projects untouched for eight months and you're here customizing shell roasts."
+        "new shell. your laptop fan sounds like a turbine trying to render your prompt."
+        "welcome back. your battery is at 12% and your charger is across the room. place your bets."
+        "opened another terminal. you have four tiling splits open just to run fastfetch and watch ram leak."
     )
 
     if (( hour >= 0 && hour < 5 )); then
@@ -164,6 +223,14 @@ greeting_roast() {
         greetings+=(
             "afternoon slump. you're staring blankly at the prompt hoping the code writes itself."
             "it is ${hour}:00. on your third lukewarm coffee pretending it's fixing your lack of sleep."
+        )
+    fi
+
+    if [[ "$dow" == (Mon|Tue|Wed|Thu) ]] && (( hour >= 0 && hour < 6 )); then
+        greetings+=(
+            "it's ${hour}am on a school night. tweaking hyprland configs won't get you extra credit tomorrow."
+            "it is ${hour}am on a weekday. your first period alarm is coming and you're arguing with zsh."
+            "3am on a school night. you're going to sleep through your alarm and blame it on your circadian rhythm."
         )
     fi
 
@@ -201,6 +268,10 @@ roast() {
         "you purged grim and slurp to build a native quickshell grabber just to screenshot your own failed builds."
         "you migrated your binds to lua because 'declarative config is bloat' and then failed a three-letter command."
         "your quickshell bar has bezier tension math down to eight decimals and you're still mistyping shell commands."
+        "you run vi mode in zsh just to get stuck in normal mode and mash backspace."
+        "your laptop is radiating enough heat to cook eggs because electron is running in three background workspaces."
+        "you spent forty minutes picking a mono font to read compile warnings in italic ligatures."
+        "declarative nixos generation count is at 47 and you still haven't committed your dotfiles."
     )
     local r="${pool[$(( RANDOM % ${#pool[@]} + 1 ))]}"
     print -P "%F{red}󰅚%f %F{244}${r}%f"
