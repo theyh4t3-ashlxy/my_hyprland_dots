@@ -103,26 +103,93 @@ case "$ACTION" in
     sandbox|motion)
         qs ipc call sandbox toggle 2>/dev/null || true
         ;;
+    wifi)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call wifi-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
+    bluetooth|bt)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call bluetooth-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
+    vpn)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call vpn-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
+    hotspot)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call hotspot-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
+    mixer|audiomix)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call audioMix-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call volume toggle 2>/dev/null || true
+        fi
+        ;;
+    audioin|mic)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call audioIn-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call volume toggle 2>/dev/null || true
+        fi
+        ;;
+    focus|dnd)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call focus-toggle toggle 2>/dev/null || true
+        else
+            qs ipc call notifs toggle 2>/dev/null || true
+        fi
+        ;;
+    stats|system)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call dashboard-stats toggle 2>/dev/null || true
+        else
+            uwsm app -- kitty -e btop 2>/dev/null || true
+        fi
+        ;;
+    config|settings)
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call dashboard-config toggle 2>/dev/null || true
+        else
+            qs ipc call quicksettings toggle 2>/dev/null || true
+        fi
+        ;;
     record|rec)
-        shift
-        SUB="${1:-toggle}"
-        case "$SUB" in
-            screen|display|full)
-                qs ipc call record screen 2>/dev/null || true ;;
-            region|area|crop)
-                qs ipc call record region 2>/dev/null || true ;;
-            window)
-                qs ipc call record window 2>/dev/null || true ;;
-            stop|end)
-                qs ipc call record stop 2>/dev/null || true ;;
-            discard|cancel)
-                qs ipc call record discard 2>/dev/null || true ;;
-            toggle|*)
-                qs ipc call record toggle 2>/dev/null || true ;;
-        esac
+        if [ "$CURRENT" = "brain_shell" ] && [ -d "$BRAIN_DIR" ]; then
+            qs ipc -p "$BRAIN_DIR" call screenrec-on toggle 2>/dev/null || true
+        else
+            shift
+            SUB="${1:-toggle}"
+            case "$SUB" in
+                screen|display|full)
+                    qs ipc call record screen 2>/dev/null || true ;;
+                region|area|crop)
+                    qs ipc call record region 2>/dev/null || true ;;
+                window)
+                    qs ipc call record window 2>/dev/null || true ;;
+                stop|end)
+                    qs ipc call record stop 2>/dev/null || true ;;
+                discard|cancel)
+                    qs ipc call record discard 2>/dev/null || true ;;
+                toggle|*)
+                    qs ipc call record toggle 2>/dev/null || true ;;
+            esac
+        fi
         ;;
     *)
-        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|screenshot|record|wallpaper|lock|powermenu|keybinds|welcome|studio|sandbox} [subcommand]" >&2
+        echo "Usage: qs-action {launcher|dashboard|notifs|clipboard|audio|mixer|audioin|wifi|bluetooth|vpn|hotspot|focus|stats|config|screenshot|record|wallpaper|lock|powermenu|keybinds|welcome|studio|sandbox} [subcommand]" >&2
         exit 1
         ;;
 esac
