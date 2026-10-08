@@ -3,10 +3,11 @@
 > [!WARNING]
 > biohazard telemetry: this repository is 94.2% autonomous agent delirium (99% ci [92.1%, 96.8%], p < 0.0001), 5.7% insomnia-induced spite, and 0.1% quickshell physically hostage-taking wlroots. do not deploy this on hardware you have an emotional attachment to.
 
-<div align="center">
-  <video src="https://github.com/user-attachments/assets/fd8b0556-dcf0-43ac-94c6-3e5dd3708621" controls="controls" style="max-width: 100%; height: auto;"></video>
-  <p><em>autopsy footage recorded 30 seconds before wayland detonated and dropped to tty1.</em></p>
-</div>
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/fd8b0556-dcf0-43ac-94c6-3e5dd3708621" controls width="100%"></video>
+  <br>
+  <em>autopsy footage recorded 30 seconds before wayland exploded and dropped to tty1. if you don't see a video, it means my computer exploded.</em>
+</p>
 
 ---
 
