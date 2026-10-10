@@ -1,300 +1,394 @@
-autoload -U add-zsh-hook
+# prompt.zsh
+# A small terminal creature with questionable professionalism.
+#
+# Settings (set before sourcing, or change interactively):
+#   PROMPT_STYLE=unhinged
+#     unhinged | two-line | single-line | minimal | bracket
+#     gremlin | kaomoji-speech | cyberpunk | capsule
+#   KAOMOJI_SET=reactive       # reactive | cats | cute | rage | ascii
+#   PROMPT_ACCENT=primary     # primary | secondary | tertiary
+#                             # cyan | green | magenta | yellow | white
+#   PROMPT_SYMBOL='❯'
+#   SHOW_GIT_PROMPT=true
+#   SHOW_CMD_TIMER=true
+#   SHOW_PROMPT_BANTER=true
+#
+# Git: + staged, ~ unstaged, ? untracked entries, ! conflicts
+#      ↑ ahead, ↓ behind
+#
+# Nerd Font recommended for icons.
+# Git status is synchronous; disable it for very large repositories.
+
+autoload -Uz add-zsh-hook
 zmodload -F zsh/stat b:zstat 2>/dev/null
-setopt PROMPT_SUBST
 
-set_prompt_colors() {
-    M_OUT="%F{${MATUGEN_OUTLINE:-#a08d86}}"
-    M_PRI="%F{${MATUGEN_PRIMARY:-#ffb59a}}"
-    M_SEC="%F{${MATUGEN_SECONDARY:-#e7beaf}}"
-    M_TER="%F{${MATUGEN_TERTIARY:-#d5c68e}}"
-    M_ERR="%F{${MATUGEN_ERROR:-#ffb4ab}}"
-    M_RST="%f"
+setopt PROMPT_SUBST PROMPT_PERCENT
+unsetopt PROMPT_BANG
 
-    local sym_color="${M_PRI}"
-    case "${PROMPT_ACCENT:-primary}" in
-        secondary) sym_color="${M_SEC}" ;;
-        tertiary)  sym_color="${M_TER}" ;;
-        cyan)      sym_color="%F{117}" ;;
-        green)     sym_color="%F{120}" ;;
-        magenta)   sym_color="%F{141}" ;;
-        yellow)    sym_color="%F{221}" ;;
-        white)     sym_color="%F{white}" ;;
-        *)         sym_color="${M_PRI}" ;;
-    esac
-    M_SYM_COLOR="$sym_color"
+# Remove hooks from the previous version when sourcing in a live shell.
+add-zsh-hook -d preexec _cmd_timer_start 2>/dev/null
+add-zsh-hook -d precmd _prompt_precmd 2>/dev/null
+add-zsh-hook -d preexec _gp_preexec 2>/dev/null
+add-zsh-hook -d precmd _gp_precmd 2>/dev/null
+
+typeset -gi _GP_EXIT=0 _GP_RAN=0 _GP_ELAPSED=0
+typeset -gi _GP_DIRTY=0 _GP_CONFLICT=0 _GP_REFRESH=0
+typeset -g _GP_START="" _GP_STAMP="" _GP_MOOD_KEY=""
+typeset -g _GP_FACE="" _GP_BANTER=""
+typeset -g _GP_LEFT="" _GP_RIGHT="" _GP_GIT=""
+
+# Keep assembled text in parameters instead of inserting arbitrary data
+# directly into the prompt's shell-substitution source.
+PROMPT='${_GP_LEFT}'
+RPROMPT='${_GP_RIGHT}'
+
+_gp_literal() {
+    REPLY="${1//[[:cntrl:]]/}"
+    REPLY="${REPLY//\%/%%}"
 }
 
-_check_matugen_refresh() {
-    local matugen_file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
-    [[ -f "$matugen_file" ]] || return
+_gp_colors() {
+    typeset -g _GP_OUT="%F{${MATUGEN_OUTLINE:-#a08d86}}"
+    typeset -g _GP_PRI="%F{${MATUGEN_PRIMARY:-#ffb59a}}"
+    typeset -g _GP_SEC="%F{${MATUGEN_SECONDARY:-#e7beaf}}"
+    typeset -g _GP_TER="%F{${MATUGEN_TERTIARY:-#d5c68e}}"
+    typeset -g _GP_ERR="%F{${MATUGEN_ERROR:-#ffb4ab}}"
+    typeset -g _GP_RST="%f"
+    typeset -g _GP_ACC="$_GP_PRI"
 
-    local mtime
+    case "${PROMPT_ACCENT:-primary}" in
+        secondary) _GP_ACC="$_GP_SEC" ;;
+        tertiary)  _GP_ACC="$_GP_TER" ;;
+        cyan)      _GP_ACC='%F{117}' ;;
+        green)     _GP_ACC='%F{120}' ;;
+        magenta)   _GP_ACC='%F{141}' ;;
+        yellow)    _GP_ACC='%F{221}' ;;
+        white)     _GP_ACC='%F{white}' ;;
+    esac
+}
+
+_gp_matugen() {
+    local file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
+    local stamp=loaded
+    local -A info
+
+    [[ -f "$file" ]] || return 0
+
     if (( $+builtins[zstat] )); then
-        local -A st
-        zstat -H st "$matugen_file" 2>/dev/null
-        mtime="${st[mtime]}"
+        if zstat -H info "$file" 2>/dev/null; then
+            stamp="${info[mtime]}:${info[size]}:${info[ino]}"
+        fi
     fi
 
-    if [[ -n "$mtime" ]]; then
-        if [[ "$mtime" != "$_LAST_MATUGEN_MTIME" ]]; then
-            _LAST_MATUGEN_MTIME="$mtime"
-            source "$matugen_file" 2>/dev/null || true
-            set_prompt_colors
+    if [[ "$stamp" != "$_GP_STAMP" ]] || (( _GP_REFRESH )); then
+        # This is executable configuration: only source a trusted file.
+        if source "$file" 2>/dev/null; then
+            _GP_STAMP="$stamp"
         fi
-    elif [[ -z "$_LAST_MATUGEN_MTIME" ]]; then
-        _LAST_MATUGEN_MTIME=1
-        source "$matugen_file" 2>/dev/null || true
-        set_prompt_colors
     fi
+
+    _GP_REFRESH=0
+    return 0
+}
+
+_gp_git() {
+    _GP_GIT=""
+    _GP_DIRTY=0
+    _GP_CONFLICT=0
+
+    [[ "${SHOW_GIT_PROMPT:-true}" == true ]] || return 0
+    (( $+commands[git] )) || return 0
+
+    local raw line xy branch="" oid="" tracking REPLY
+    local -i staged=0 unstaged=0 untracked=0 conflicts=0
+    local -a counts details
+
+    raw=$(command git --no-optional-locks status \
+        --porcelain=v2 --branch --untracked-files=normal \
+        --ignore-submodules=dirty 2>/dev/null) || return 0
+
+    for line in "${(@f)raw}"; do
+        case "$line" in
+            '# branch.head '*) branch="${line#\# branch.head }" ;;
+            '# branch.oid '*)  oid="${line#\# branch.oid }" ;;
+            '# branch.ab '*)
+                tracking="${line#\# branch.ab }"
+                counts=(${=tracking})
+                ;;
+            '1 '*|'2 '*)
+                xy="${line[3,4]}"
+                [[ "${xy[1]}" != '.' ]] && (( ++staged ))
+                [[ "${xy[2]}" != '.' ]] && (( ++unstaged ))
+                ;;
+            'u '*) (( ++conflicts )) ;;
+            '? '*) (( ++untracked )) ;;
+        esac
+    done
+
+    [[ -n "$branch" ]] || return 0
+    [[ "$branch" == '(detached)' ]] && branch="@${oid[1,8]}"
+
+    _prompt_unused_placeholder=  # Removed below; no external helpers needed.
+    _gp_literal "$branch"
+    branch="$REPLY"
+
+    (( staged ))    && details+=("${_GP_TER}+${staged}%f")
+    (( unstaged ))  && details+=("${_GP_SEC}~${unstaged}%f")
+    (( untracked )) && details+=("${_GP_OUT}?${untracked}%f")
+    (( conflicts )) && details+=("${_GP_ERR}!${conflicts}%f")
+
+    if (( ${#counts} == 2 )); then
+        [[ "${counts[1]}" != '+0' ]] &&
+            details+=("${_GP_PRI}↑${counts[1]#+}%f")
+        [[ "${counts[2]}" != '-0' ]] &&
+            details+=("${_GP_SEC}↓${counts[2]#-}%f")
+    fi
+
+    (( staged + unstaged + untracked + conflicts )) && _GP_DIRTY=1
+    (( conflicts )) && _GP_CONFLICT=1
+
+    local color="$_GP_TER"
+    (( _GP_DIRTY )) && color="$_GP_PRI"
+    (( _GP_CONFLICT )) && color="$_GP_ERR"
+
+    _GP_GIT=" ${_GP_OUT}(${color} ${branch}%f"
+    (( ${#details} )) && _GP_GIT+=" ${(j: :)details}"
+    _GP_GIT+="${_GP_OUT})%f"
+    return 0
+}
+
+_gp_preexec() {
+    _GP_START="$SECONDS"
+    _GP_RAN=1
+    return 0
+}
+
+_gp_mood() {
+    local state=happy key
+    local -a faces words
+
+    if (( EUID == 0 )); then
+        state=root
+    elif (( _GP_EXIT == 130 )); then
+        state=cancelled
+    elif (( _GP_EXIT != 0 )); then
+        state=error
+    elif (( _GP_CONFLICT )); then
+        state=conflict
+    elif (( _GP_ELAPSED >= 5 )); then
+        state=slow
+    elif (( _GP_DIRTY )); then
+        state=dirty
+    fi
+
+    key="${KAOMOJI_SET:-reactive}:${state}"
+    if [[ "$key" == "$_GP_MOOD_KEY" && -n "$_GP_FACE" ]] &&
+       (( ! _GP_RAN )); then
+        return 0
+    fi
+    _GP_MOOD_KEY="$key"
+
+    case "$state" in
+        root)
+            faces=('(ಠ_ಠ)' '(눈_눈)')
+            words=('files do not have plot armor' 'god mode. mortal judgment.')
+            ;;
+        cancelled)
+            faces=('(￣▽￣)ゞ' '( ._.)')
+            words=('tactical retreat' 'we saw nothing' 'actually never mind')
+            ;;
+        error)
+            faces=('(╯°□°)╯彡┻━┻' '(ಥ_ಥ)' '(╥﹏╥)' '(ノಠ益ಠ)ノ')
+            words=('that was character development' 'computer says no'
+                   'the plot thickens' 'well shit')
+            ;;
+        conflict)
+            faces=('(ง •̀_•́)ง' '(⊙_⊙;)' '(ಠ益ಠ)')
+            words=('git chose violence' 'pick a timeline'
+                   'both sides brought receipts')
+            ;;
+        slow)
+            faces=('(－_－) zzZ' '(눈_눈)' '(∪｡∪)｡｡｡')
+            words=('i grew a beard' 'finally' 'a geological event')
+            ;;
+        dirty)
+            faces=('(・_・;)' '(¬_¬ )' '(；・∀・)')
+            words=('little crimes, uncommitted' 'the worktree has lore'
+                   'nothing to see here')
+            ;;
+        *)
+            faces=('(◕‿◕✿)' 'ᓚᘏᗢ' '(⌐■_■)' '( ˘▽˘)っ♨')
+            words=('professionally unserious' 'it works. suspicious.'
+                   'certified terminal creature' 'tiny wins count')
+            ;;
+    esac
+
+    case "${KAOMOJI_SET:-reactive}" in
+        cats)
+            faces=('ᓚᘏᗢ' '(=^･ω･^=)' '(=①ω①=)' '(^・x・^)')
+            ;;
+        cute)
+            faces=('(◕‿◕✿)' '(✿◠‿◠)' '(｡♥‿♥｡)' '(✿◡‿◡)')
+            ;;
+        rage)
+            faces=('(╯°□°)╯彡┻━┻' '(ノಠ益ಠ)ノ' '(╬ಠ益ಠ)')
+            ;;
+        ascii)
+            case "$state" in
+                error|conflict) faces=('(>_<)' '(x_x)' 'D:') ;;
+                slow)          faces=('(-_-) zzz' '(-.-)') ;;
+                dirty)         faces=('(o_o;)' '(^_^;)') ;;
+                root)          faces=('(-_-)') ;;
+                cancelled)     faces=('(._.)') ;;
+                *)             faces=('(^_^)' '(=^.^=)' '(^o^)') ;;
+            esac
+            ;;
+    esac
+
+    _GP_FACE="${faces[RANDOM % ${#faces} + 1]}"
+    _GP_BANTER="${words[RANDOM % ${#words} + 1]}"
+    return 0
+}
+
+_gp_build() {
+    local out="$_GP_OUT" pri="$_GP_PRI" sec="$_GP_SEC"
+    local ter="$_GP_TER" err="$_GP_ERR" acc="$_GP_ACC"
+    local REPLY symbol face identity dir extras="" venv=""
+    local elapsed="" style="${PROMPT_STYLE:-unhinged}"
+
+    (( _GP_EXIT != 0 || EUID == 0 )) && acc="$err"
+
+    _gp_literal "${PROMPT_SYMBOL:-❯}"
+    symbol="${acc}${REPLY}%f"
+
+    _gp_literal "$_GP_FACE"
+    face="${acc}${REPLY}%f"
+
+    identity="${pri}%n${out}@${sec}%m%f"
+    dir="${ter}%~%f"
+
+    [[ -w . ]] || extras+=" ${err}%f"
+    extras+=' %(1j.%F{yellow}⚙ %j%f.)'
+
+    if [[ -n "${SSH_CONNECTION-}${SSH_CLIENT-}" ]]; then
+        extras+=" ${ter}[ssh]%f"
+    fi
+
+    if (( SHLVL > 1 )) &&
+       [[ -z "${TMUX-}" && "${TERM_PROGRAM-}" != vscode ]]; then
+        extras+=" ${out}[lvl:${SHLVL}]%f"
+    fi
+
+    if [[ -n "${VIRTUAL_ENV-}" ]]; then
+        _gp_literal "${VIRTUAL_ENV:t}"
+        venv=" ${out}[${sec}󰌠 ${REPLY}${out}]%f"
+    elif [[ -n "${CONDA_DEFAULT_ENV-}" ]]; then
+        _gp_literal "$CONDA_DEFAULT_ENV"
+        venv=" ${out}[${sec}󱔎 ${REPLY}${out}]%f"
+    fi
+
+    if (( EUID == 0 )); then
+        identity="${err}󰀦 %n@%m [root]%f"
+    fi
+
+    local context="${_GP_GIT}${venv}${extras}"
+
+    case "$style" in
+        single-line)
+            _GP_LEFT="${face} ${identity} ${out}in ${dir}${context} ${symbol} "
+            ;;
+        minimal)
+            _GP_LEFT="${face} ${dir}${context} ${symbol} "
+            ;;
+        bracket)
+            _GP_LEFT="${out}[${identity} ${dir}${out}]%f ${face}${context} ${symbol} "
+            ;;
+        gremlin)
+            _GP_LEFT=$'\n'"${identity} ${out}in ${dir}${context}"
+            _GP_LEFT+=$'\n'"${face} "
+            ;;
+        kaomoji-speech)
+            _GP_LEFT=$'\n'"${face} ${out}「${dir}${out}」%f ${identity}${context}"
+            _GP_LEFT+=$'\n'"${out}╰─%f ${symbol} "
+            ;;
+        cyberpunk)
+            _GP_LEFT=$'\n'"${out}┌──[ ${identity} ${out}:: ${dir} ${out}]%f ${face}${context}"
+            _GP_LEFT+=$'\n'"${out}└──╼%f ${symbol} "
+            ;;
+        capsule)
+            _GP_LEFT=$'\n'"${out}${identity}${out} ${dir}${out}%f ${face}${context}"
+            _GP_LEFT+=$'\n'" ${symbol} "
+            ;;
+        two-line)
+            _GP_LEFT=$'\n'"${out}╭─[ ${identity} ${out}in ${dir} ${out}]%f ${face}${context}"
+            _GP_LEFT+=$'\n'"${out}╰─%f ${symbol} "
+            ;;
+        unhinged|*)
+            _GP_LEFT=$'\n'"${out}╭── ${face} ${identity} ${out}in ${dir}${context}"
+            _GP_LEFT+=$'\n'"${out}╰───%f${symbol} "
+            ;;
+    esac
+
+    _GP_RIGHT=""
+
+    (( _GP_EXIT != 0 )) &&
+        _GP_RIGHT+="${err}✘ ${_GP_EXIT}%f "
+
+    if [[ "${SHOW_PROMPT_BANTER:-true}" == true ]] &&
+       (( ${COLUMNS:-80} >= 110 )); then
+        _gp_literal "$_GP_BANTER"
+        _GP_RIGHT+="${out}${REPLY}%f "
+    fi
+
+    if [[ "${SHOW_CMD_TIMER:-true}" == true ]] &&
+       (( _GP_ELAPSED >= 1 )); then
+        local -i hours=$(( _GP_ELAPSED / 3600 ))
+        local -i mins=$(( _GP_ELAPSED / 60 % 60 ))
+        local -i secs=$(( _GP_ELAPSED % 60 ))
+
+        (( hours )) && elapsed+="${hours}h"
+        (( hours || mins )) && elapsed+="${mins}m"
+        elapsed+="${secs}s"
+        _GP_RIGHT+="${sec}${elapsed}%f "
+    fi
+
+    _GP_RIGHT+="${out}%T%f"
+    return 0
+}
+
+_gp_precmd() {
+    local -i last_exit=$?
+
+    if (( _GP_RAN )); then
+        _GP_EXIT=$last_exit
+        _GP_ELAPSED=0
+
+        if [[ -n "$_GP_START" ]]; then
+            (( _GP_ELAPSED = SECONDS - _GP_START ))
+            (( _GP_ELAPSED < 0 )) && _GP_ELAPSED=0
+        fi
+
+        _GP_START=""
+    fi
+
+    _gp_matugen
+    _gp_colors
+    _gp_git
+    _gp_mood
+    _gp_build
+
+    _GP_RAN=0
+    return 0
 }
 
 TRAPUSR2() {
-    local matugen_file="${ZDOTDIR:-$HOME/.config/zsh}/matugen.zsh"
-    if [[ -f "$matugen_file" ]]; then
-        source "$matugen_file" 2>/dev/null || true
-        if (( $+builtins[zstat] )); then
-            local -A st
-            zstat -H st "$matugen_file" 2>/dev/null
-            _LAST_MATUGEN_MTIME="${st[mtime]}"
-        fi
-    fi
-    set_prompt_colors
-    build_prompt
-    zle && zle reset-prompt
+    # Defer the refresh to precmd so a signal cannot partially overwrite
+    # prompt state while another refresh or command is running.
+    _GP_REFRESH=1
+    return 0
 }
 
-set_prompt_git() {
-    MY_GIT=""
-    [[ "${SHOW_GIT_PROMPT:-true}" != "true" ]] && return
-    (( $+commands[git] )) || return
+add-zsh-hook preexec _gp_preexec
+add-zsh-hook precmd _gp_precmd
 
-    # single git call for branch + worktree, 0 forks if outside repo
-    local raw_status
-    raw_status=$(git status --porcelain=v1 -b -unormal --ignore-submodules=dirty 2>/dev/null) || return
-    [[ -z "$raw_status" ]] && return
-
-    local -a lines
-    lines=("${(f)raw_status}")
-
-    local branch_line="${lines[1]#\#\# }"
-    local branch
-    if [[ "$branch_line" == (HEAD \(no branch\)|no branch|\(no branch\))* ]]; then
-        branch=$(git rev-parse --short HEAD 2>/dev/null || print -r "detached")
-    elif [[ "$branch_line" == (Initial commit on |No commits yet on )* ]]; then
-        branch="${branch_line##* }"
-    else
-        branch="${${branch_line%%\.\.\.*}%% *}"
-    fi
-
-    # escape % so weird branch names dont mangle prompt formatting
-    branch="${branch//\%/%%}"
-
-    local staged=0 unstaged=0 untracked=0
-    untracked=${#${(M)lines:#\?\?*}}
-    staged=${#${(M)lines:#[MADRC]*}}
-    unstaged=${#${(M)lines:#?[MADRC]*}}
-
-    MY_GIT_DIRTY=""
-    if (( staged > 0 || unstaged > 0 || untracked > 0 )); then
-        MY_GIT_DIRTY="1"
-    fi
-
-    local details=""
-    (( staged > 0 ))   && details+="${M_TER}+${staged}${M_RST}"
-    (( unstaged > 0 )) && details+="${M_SEC}*${unstaged}${M_RST}"
-    (( untracked > 0 )) && details+="${M_ERR}?${untracked}${M_RST}"
-
-    if [[ -n "$details" ]]; then
-        MY_GIT=" ${M_OUT}(${M_RST}${M_PRI} ${branch}${M_RST} ${details}${M_OUT})${M_RST}"
-    else
-        MY_GIT=" ${M_OUT}(${M_RST}${M_TER} ${branch}${M_RST}${M_OUT})${M_RST}"
-    fi
-}
-
-set_prompt_venv() {
-    if [[ -n "$VIRTUAL_ENV" ]]; then
-        local venv="${VIRTUAL_ENV:t}"
-        MY_VENV=" ${M_OUT}[󰌠 ${M_RST}${M_SEC}${venv//\%/%%}${M_RST}${M_OUT}]${M_RST}"
-    elif [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-        MY_VENV=" ${M_OUT}[󱔎 ${M_RST}${M_SEC}${CONDA_DEFAULT_ENV//\%/%%}${M_RST}${M_OUT}]${M_RST}"
-    else
-        MY_VENV=""
-    fi
-}
-
-set_prompt_qol() {
-    if [[ ! -w . ]]; then
-        MY_RO=" ${M_ERR}${M_RST}"
-    else
-        MY_RO=""
-    fi
-
-    MY_EXTRA_QOL=""
-    if [[ -n "$SSH_CONNECTION" || -n "$SSH_CLIENT" ]]; then
-        MY_EXTRA_QOL+=" ${M_TER}[ssh]${M_RST}"
-    fi
-    if [[ $SHLVL -gt 1 && -z "$TMUX" && "$TERM_PROGRAM" != "vscode" ]]; then
-        MY_EXTRA_QOL+=" ${M_OUT}[lvl:${SHLVL}]${M_RST}"
-    fi
-}
-
-_cmd_timer_start() {
-    _CMD_START_TIME=$SECONDS
-}
-add-zsh-hook preexec _cmd_timer_start
-
-_cmd_timer_stop() {
-    _LAST_CMD_SLOW=""
-    if [[ "${SHOW_CMD_TIMER:-true}" != "true" ]]; then
-        MY_ELAPSED=""
-        unset _CMD_START_TIME
-        return
-    fi
-    if [[ -n "$_CMD_START_TIME" ]]; then
-        # integer cast prevents float SECONDS from spitting ugly decimals
-        local -i elapsed=$(( SECONDS - _CMD_START_TIME ))
-        unset _CMD_START_TIME
-        if (( elapsed >= 5 )); then
-            _LAST_CMD_SLOW="1"
-        fi
-        if (( elapsed >= 1 )); then
-            local -i mins=$(( elapsed / 60 ))
-            local -i secs=$(( elapsed % 60 ))
-            if (( mins > 0 )); then
-                MY_ELAPSED="${M_SEC}${mins}m${secs}s${M_RST} "
-            else
-                MY_ELAPSED="${M_SEC}${secs}s${M_RST} "
-            fi
-            return
-        fi
-    fi
-    MY_ELAPSED=""
-}
-
-set_prompt_kaomoji() {
-    local exit_code="${1:-0}"
-    local mood_set="${KAOMOJI_SET:-reactive}"
-    local -a moods
-
-    case "$mood_set" in
-        cats)
-            moods=('ᓚᘏᗢ' '(=^･ω･^=)' '(=^･ｪ･^=)' '(^・x・^)' '(ﾐㅇ ༝ ㅇﾐ)' '(=①ω①=)' '󰄛')
-            ;;
-        rage)
-            moods=('(╯°□°)╯彡┻━┻' '(ノಠ益ಠ)ノ' '(°ㅂ°╬)' '(ง'"'"'-'"'"')ง' '(╬ಠ益ಠ)' '💀' '(ノ°Д°)ノ')
-            ;;
-        cute)
-            moods=('(◕‿◕✿)' '(✿◠‿◠)' '(｡♥‿♥｡)' '( ˶•̀֊•́˶)' '( •̀ ω •́ )✧' '( ˘▽˘)っ♨' '(✿◡‿◡)')
-            ;;
-        reactive|*)
-            if (( exit_code != 0 )); then
-                moods=(
-                    '(╯°□°)╯彡┻━┻'
-                    '(ノಠ益ಠ)ノ'
-                    '(;´༎ຶД༎ຶ`)'
-                    '(╥﹏╥)'
-                    '(x_x)'
-                    '(°ㅂ°╬)'
-                    '( ;-_-)ノ'
-                    '💀'
-                    '(ノ°Д°)ノ'
-                    '(ಥ_ಥ)'
-                )
-            elif [[ -n "$_LAST_CMD_SLOW" ]]; then
-                moods=(
-                    '(－_－) zzZ'
-                    '(눈_눈)'
-                    '( ˘-˘)'
-                    '( ×_×)'
-                    '(疲れた...)'
-                )
-            elif [[ -n "$MY_GIT_DIRTY" ]]; then
-                moods=(
-                    '(・_・;)'
-                    '(¬_¬ )'
-                    '(⊙_⊙;)'
-                    '(;¬_¬)'
-                    '(・ω・;)'
-                )
-            else
-                moods=(
-                    '(◕‿◕✿)'
-                    '( ˶•̀֊•́˶)'
-                    'ᓚᘏᗢ'
-                    '( •̀ ω •́ )✧'
-                    '(⌐■_■)'
-                    '( ˘▽˘)っ♨'
-                    '(ง'"'"'-'"'"')ง'
-                    '(✿◡‿◡)'
-                    '(｡♥‿♥｡)'
-                    '󰄛'
-                )
-            fi
-            ;;
-    esac
-
-    KAOMOJI_MOOD="${moods[$(( RANDOM % ${#moods[@]} + 1 ))]}"
-}
-
-build_prompt() {
-    local p_style="${PROMPT_STYLE:-two-line}"
-    local sym_c="%(?.${M_SYM_COLOR}.${M_ERR})"
-
-    if [[ $UID -eq 0 ]]; then
-        PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_ERR}󰀦 %n@%m${M_RST} ${M_OUT}in${M_RST} %F{yellow}󰝰 %~%f${MY_RO}%(1j. ${M_ERR}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${M_ERR}${PROMPT_SYMBOL:-❯}${M_RST} '
-        RPROMPT='%(?..${M_ERR}✘ %?${M_RST} )${M_ERR}don'\''t nuke root${M_RST} ${MY_ELAPSED}${M_OUT}%T${M_RST}'
-        return
-    fi
-
-    case "$p_style" in
-        single-line)
-            PROMPT=$'${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_OUT}in ${M_TER}%~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${MY_GIT}${MY_VENV}${MY_EXTRA_QOL} ${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        minimal)
-            PROMPT=$'${M_TER}%~${M_RST}${MY_RO}${MY_GIT} ${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        bracket)
-            PROMPT=$'${M_OUT}[${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_TER}%~${M_OUT}]${M_RST}${MY_RO}${MY_GIT}${MY_VENV} ${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        gremlin)
-            # the prompt symbol itself is the reactive kaomoji (flips table on failure)
-            PROMPT=$'\n${M_TER}󰝰 %~${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${sym_c}${KAOMOJI_MOOD}${M_RST} '
-            ;;
-        kaomoji-speech)
-            # kaomoji holding your current path in japanese quote brackets
-            PROMPT=$'\n${sym_c}${KAOMOJI_MOOD}${M_RST} ${M_OUT}「${M_TER}%~${M_OUT}」${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST}${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        cyberpunk)
-            # glitch / sci-fi coordinates with angular brackets
-            PROMPT=$'\n${M_OUT}┌──[ ${M_ERR}⚡${M_PRI}%n@%m ${M_OUT}:: ${M_TER}󰝰 %~${M_RST}${MY_RO} ]${MY_GIT}${MY_VENV}\n${M_OUT}└──╼ ${sym_c}▲${M_RST} '
-            ;;
-        capsule)
-            # modern rounded nerd font pill capsules
-            PROMPT=$'\n ${M_OUT}${M_PRI} %n@%m${M_OUT} ${M_TER}󰝰 %~${M_OUT}${MY_GIT}${MY_VENV}\n ${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        unhinged)
-            # reactive kaomoji mood engine in an expressive curved layout
-            PROMPT=$'\n${M_OUT}╭── ${sym_c}${KAOMOJI_MOOD}${M_RST} ${M_PRI}%n${M_OUT}@${M_SEC}%m ${M_OUT}in ${M_TER}%~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰───${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-        two-line|*)
-            PROMPT=$'\n${M_OUT}╭─[${M_RST} ${M_PRI} %n${M_RST} ${M_OUT}at${M_RST} ${M_SEC}󰌢 %m${M_RST} ${M_OUT}in${M_RST} ${M_TER}󰝰 %~${M_RST}${MY_RO}%(1j. ${M_SEC}⚙ %j${M_RST}.)${M_OUT} ]${M_RST}${MY_GIT}${MY_VENV}${MY_EXTRA_QOL}\n${M_OUT}╰─${M_RST} ${sym_c}${PROMPT_SYMBOL:-❯}${M_RST} '
-            ;;
-    esac
-
-    RPROMPT='%(?..${M_ERR}✘ %?${M_RST} )${MY_ELAPSED}${M_OUT}%T${M_RST}'
-}
-
-_prompt_precmd() {
-    local last_status=$?
-    _cmd_timer_stop
-    _check_matugen_refresh
-    set_prompt_colors
-    set_prompt_git
-    set_prompt_venv
-    set_prompt_qol
-    set_prompt_kaomoji "$last_status"
-    build_prompt
-}
-add-zsh-hook precmd _prompt_precmd
-
-_prompt_precmd
+_gp_precmd

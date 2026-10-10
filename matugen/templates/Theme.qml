@@ -228,14 +228,14 @@ Singleton {
     }
 
     // rounding corners until my screen turns into an oval pebble
-    readonly property int    widgetRadius:          cfg?.widgetRadius ?? 2
+    readonly property int    widgetRadius:          cfg?.widgetRadius ?? 6
     readonly property int    popupRadius:           cfg?.popupRadius ?? 8
     readonly property int    radiusXs:              4
-    readonly property int    radiusSm:              Math.max(1, Math.round(widgetRadius * 0.75))
-    readonly property int    radiusMd:              Math.max(2, widgetRadius)
-    readonly property int    radiusLg:              Math.max(4, popupRadius)
-    readonly property int    radiusXl:              Math.max(24, Math.round(popupRadius * 1.75))
-    readonly property int    radiusXxl:             Math.max(32, Math.round(popupRadius * 2.0))
+    readonly property int    radiusSm:              Math.max(3, Math.round(widgetRadius * 0.75))
+    readonly property int    radiusMd:              Math.max(4, widgetRadius)
+    readonly property int    radiusLg:              Math.max(8, popupRadius)
+    readonly property int    radiusXl:              Math.max(14, Math.round(popupRadius * 1.75))
+    readonly property int    radiusXxl:             Math.max(18, Math.round(popupRadius * 2.0))
     readonly property int    radiusPill:            9999
     readonly property int    radiusFull:            9999
 
@@ -274,6 +274,7 @@ Singleton {
     function getStyleColor(role: string, bs: string): color {
         switch (role) {
             case "barBg":
+                if (bs === "regular") return alpha(surface_container_low, 0.95);
                 if (bs === "pure-black") return "#000000";
                 if (bs === "glass") return alpha(surface_container_lowest, 0.40);
                 if (bs === "glass-frost") return alpha(surface_container_lowest, 0.55);
@@ -284,6 +285,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_low;
             case "barBorderColor":
+                if (bs === "regular") return alpha(outline_variant, 0.40);
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.16);
                 if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.24);
@@ -293,6 +295,7 @@ Singleton {
                 if (bs === "translucent") return alpha(outline_variant, 0.35);
                 return alpha(outline_variant, 0.50);
             case "widgetBg":
+                if (bs === "regular") return alpha(surface_container_high, 0.60);
                 if (bs === "pure-black") return "#0a0a0a";
                 if (bs === "glass") return alpha(surface_container_high, 0.28);
                 if (bs === "glass-frost") return alpha(surface_container_high, 0.38);
@@ -303,6 +306,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_high;
                 return surface_container_low;
             case "widgetHover":
+                if (bs === "regular") return alpha(surface_container_highest, 0.85);
                 if (bs === "pure-black") return "#181818";
                 if (bs === "glass") return alpha(surface_container_highest, 0.48);
                 if (bs === "glass-frost") return alpha(surface_container_highest, 0.60);
@@ -313,6 +317,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_highest;
             case "widgetActive":
+                if (bs === "regular") return alpha(primary_container, 0.90);
                 if (bs === "pure-black") return "#242424";
                 if (bs === "glass") return alpha(surface_container_highest, 0.65);
                 if (bs === "glass-frost") return alpha(surface_container_highest, 0.80);
@@ -323,6 +328,7 @@ Singleton {
                 if (bs === "monochrome") return alpha(on_surface, 0.20);
                 return surface_container_highest;
             case "widgetBorder":
+                if (bs === "regular") return alpha(outline_variant, 0.40);
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
                 if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.20);
@@ -333,6 +339,7 @@ Singleton {
                 if (bs === "monochrome") return alpha(outline, 0.40);
                 return alpha(outline_variant, 0.50);
             case "popupBg":
+                if (bs === "regular") return alpha(surface_container_low, 0.96);
                 if (bs === "pure-black") return "#000000";
                 if (bs === "glass") return alpha(surface_container_lowest, 0.60);
                 if (bs === "glass-frost") return alpha(surface_container_lowest, 0.75);
@@ -343,6 +350,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_low;
                 return surface_container_low;
             case "popupBorderColor":
+                if (bs === "regular") return alpha(outline_variant, 0.45);
                 if (bs === "pure-black") return "#1f1f1f";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.18);
                 if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.26);
@@ -353,6 +361,7 @@ Singleton {
                 if (bs === "monochrome") return alpha(outline, 0.45);
                 return alpha(outline_variant, 0.50);
             case "cardBg":
+                if (bs === "regular") return alpha(surface_container_high, 0.75);
                 if (bs === "pure-black") return "#080808";
                 if (bs === "glass") return alpha(surface_container_high, 0.30);
                 if (bs === "glass-frost") return alpha(surface_container_high, 0.45);
@@ -363,6 +372,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_high;
                 return surface_container_high;
             case "cardBorder":
+                if (bs === "regular") return alpha(outline_variant, 0.35);
                 if (bs === "pure-black") return "#1c1c1c";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.12);
                 if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.20);
@@ -373,6 +383,7 @@ Singleton {
                 if (bs === "monochrome") return alpha(outline, 0.35);
                 return alpha(outline_variant, 0.40);
             case "pillBg":
+                if (bs === "regular") return alpha(surface_container_high, 0.65);
                 if (bs === "pure-black") return "#0a0a0a";
                 if (bs === "glass") return alpha(surface_container_high, 0.25);
                 if (bs === "glass-frost") return alpha(surface_container_high, 0.35);
@@ -383,6 +394,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container;
                 return surface_container_high;
             case "pillHover":
+                if (bs === "regular") return alpha(surface_container_highest, 0.85);
                 if (bs === "pure-black") return "#181818";
                 if (bs === "glass") return alpha(surface_container_highest, 0.45);
                 if (bs === "glass-frost") return alpha(surface_container_highest, 0.55);
@@ -393,6 +405,7 @@ Singleton {
                 if (bs === "monochrome") return surface_container_highest;
                 return surface_container_highest;
             case "pillBorder":
+                if (bs === "regular") return alpha(outline_variant, 0.35);
                 if (bs === "pure-black") return "#222222";
                 if (bs === "glass") return Qt.rgba(1, 1, 1, 0.14);
                 if (bs === "glass-frost") return Qt.rgba(1, 1, 1, 0.22);
@@ -443,10 +456,34 @@ Singleton {
         return barBorderColor;
     }
 
-    readonly property int    popupWidth:            460
-    readonly property int    popupHeight:           580
+    // shared default popup dimensions for widgets that still use fixed-size panels
+    readonly property int    popupWidth:             460
+    readonly property int    popupHeight:            580
+    // popup sizing is kept here; individual widgets derive their actual size from content
+    readonly property int    popupMinWidth:         320
+    readonly property int    popupMaxWidth:         620
+    readonly property int    popupMinHeight:        180
+    readonly property int    popupMaxHeight:        760
+    readonly property int    popupWorkspaceMaxHeight: 460
     readonly property int    popupPadding:          16
     readonly property int    popupSpacing:          10
+    readonly property int    popupDividerHeight:    1
+    readonly property int    popupCardHeight:       44
+    readonly property int    popupCardMinWidth:      190
+    readonly property int    popupCardGap:           6
+    readonly property int    popupCardPadding:       8
+    readonly property int    popupCardIconSize:      26
+    readonly property int    popupActionHeight:      32
+    readonly property int    popupColumns:            2
+
+    // workspace widget geometry
+    readonly property int    workspaceDotSize:       8
+    readonly property int    workspaceIndicatorSize: 8
+    readonly property int    workspaceIndicatorMin:  8
+    readonly property int    workspaceSpacing:       widgetSpacing
+    readonly property int    workspaceActiveSize:    20
+    readonly property int    workspaceWidgetPadding: Math.max(widgetPaddingH, widgetPaddingV)
+
     readonly property int    thumbSize:             180
 
     readonly property real   animSpeedMult: {

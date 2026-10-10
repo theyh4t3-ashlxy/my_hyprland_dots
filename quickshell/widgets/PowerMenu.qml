@@ -31,19 +31,37 @@ Rectangle {
         }
     }
 
+    function syncAnchor() {
+        let pos = root.mapToItem(null, 0, 0);
+        if (Theme?.isVertical) {
+            popup.targetRelativeY = (pos?.y ?? 0) + (root.height / 2);
+        } else {
+            popup.targetRelativeX = (pos?.x ?? 0) + (root.width / 2);
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: pwrMouse
+        updatePos: () => root.syncAnchor()
+    }
+
     MouseArea {
         id: pwrMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            let pos = root.mapToItem(null, 0, 0);
-            if (Theme?.isVertical) {
-                popup.targetRelativeY = (pos?.y ?? 0) + (root.height / 2);
+            root.syncAnchor();
+            if (!popup.open) {
+                popup.pinned = true;
+                popup.open = true;
+            } else if (!popup.pinned) {
+                popup.pinned = true;
             } else {
-                popup.targetRelativeX = (pos?.x ?? 0) + (root.width / 2);
+                popup.pinned = false;
+                popup.open = false;
             }
-            popup.open = !popup.open;
         }
     }
 
@@ -69,7 +87,7 @@ Rectangle {
     PopupPanel {
         id: popup
         cardWidth: 440
-        cardHeight: 330
+        cardHeight: Math.max(Theme.popupMinHeight, Math.min(Theme.popupMaxHeight, powerContentLayout.implicitHeight + (Theme.popupPadding * 2)))
         targetRelativeX: root.x + (root.width / 2)
 
         property string pendingAction: ""
@@ -121,6 +139,7 @@ Rectangle {
         }
 
         content: ColumnLayout {
+            id: powerContentLayout
             anchors.fill: parent
             spacing: Theme?.widgetSpacing ?? 12
 

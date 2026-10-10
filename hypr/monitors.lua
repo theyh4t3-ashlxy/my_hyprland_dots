@@ -1,7 +1,7 @@
 -- Monitors
 hl.monitor({
     output = "eDP-1",
-    disabled = true,
+    disabled = false,
     mode = "1920x1200@60",
     position = "0x0",
     scale = 1,

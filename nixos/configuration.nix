@@ -11,13 +11,7 @@
 
   # 1. bootloader & boot graphics: masking the sins of the kernel behind an oem logo
   boot.loader.systemd-boot.enable = true;
-  boot.loader.systemd-boot.extraEntries = {
-    "windows.conf" = ''
-      title Windows 11
-      efi /EFI/Microsoft/Boot/bootmgfw.efi
-      sort-key 99_windows
-    '';
-  };
+  boot.loader.systemd-boot.configurationLimit = 10;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.timeout = 5; # timeout in seconds so you can choose Windows Boot Manager
   boot.kernelPackages = pkgs.linuxPackages_latest;
@@ -44,15 +38,49 @@
   # 1.5 power containment: public execution of power-profiles-daemon before tlp murders it in cold blood
   services.power-profiles-daemon.enable = false;
   
+  # ThinkPad T16 Gen 1 (i7-1260p + MX550) specialized containment grid
   services.tlp = {
     enable = true;
     settings = {
+      # CPU scaling and energy profiles for Intel Alder Lake hybrid architecture
       CPU_SCALING_GOVERNOR_ON_AC = "performance";
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+      
       CPU_ENERGY_PERF_POLICY_ON_AC = "performance";
       CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+
+      # Calm the 12th-gen turbo down on battery to keep thermals under control
+      CPU_BOOST_ON_AC = 1;
+      CPU_BOOST_ON_BAT = 0;
+      CPU_HWP_DYNAMIC_BOOST_ON_AC = 1;
+      CPU_HWP_DYNAMIC_BOOST_ON_BAT = 0;
+
+      # Minimize Intel Iris Xe rendering clocks when running on battery cells
+      INTEL_GPU_MIN_FREQ_ON_AC = 300;
+      INTEL_GPU_MIN_FREQ_ON_BAT = 300;
+      INTEL_GPU_MAX_FREQ_ON_AC = 1400;
+      INTEL_GPU_MAX_FREQ_ON_BAT = 800;
+      INTEL_GPU_BOOST_FREQ_ON_AC = 1400;
+      INTEL_GPU_BOOST_FREQ_ON_BAT = 800;
+
+      # Force the Nvidia MX550 into runtime power management sleep states when idle
+      RUNTIME_PM_ON_AC = "on";
+      RUNTIME_PM_ON_BAT = "auto";
+
+      # Aggressive power down for PCIe channels, audio codecs, and NVMe links
+      PCIE_ASPM_ON_AC = "performance";
+      PCIE_ASPM_ON_BAT = "powersave";
+      SOUND_POWER_SAVE_ON_AC = 1;
+      SOUND_POWER_SAVE_ON_BAT = 1;
+
+      # ThinkPad charge mechanics: preserve internal Li-ion chemical health
+      START_CHARGE_THRESH_BAT0 = 40;
+      STOP_CHARGE_THRESH_BAT0 = 80;
     };
   };
+
+  # 1.6 battery telemetry: so quickshell can watch our li-ion cells degrade in real-time without tlp declaring war
+  services.upower.enable = true;
 
   # 2. networking: broadcasting our existential dread directly to the local subnet
   networking.hostName = "lost"; # accurate diagnostic status of the user and their root partition
@@ -121,6 +149,12 @@
   programs.zsh.enable = true;
   nixpkgs.config.allowUnfree = true;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
 
   # 9. obs studio: virtual camera plumbing wrapped tightly so v4l2 doesn't leak into the abyss
   programs.obs-studio = {
@@ -131,6 +165,12 @@
     ];
   };
   security.polkit.enable = true; # paying the security toll so systemd stops denying camera permissions out of spite
+
+  # 9.2 shadowplay mimicry: capturing pixels straight out of kms before they hitting wayland compositor space
+  programs.gpu-screen-recorder = {
+    enable = true;
+    ui.enable = true; # installs gpu-screen-recorder-gtk frontend safely with appropriate capabilities
+  };
 
   # 9.5 portal plumbing: preventing screen share from streaming an infinite recursive void into discord
   xdg.portal = {
@@ -152,8 +192,15 @@
     wl-clipboard
     brightnessctl
     playerctl
-    adw-gtk3
-    glib
+
+    # brain shell sensory organs & capture plumbing
+    imagemagick       # palette generation so matugen can extract aesthetic dopamine from wallpapers
+    libnotify         # toast alerts so we know when background processes silently crash
+    cliphist          # clipboard hoarding mechanism for things we copied and immediately forgot
+    grim              # screenshot engine to memorialize our broken configs
+    slurp             # screen coordinate surveyor
+    wf-recorder       # screen recording so we can submit bug reports to github issues at 3 am
+    wtype             # simulated keystroke injection for widgets pretending to be a keyboard
 
     # terminal cosplay to pretend we understand rust cli tooling
     micro
@@ -177,6 +224,18 @@
 
     # identity verification for the hub
     gh
+
+    # i want to see my specs though
+    inxi
+
+    # i need a way on how to use the 5tb of google ai pro before next year
+    rclone
+
+    # asciiiiiiiiiiiiii
+    figlet
+
+    # i want btop
+    btop
   ];
 
   # 11. typography: sacrificial glyphs to keep unicode tofu rectangles from infesting waybar

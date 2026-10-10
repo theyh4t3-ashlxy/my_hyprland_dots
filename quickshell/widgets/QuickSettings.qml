@@ -773,18 +773,36 @@ Rectangle {
         }
     }
 
+    function updatePopupPos() {
+        const p = root.mapToItem(null, 0, 0);
+        if (p) {
+            popup.targetRelativeX = p.x + (root.width / 2);
+            popup.targetRelativeY = p.y + (root.height / 2);
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: qsMouse
+        updatePos: () => root.updatePopupPos()
+    }
+
     MouseArea {
         id: qsMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            const p = root.mapToItem(null, 0, 0);
-            if (p) {
-                popup.targetRelativeX = p.x + (root.width / 2);
-                popup.targetRelativeY = p.y + (root.height / 2);
+            root.updatePopupPos();
+            if (!popup.open) {
+                popup.pinned = true;
+                popup.open = true;
+            } else if (!popup.pinned) {
+                popup.pinned = true;
+            } else {
+                popup.pinned = false;
+                popup.open = false;
             }
-            popup.open = !popup.open;
         }
     }
 

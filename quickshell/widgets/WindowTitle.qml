@@ -163,6 +163,17 @@ Rectangle {
         }
     }
 
+    function updatePopupPos() {
+        let pt = windowTitleRoot.mapToItem(null, 0, 0);
+        winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
+    }
+
+    HoverFlyoutHandler {
+        popup: winPopup
+        mouseArea: wtMouse
+        updatePos: () => windowTitleRoot.updatePopupPos()
+    }
+
     MouseArea {
         id: wtMouse
         anchors.fill: parent
@@ -174,8 +185,15 @@ Rectangle {
             if (mouse.button === Qt.LeftButton) {
                 let pt = windowTitleRoot.mapToItem(null, 0, 0);
                 winPopup.targetRelativeX = pt ? (pt.x + (windowTitleRoot.width / 2)) : 0;
-                winPopup.pinned = !winPopup.open;
-                winPopup.open = !winPopup.open;
+                if (!winPopup.open) {
+                    winPopup.pinned = true;
+                    winPopup.open = true;
+                } else if (!winPopup.pinned) {
+                    winPopup.pinned = true;
+                } else {
+                    winPopup.pinned = false;
+                    winPopup.open = false;
+                }
             } else if (mouse.button === Qt.RightButton) {
                 if (Settings) Settings.dispatchCloseWindow();
             } else if (mouse.button === Qt.MiddleButton) {

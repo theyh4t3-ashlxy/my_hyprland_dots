@@ -287,6 +287,18 @@ Rectangle {
         }
     }
 
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: nMouse
+        updatePos: () => {
+            root.updatePosition();
+            root.notesFile.reload();
+            root.loadNotes(root.notesFile.text());
+            root.tasksFile.reload();
+            root.loadTasks(root.tasksFile.text());
+        }
+    }
+
     MouseArea {
         id: nMouse
         anchors.fill: parent
@@ -294,7 +306,15 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             root.updatePosition();
-            popup.open = !popup.open;
+            if (!popup.open) {
+                popup.pinned = true;
+                popup.open = true;
+            } else if (!popup.pinned) {
+                popup.pinned = true;
+            } else {
+                popup.pinned = false;
+                popup.open = false;
+            }
             if (popup.open) {
                 root.notesFile.reload();
                 root.loadNotes(root.notesFile.text());

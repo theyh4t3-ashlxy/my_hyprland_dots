@@ -69,6 +69,12 @@ Rectangle {
         }
     }
 
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: vMouse
+        updatePos: () => volRoot.syncAnchor()
+    }
+
     MouseArea {
         id: vMouse
         anchors.fill: parent
@@ -79,7 +85,15 @@ Rectangle {
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
                 volRoot.syncAnchor();
-                popup.open = !popup.open;
+                if (!popup.open) {
+                    popup.pinned = true;
+                    popup.open = true;
+                } else if (!popup.pinned) {
+                    popup.pinned = true;
+                } else {
+                    popup.pinned = false;
+                    popup.open = false;
+                }
             } else if (mouse.button === Qt.RightButton) {
                 Quickshell.execDetached(["sh", "-c", "pavucontrol || pwcc || pipewire-control-center || easyeffects || helvum"]);
             } else if (mouse.button === Qt.MiddleButton) {
@@ -122,9 +136,10 @@ Rectangle {
     PopupPanel {
         id: popup
         cardWidth: 420
-        cardHeight: 520
+        cardHeight: Math.max(Theme.popupMinHeight, Math.min(Theme.popupMaxHeight, volContentLayout.implicitHeight + (Theme.popupPadding * 2)))
 
         content: ColumnLayout {
+            id: volContentLayout
             anchors.fill: parent
             spacing: Theme.widgetSpacing
 

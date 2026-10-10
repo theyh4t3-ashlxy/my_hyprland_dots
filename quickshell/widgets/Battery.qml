@@ -82,10 +82,25 @@ Rectangle {
         }
     }
 
+    function updatePopupPos() {
+        let pt = container.mapToItem(null, 0, 0);
+        if (container.isVertical) {
+            batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
+        } else {
+            batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+        }
+    }
+
     BatteryPopup {
         id: batPopup
         screen: container.barScreen
         device: container.device
+    }
+
+    HoverFlyoutHandler {
+        popup: batPopup
+        mouseArea: bMouse
+        updatePos: () => container.updatePopupPos()
     }
 
     MouseArea {
@@ -96,14 +111,16 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
-                let pt = container.mapToItem(null, 0, 0);
-                if (container.isVertical) {
-                    batPopup.targetRelativeY = pt ? (pt.y + (container.height / 2)) : 0;
+                container.updatePopupPos();
+                if (!batPopup.open) {
+                    batPopup.pinned = true;
+                    batPopup.open = true;
+                } else if (!batPopup.pinned) {
+                    batPopup.pinned = true;
                 } else {
-                    batPopup.targetRelativeX = pt ? (pt.x + (container.width / 2)) : 0;
+                    batPopup.pinned = false;
+                    batPopup.open = false;
                 }
-                batPopup.pinned = !batPopup.open;
-                batPopup.open = !batPopup.open;
             } else if (mouse.button === Qt.MiddleButton) {
                 if (typeof IdleService !== "undefined" && IdleService) {
                     IdleService.enabled = !IdleService.enabled;

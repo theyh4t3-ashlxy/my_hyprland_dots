@@ -10,7 +10,7 @@ PopupPanel {
     id: root
 
     cardWidth: 380
-    cardHeight: 280
+    cardHeight: Math.max(Theme.popupMinHeight, Math.min(Theme.popupMaxHeight, winContentLayout.implicitHeight + (Theme.popupPadding * 2)))
     property alias contentWidth: root.cardWidth
     property alias contentHeight: root.cardHeight
 
@@ -30,6 +30,7 @@ PopupPanel {
     readonly property bool isFullscreen: Boolean(activeTop?.fullscreen ?? (activeTop?.lastIpcObject ? activeTop.lastIpcObject.fullscreen : false))
 
     content: ColumnLayout {
+        id: winContentLayout
         anchors.fill: parent
         spacing: Theme.popupSpacing
 

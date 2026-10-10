@@ -327,6 +327,23 @@ Rectangle {
         }
     }
 
+    function syncAnchor() {
+        let pt = root.mapToItem(null, 0, 0);
+        if (pt) {
+            if (Theme?.isVertical ?? false) {
+                notchPopup.targetRelativeY = pt.y + (root.height / 2);
+            } else {
+                notchPopup.targetRelativeX = pt.x + (root.width / 2);
+            }
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: notchPopup
+        mouseArea: notchMouse
+        updatePos: () => root.syncAnchor()
+    }
+
     // ── Mouse Area for Carousel Cycling & Popup Trigger ───────────────────
     MouseArea {
         id: notchMouse
@@ -337,15 +354,16 @@ Rectangle {
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton) {
-                let pt = root.mapToItem(null, 0, 0);
-                if (pt) {
-                    if (Theme?.isVertical ?? false) {
-                        notchPopup.targetRelativeY = pt.y + (root.height / 2);
-                    } else {
-                        notchPopup.targetRelativeX = pt.x + (root.width / 2);
-                    }
+                root.syncAnchor();
+                if (!notchPopup.open) {
+                    notchPopup.pinned = true;
+                    notchPopup.open = true;
+                } else if (!notchPopup.pinned) {
+                    notchPopup.pinned = true;
+                } else {
+                    notchPopup.pinned = false;
+                    notchPopup.open = false;
                 }
-                notchPopup.open = !notchPopup.open;
             } else if (mouse.button === Qt.RightButton) {
                 root.nextMode();
             }
@@ -365,7 +383,7 @@ Rectangle {
         id: notchPopup
         screen: root.barScreen
         cardWidth: 360
-        cardHeight: 520
+        cardHeight: Math.max(Theme.popupMinHeight, Math.min(Theme.popupMaxHeight, notchContentLayout.implicitHeight + (Theme.popupPadding * 2)))
 
         property string activeTab: "calendar"
         onOpenChanged: {
@@ -377,6 +395,7 @@ Rectangle {
         }
 
         content: ColumnLayout {
+            id: notchContentLayout
             anchors.fill: parent
             spacing: Theme?.widgetSpacing ?? 10
 

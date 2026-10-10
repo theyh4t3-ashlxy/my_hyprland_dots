@@ -31,6 +31,7 @@ Dropdown                 controls/Dropdown.qml
 Slider                   controls/Slider.qml
 CollapsibleSection       controls/CollapsibleSection.qml
 ColorStudioModal         controls/ColorStudioModal.qml
+HoverFlyoutHandler       controls/HoverFlyoutHandler.qml
 
 # widgets
 Workspaces               widgets/Workspaces.qml

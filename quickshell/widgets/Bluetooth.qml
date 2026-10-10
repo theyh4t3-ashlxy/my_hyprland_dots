@@ -35,18 +35,37 @@ Rectangle {
         }
     }
 
+    function syncAnchor() {
+        let pt = root.mapToItem(null, 0, 0);
+        if (Theme.isVertical) {
+            popup.targetRelativeY = pt ? (pt.y + (root.height / 2)) : 0;
+        } else {
+            popup.targetRelativeX = pt ? (pt.x + (root.width / 2)) : 0;
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: btMouse
+        updatePos: () => root.syncAnchor()
+    }
+
     MouseArea {
         id: btMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (Theme.isVertical) {
-                popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
+            root.syncAnchor();
+            if (!popup.open) {
+                popup.pinned = true;
+                popup.open = true;
+            } else if (!popup.pinned) {
+                popup.pinned = true;
             } else {
-                popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
+                popup.pinned = false;
+                popup.open = false;
             }
-            popup.open = !popup.open
         }
     }
 

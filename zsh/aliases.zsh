@@ -1,7 +1,7 @@
-# nixos system rebuild & package management
-alias rebuild="sudo nixos-rebuild switch" 
-alias test-build="sudo nixos-rebuild test"
-alias boot-build="sudo nixos-rebuild boot"
+# nixos system rebuild & package management (flake-driven)
+alias rebuild='sudo nixos-rebuild switch --flake "$HOME/.local/share/dotfiles#lost"'
+alias test-build='sudo nixos-rebuild test --flake "$HOME/.local/share/dotfiles#lost"'
+alias boot-build='sudo nixos-rebuild boot --flake "$HOME/.local/share/dotfiles#lost"'
 alias nsearch="nix search nixpkgs"
 alias nshell="nix-shell -p"
 alias nrun="nix run nixpkgs#"

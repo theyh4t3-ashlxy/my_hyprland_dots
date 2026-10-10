@@ -38,8 +38,16 @@ Rectangle {
 
     function togglePopup() {
         updatePopupPosition();
-        popup.open = !popup.open;
-        if (popup.open) NetworkService.rescan();
+        if (!popup.open) {
+            popup.pinned = true;
+            popup.open = true;
+            NetworkService.rescan();
+        } else if (!popup.pinned) {
+            popup.pinned = true;
+        } else {
+            popup.pinned = false;
+            popup.open = false;
+        }
     }
 
     function getConnectionText() {
@@ -84,6 +92,17 @@ Rectangle {
             elide: Text.ElideRight
             maximumLineCount: 1
             width: Math.min(implicitWidth, 140)
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: netMouse
+        updatePos: () => {
+            root.updatePopupPosition();
+            if (typeof NetworkService !== "undefined" && NetworkService?.rescan) {
+                NetworkService.rescan();
+            }
         }
     }
 

@@ -13,8 +13,17 @@ PanelWindow {
     property bool cardHovered: open && ((cardHoverArea && cardHoverArea.containsMouse) || (cardHoverHandler && cardHoverHandler.hovered))
     property real targetRelativeX: 0
     property real targetRelativeY: 0
-    property int panelWidth: Theme?.popupWidth ?? 420
-    property int panelHeight: Theme?.popupHeight ?? 500
+
+    readonly property Item activeContentItem: (contentItem && contentItem.children.length > 0) ? contentItem.children[0] : null
+    readonly property real dynamicContentWidth: (activeContentItem && activeContentItem.implicitWidth > 0)
+        ? Math.max(Theme?.popupMinWidth ?? 320, Math.min(Theme?.popupMaxWidth ?? 720, Math.round(activeContentItem.implicitWidth + ((Theme.popupPadding ?? 16) * 2))))
+        : (Theme?.popupWidth ?? 420)
+    readonly property real dynamicContentHeight: (activeContentItem && activeContentItem.implicitHeight > 0)
+        ? Math.max(Theme?.popupMinHeight ?? 140, Math.min(Theme?.popupMaxHeight ?? 760, Math.round(activeContentItem.implicitHeight + ((Theme.popupPadding ?? 16) * 2))))
+        : (Theme?.popupHeight ?? 500)
+
+    property int panelWidth: dynamicContentWidth
+    property int panelHeight: dynamicContentHeight
     property alias cardWidth: root.panelWidth
     property alias cardHeight: root.panelHeight
 

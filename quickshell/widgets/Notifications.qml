@@ -50,8 +50,12 @@ Rectangle {
 
     function togglePopup() {
         if (!popup.open) {
+            popup.pinned = true;
             openPopup();
+        } else if (!popup.pinned) {
+            popup.pinned = true;
         } else {
+            popup.pinned = false;
             popup.open = false;
         }
     }
@@ -95,6 +99,12 @@ Rectangle {
         function onCloseRequested() {
             popup.open = false;
         }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: notifMouse
+        updatePos: () => root.openPopup()
     }
 
     MouseArea {

@@ -107,18 +107,41 @@ Rectangle {
         }
     }
 
+    function syncAnchor() {
+        if (Theme.isVertical) {
+            popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
+        } else {
+            popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
+        }
+    }
+
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: clipMouse
+        updatePos: () => {
+            root.syncAnchor();
+            root.syncCurrentClip();
+            root.searchFilter = "";
+            root.selectedIndex = 0;
+        }
+    }
+
     MouseArea {
         id: clipMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
-            if (Theme.isVertical) {
-                popup.targetRelativeY = (root.mapToItem(null, 0, 0)?.y ?? 0) + (root.height / 2);
+            root.syncAnchor();
+            if (!popup.open) {
+                popup.pinned = true;
+                popup.open = true;
+            } else if (!popup.pinned) {
+                popup.pinned = true;
             } else {
-                popup.targetRelativeX = (root.mapToItem(null, 0, 0)?.x ?? 0) + (root.width / 2);
+                popup.pinned = false;
+                popup.open = false;
             }
-            popup.open = !popup.open;
             if (popup.open) {
                 syncCurrentClip();
                 root.searchFilter = "";

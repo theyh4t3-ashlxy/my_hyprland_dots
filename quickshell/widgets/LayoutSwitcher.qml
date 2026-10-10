@@ -317,6 +317,12 @@ Rectangle {
         }
     }
 
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: lMouse
+        updatePos: () => root.updatePosition()
+    }
+
     // ── mouse area: click to toggle/cycle, wheel to step ───────────────────
     MouseArea {
         id: lMouse
@@ -338,7 +344,15 @@ Rectangle {
                 root.cycleNextLayout();
             } else if (mouse.button === Qt.RightButton || mouse.button === Qt.MiddleButton) {
                 root.updatePosition();
-                popup.open = !popup.open;
+                if (!popup.open) {
+                    popup.pinned = true;
+                    popup.open = true;
+                } else if (!popup.pinned) {
+                    popup.pinned = true;
+                } else {
+                    popup.pinned = false;
+                    popup.open = false;
+                }
             }
         }
     }

@@ -197,6 +197,12 @@ Rectangle {
         }
     }
 
+    HoverFlyoutHandler {
+        popup: popup
+        mouseArea: npMouse
+        updatePos: () => root.syncAnchor()
+    }
+
     MouseArea {
         id: npMouse
         anchors.fill: parent
@@ -207,7 +213,15 @@ Rectangle {
         onClicked: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
                 root.syncAnchor()
-                popup.open = !popup.open
+                if (!popup.open) {
+                    popup.pinned = true
+                    popup.open = true
+                } else if (!popup.pinned) {
+                    popup.pinned = true
+                } else {
+                    popup.pinned = false
+                    popup.open = false
+                }
             } else if (mouse.button === Qt.RightButton) {
                 if (root.player?.canGoNext) root.player.next()
             } else if (mouse.button === Qt.MiddleButton) {
@@ -242,12 +256,13 @@ Rectangle {
     PopupPanel {
         id: popup
         cardWidth: 420
-        cardHeight: 360
+        cardHeight: Math.max(Theme.popupMinHeight, Math.min(Theme.popupMaxHeight, mediaContentLayout.implicitHeight + (Theme.popupPadding * 2)))
         onOpenChanged: {
             if (!open) root.dropdownOpen = false
         }
 
         content: ColumnLayout {
+            id: mediaContentLayout
             anchors.fill: parent
             spacing: Theme.widgetSpacing * 2
 
