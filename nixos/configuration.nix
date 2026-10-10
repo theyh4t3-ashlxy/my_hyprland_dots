@@ -144,6 +144,9 @@
     ];
   };
 
+  # passwordless sudo so typing passwords during endless rebuilds stops draining the remaining will to live
+  security.sudo.wheelNeedsPassword = false;
+
   # 8. flakes & experimental hubris: drinking the deterministic kool-aid to forget mutable state ever existed
   programs.firefox.enable = true;
   programs.zsh.enable = true;
@@ -218,6 +221,7 @@
     # glue scripts and image manipulation dependencies
     python3
     python3Packages.pillow
+    ffmpeg            # so wallpaper scripts stop screaming into the void when extracting video thumbnails
 
     # ps4 theme extraction contraband
     unar

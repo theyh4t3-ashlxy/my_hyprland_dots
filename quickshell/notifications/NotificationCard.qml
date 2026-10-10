@@ -219,6 +219,7 @@ Rectangle {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             textFormat: Text.AutoText
+            baseUrl: "file:///"
             visible: text !== ""
             maximumLineCount: 6
             elide: Text.ElideRight
