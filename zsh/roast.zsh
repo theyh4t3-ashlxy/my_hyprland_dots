@@ -4,17 +4,8 @@ zmodload -i zsh/datetime 2>/dev/null
 typeset -g _EXISTENTIAL_FAILS=0
 typeset -g _IN_CNF=0
 
-command_not_found_handler() {
+_get_cnf_roast() {
     local cmd="$1"
-    
-    # prevent infinite recursion if helper commands misfire
-    if (( _IN_CNF > 0 )); then
-        return 127
-    fi
-    _IN_CNF=1
-    
-    (( _EXISTENTIAL_FAILS++ ))
-    
     local hour=12
     if (( $+EPOCHSECONDS )); then
         hour=$(strftime "%-H" "$EPOCHSECONDS" 2>/dev/null || echo 12)
@@ -121,9 +112,23 @@ command_not_found_handler() {
             "command '$cmd' failed. ${_EXISTENTIAL_FAILS} errors back to back. your backspace key is doing all the work."
         )
     fi
+
+    print -r -- "${roasts[$(( RANDOM % ${#roasts[@]} + 1 ))]}"
+}
+
+command_not_found_handler() {
+    local cmd="$1"
+
+    # prevent infinite recursion if helper commands misfire
+    if (( _IN_CNF > 0 )); then
+        return 127
+    fi
+    _IN_CNF=1
+
+    (( _EXISTENTIAL_FAILS++ ))
     
     if [[ "${ENABLE_PSYCHO_ROASTS:-true}" == "true" ]]; then
-        local random_roast="${roasts[$(( RANDOM % ${#roasts[@]} + 1 ))]}"
+        local random_roast="$(_get_cnf_roast "$cmd")"
         print -P "\n%F{red}󰅚%f %F{244}${random_roast}%f"
     else
         print -P "\n%F{red}󰅚%f %F{244}command not found: %F{white}${cmd}%f"
