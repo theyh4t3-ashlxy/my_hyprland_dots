@@ -40,10 +40,10 @@ Item {
         console.log("=== 1. POPUP MARGIN ACCUMULATION & INNER WIDTH STRESS ===");
 
         let popups = [
-            { name: "BatteryPopup", cardWidth: 420, oldExtraMargin: 16 },
-            { name: "QuickSettings", cardWidth: 480, oldExtraMargin: 12 },
-            { name: "WindowTitlePopup", cardWidth: 380, oldExtraMargin: 14 },
-            { name: "IdlePopup", cardWidth: 360, oldExtraMargin: 14 }
+            { name: "BatteryPopup", cardWidth: 420 },
+            { name: "QuickSettings", cardWidth: 480 },
+            { name: "WindowTitlePopup", cardWidth: 380 },
+            { name: "IdlePopup", cardWidth: 360 }
         ];
 
         let paddingScales = [
@@ -62,21 +62,10 @@ Item {
                 // Child ColumnLayout anchors.fill: parent with ZERO extra outer margin.
                 let intendedInnerWidth = pop.cardWidth - (outerPad * 2);
 
-                // Buggy geometry before M3 fix: child added its own margins.
-                let buggyInnerWidth = pop.cardWidth - (outerPad * 2) - (pop.oldExtraMargin * 2);
-
                 assertEqual(
                     intendedInnerWidth,
                     pop.cardWidth - (outerPad * 2),
                     pop.name + " (" + scale.name + "): inner width matches intended allocation"
-                );
-
-                // Verify width loss in buggy state was severe
-                let widthLoss = intendedInnerWidth - buggyInnerWidth;
-                assertGreaterOrEqual(
-                    widthLoss,
-                    24,
-                    pop.name + " (" + scale.name + "): verified bug eliminated " + widthLoss + "px redundant margin squeeze"
                 );
 
                 // Ensure child card width has ample breathing room for UI controls
