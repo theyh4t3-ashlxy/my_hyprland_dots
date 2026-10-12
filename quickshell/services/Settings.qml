@@ -624,8 +624,12 @@ QtObject {
                 try {
                     let obj = typeof v === "string" ? JSON.parse(v) : v;
                     if (obj && (typeof obj === "object" || Array.isArray(obj))) {
-                        if (JSON.stringify(root[item.key]) !== JSON.stringify(obj)) {
-                            root[item.key] = obj;
+                        let isDefArray = Array.isArray(item.def);
+                        let isObjArray = Array.isArray(obj);
+                        if (isDefArray === isObjArray) {
+                            if (JSON.stringify(root[item.key]) !== JSON.stringify(obj)) {
+                                root[item.key] = obj;
+                            }
                         }
                     }
                 } catch(e) {}

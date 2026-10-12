@@ -129,7 +129,10 @@ class SettingsSimulator:
                 try:
                     obj = json.loads(v) if isinstance(v, str) else v
                     if obj is not None and (isinstance(obj, (dict, list))):
-                        self.state[key] = obj
+                        is_def_array = isinstance(item["def"], list)
+                        is_obj_array = isinstance(obj, list)
+                        if is_def_array == is_obj_array:
+                            self.state[key] = obj
                 except Exception:
                     pass
 
