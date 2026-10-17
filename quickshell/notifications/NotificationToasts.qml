@@ -130,19 +130,27 @@ PanelWindow {
         }
     }
 
-    // positioning container relative to bar
+    readonly property string notifEdge: Settings?.notificationEdge ?? "right"
+    readonly property bool isEdgeRight: notifEdge === "right"
+    readonly property bool isEdgeLeft: notifEdge === "left"
+    readonly property bool isEdgeTop: notifEdge === "top"
+    readonly property bool isEdgeBottom: notifEdge === "bottom"
+    readonly property int screenBorder: Settings?.screenBorderWidth ?? 0
+    readonly property int cornerOffset: (Settings?.screenCornerRadius ?? 16) + (Settings?.notificationCornerStyle === "concave" ? (Math.round(root.scoopH) + 6) : 8)
+
+    // positioning container relative to chosen screen edge
     Item {
         id: toastBox
         width: 360
         height: Math.max(1, toastCol.implicitHeight)
 
-        x: isLeft ? (Theme.barHeight + 16)
-         : isRight ? (root.width - Theme.barHeight - width - 16)
-         : (root.width - width - 16)
+        x: isEdgeLeft ? root.screenBorder
+         : isEdgeRight ? (root.width - width - root.screenBorder)
+         : Math.round((root.width - width) / 2)
 
-        y: isBottom ? (root.height - Theme.barHeight - height - 16)
-         : isTop ? (Theme.barHeight + 16)
-         : 16
+        y: isEdgeTop ? (root.isTop ? (Theme.barHeight + root.screenBorder) : root.screenBorder)
+         : isEdgeBottom ? (root.isBottom ? (root.height - height - Theme.barHeight - root.screenBorder) : (root.height - height - root.screenBorder))
+         : (root.isTop ? (Theme.barHeight + root.screenBorder + root.cornerOffset) : (root.screenBorder + root.cornerOffset))
 
         Behavior on x { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Theme?.animEasing ?? Easing.OutCubic } }
         Behavior on y { NumberAnimation { duration: Theme?.animFast ?? 120; easing.type: Theme?.animEasing ?? Easing.OutCubic } }
@@ -151,7 +159,7 @@ PanelWindow {
         ColumnLayout {
             id: toastCol
             width: parent.width
-            spacing: 10
+            spacing: Settings?.notificationCornerStyle === "concave" ? 28 : 10
 
             Repeater {
                 model: root.toastList

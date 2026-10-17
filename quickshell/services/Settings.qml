@@ -224,6 +224,8 @@ QtObject {
     property bool clock24h: clockMilitary
 
     property int notificationTimeout: 5000
+    property string notificationCornerStyle: "concave"
+    property string notificationEdge: "right"
 
     property string windowTitleMode: "auto"
     property int windowTitleMaxWidth: 760
@@ -547,6 +549,8 @@ QtObject {
         { key: "clockShowSeconds", type: "bool", def: false },
         { key: "clockMilitary", type: "bool", def: true },
         { key: "notificationTimeout", type: "int", def: 5000 },
+        { key: "notificationCornerStyle", type: "string", def: "concave" },
+        { key: "notificationEdge", type: "string", def: "right" },
         { key: "scoopBorderEnabled", type: "bool", def: true },
         { key: "scoopBorderWidth", type: "int", def: 2 },
         { key: "scoopBorderColor", type: "string", def: "auto" },

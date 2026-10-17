@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../controls"
+import "../corners"
 import Quickshell
 import Quickshell.Widgets
 
@@ -24,19 +25,185 @@ Rectangle {
     property bool dockLeft: (Settings?.barPosition ?? "top") === "left"
     property bool dockRight: (Settings?.barPosition ?? "top") === "right"
 
-    readonly property string rawBarPos: Settings?.barPosition ?? "top"
-    readonly property bool isDockedLeft: dockLeft || rawBarPos === "left"
-    readonly property real slideDistance: 80
-    readonly property real ingressOffset: isDockedLeft ? -slideDistance : slideDistance
+    readonly property string notifEdge: Settings?.notificationEdge ?? "right"
+    readonly property bool isEdgeRight: notifEdge === "right"
+    readonly property bool isEdgeLeft: notifEdge === "left"
+    readonly property bool isEdgeTop: notifEdge === "top"
+    readonly property bool isEdgeBottom: notifEdge === "bottom"
+
+    readonly property bool isConcave: (Settings?.notificationCornerStyle ?? "concave") === "concave"
+    readonly property real scoopR: Math.min(18, Math.max(8, Theme?.scoopRadiusX ?? 14))
+    readonly property color cardBg: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
+    readonly property color cardBorderColor: notif?.urgency === 2 ? Theme.error : (Theme?.popupBorderColor ?? Theme?.widgetBorder ?? "#33ffffff")
+    readonly property real cardBorderWidth: Theme?.popupBorderWidth ?? 1
 
     width: 360
     implicitHeight: col.implicitHeight + (col.anchors.topMargin ?? 14) + (col.anchors.bottomMargin ?? 18)
+    height: implicitHeight
+    Layout.preferredHeight: implicitHeight
     readonly property real defaultRadius: Theme?.popupRadius ?? Theme?.radiusMd ?? 14
-    radius: defaultRadius
-    color: Theme?.popupBg ?? Theme?.surface ?? "#1e1e2e"
-    border.color: notif?.urgency === 2 ? Theme.error : (Theme?.popupBorderColor ?? Theme?.widgetBorder ?? "#33ffffff")
-    border.width: Theme?.popupBorderWidth ?? 1
-    clip: true
+    radius: !isConcave ? defaultRadius : 0
+    topLeftRadius: !isConcave ? defaultRadius : (isEdgeRight || isEdgeBottom ? defaultRadius : 0)
+    bottomLeftRadius: !isConcave ? defaultRadius : (isEdgeRight || isEdgeTop ? defaultRadius : 0)
+    topRightRadius: !isConcave ? defaultRadius : (isEdgeLeft || isEdgeBottom ? defaultRadius : 0)
+    bottomRightRadius: !isConcave ? defaultRadius : (isEdgeLeft || isEdgeTop ? defaultRadius : 0)
+    color: cardBg
+    border.color: cardBorderColor
+    border.width: cardBorderWidth
+    clip: false
+
+    // Concave flares melting into the screen bezel
+    ConcaveCorner {
+        id: flareTopRight
+        visible: root.isConcave && root.isEdgeRight
+        width: root.scoopR
+        height: root.scoopR
+        x: root.width - width
+        y: -height + 1
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: true
+        flipY: true
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareBottomRight
+        visible: root.isConcave && root.isEdgeRight
+        width: root.scoopR
+        height: root.scoopR
+        x: root.width - width
+        y: root.height - 1
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: true
+        flipY: false
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareTopLeft
+        visible: root.isConcave && root.isEdgeLeft
+        width: root.scoopR
+        height: root.scoopR
+        x: 0
+        y: -height + 1
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: false
+        flipY: true
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareBottomLeft
+        visible: root.isConcave && root.isEdgeLeft
+        width: root.scoopR
+        height: root.scoopR
+        x: 0
+        y: root.height - 1
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: false
+        flipY: false
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareTopEdgeL
+        visible: root.isConcave && root.isEdgeTop
+        width: root.scoopR
+        height: root.scoopR
+        x: -width + 1
+        y: 0
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: true
+        flipY: false
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareTopEdgeR
+        visible: root.isConcave && root.isEdgeTop
+        width: root.scoopR
+        height: root.scoopR
+        x: root.width - 1
+        y: 0
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: false
+        flipY: false
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareBottomEdgeL
+        visible: root.isConcave && root.isEdgeBottom
+        width: root.scoopR
+        height: root.scoopR
+        x: -width + 1
+        y: root.height - height
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: true
+        flipY: true
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
+
+    ConcaveCorner {
+        id: flareBottomEdgeR
+        visible: root.isConcave && root.isEdgeBottom
+        width: root.scoopR
+        height: root.scoopR
+        x: root.width - 1
+        y: root.height - height
+        radius: root.scoopR
+        radiusX: root.scoopR
+        radiusY: root.scoopR
+        fillColor: root.cardBg
+        cornerStyle: Settings?.cornerStyle ?? "continuous-bezier"
+        flipX: false
+        flipY: true
+        showBorder: root.cardBorderWidth > 0
+        borderWidth: root.cardBorderWidth
+        borderColor: root.cardBorderColor
+    }
 
     // safely resolve icon path to prevent qrc missing-icon warnings
     readonly property string resolvedIcon: {
@@ -46,15 +213,22 @@ Rectangle {
     }
 
     // dynamic slide & fade entrance/exit
-    property real slideOffset: root.ingressOffset
+    readonly property real slideDistance: 120
+    readonly property real ingressOffsetX: isEdgeLeft ? -slideDistance : (isEdgeRight ? slideDistance : 0)
+    readonly property real ingressOffsetY: isEdgeTop ? -slideDistance : (isEdgeBottom ? slideDistance : 0)
+
+    property real slideOffsetX: root.ingressOffsetX
+    property real slideOffsetY: root.ingressOffsetY
     property real cardOpacity: 0.0
 
     transform: Translate {
-        x: root.slideOffset
+        x: root.slideOffsetX
+        y: root.slideOffsetY
     }
     opacity: root.cardOpacity
 
     Component.onCompleted: {
+        console.log("NotifCard debug: isConcave=" + isConcave + " isEdgeRight=" + isEdgeRight + " scoopR=" + scoopR);
         enterAnim.restart();
     }
 
@@ -62,8 +236,16 @@ Rectangle {
         id: enterAnim
         NumberAnimation {
             target: root
-            property: "slideOffset"
-            from: root.ingressOffset
+            property: "slideOffsetX"
+            from: root.ingressOffsetX
+            to: 0
+            duration: Theme?.animNormal ?? 200
+            easing.type: Theme?.animEasing ?? Easing.OutCubic
+        }
+        NumberAnimation {
+            target: root
+            property: "slideOffsetY"
+            from: root.ingressOffsetY
             to: 0
             duration: Theme?.animNormal ?? 200
             easing.type: Theme?.animEasing ?? Easing.OutCubic
@@ -82,8 +264,15 @@ Rectangle {
         id: exitAnim
         NumberAnimation {
             target: root
-            property: "slideOffset"
-            to: root.ingressOffset
+            property: "slideOffsetX"
+            to: root.ingressOffsetX
+            duration: Theme?.animFast ?? 120
+            easing.type: Easing.InCubic
+        }
+        NumberAnimation {
+            target: root
+            property: "slideOffsetY"
+            to: root.ingressOffsetY
             duration: Theme?.animFast ?? 120
             easing.type: Easing.InCubic
         }
@@ -293,13 +482,17 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
+        anchors.leftMargin: root.isConcave ? (root.scoopR + 4) : 0
+        anchors.rightMargin: root.isConcave ? (root.scoopR + 4) : 0
         height: 3
+        radius: 1.5
         color: Theme?.surface_container_highest ?? "#2a2a3c"
         visible: root.timeoutMs > 0
 
         Rectangle {
             id: progressBar
             height: parent.height
+            radius: 1.5
             color: notif?.urgency === 2 ? Theme.error : Theme.primary
             width: parent.width * root.progressRatio
         }

@@ -269,6 +269,16 @@ Singleton {
     readonly property string screenCornerMode:      cfg?.screenCornerMode ?? "all"
     readonly property string cornerColorMode:       cfg?.cornerColorMode ?? "bar"
     readonly property string barStyle:              cfg?.barStyle ?? "glass"
+    readonly property int    scoopRadius:       cfg?.scoopRadius ?? 16
+    readonly property bool   isGlass:           barStyle === "glass" || barStyle === "glass-frost"
+    readonly property bool   isGlassFrost:      barStyle === "glass-frost"
+    readonly property bool   isCyberNeon:       barStyle === "cyber-neon"
+    readonly property bool   isAccentGlow:      barStyle === "accent-glow"
+    readonly property bool   isPureBlack:       barStyle === "pure-black"
+    readonly property bool   isBento:           barStyle === "bento-floating"
+    readonly property bool   isTranslucent:     barStyle === "translucent"
+    readonly property bool   isMonochrome:      barStyle === "monochrome"
+    readonly property bool   isTextIconSet:     iconSet === "kaomoji" || iconSet === "text"
 
     // color casino determining which glass shader liquefies your gpu today
     function getStyleColor(role: string, bs: string): color {
@@ -949,35 +959,61 @@ Singleton {
     }
 
     function getVolumeIcon(volRatio: real, isMuted: bool): string {
-        if (isMuted || volRatio === undefined || isNaN(volRatio) || volRatio <= 0.001) {
-            return (iconSet === "kaomoji") ? "(-_-)" : (iconSet === "text") ? "mute" : (iconSet === "nerd") ? "󰝟" : iconVolMute;
+            if (isMuted || volRatio === undefined || isNaN(volRatio) || volRatio <= 0.001) {
+                return (iconSet === "kaomoji") ? kaomojiMap.volMute : (iconSet === "text") ? textMap.volMute : (iconSet === "nerd") ? nerdMap.volMute : iconVolMute;
+            }
+            let pct = Math.round(volRatio * 100);
+            if (iconSet === "kaomoji") {
+                if (pct > 100) return kaoFire;
+                if (pct <= 33) return kaomojiMap.volLow;
+                if (pct <= 66) return kaomojiMap.volMid;
+                return kaomojiMap.volHigh;
+            }
+            if (iconSet === "text") {
+                if (pct > 100) return "max!";
+                if (pct <= 33) return textMap.volLow;
+                if (pct <= 66) return textMap.volMid;
+                return textMap.volHigh;
+            }
+            if (iconSet === "nerd") {
+                if (pct <= 33) return nerdMap.volLow;
+                if (pct <= 66) return nerdMap.volMid;
+                return nerdMap.volHigh;
+            }
+            if (iconSet === "windows") {
+                if (pct <= 33) return "\uE993";
+                if (pct <= 66) return "\uE994";
+                return "\uE995";
+            }
+            if (iconSet === "awesome") {
+                if (pct <= 33) return fontAwesomeMap.volLow;
+                if (pct <= 66) return fontAwesomeMap.volMid;
+                return fontAwesomeMap.volHigh;
+            }
+            if (pct <= 33) return "\uE04E";
+            if (pct <= 66) return "\uE04D";
+            return "\uE050";
         }
-        let pct = Math.round(volRatio * 100);
-        if (iconSet === "kaomoji") {
-            if (pct <= 33) return "(・ω・)";
-            if (pct <= 66) return "(ᵔᴥᵔ)";
-            return "(≧◡≦)";
+    
+        function getBrightnessIcon(pct: int): string {
+            let p = (pct === undefined || isNaN(pct)) ? 50 : pct;
+            if (iconSet === "kaomoji") {
+                if (p <= 20) return kaoSleepy;
+                if (p >= 85) return kaoSparkle;
+                return kaomojiMap.brightness;
+            }
+            if (iconSet === "text") {
+                if (p <= 25) return "dim";
+                if (p >= 85) return "max";
+                return textMap.brightness;
+            }
+            if (iconSet === "nerd") {
+                if (p <= 30) return "󰃞";
+                if (p <= 70) return "󰃟";
+                return "󰃠";
+            }
+            return p <= 25 ? iconMoon : iconBrightness;
         }
-        if (iconSet === "text") return pct + "%";
-        if (iconSet === "nerd") {
-            if (pct <= 33) return "󰕿";
-            if (pct <= 66) return "󰖀";
-            return "󰕾";
-        }
-        if (iconSet === "windows") {
-            if (pct <= 33) return "\uE993";
-            if (pct <= 66) return "\uE994";
-            return "\uE995";
-        }
-        if (iconSet === "awesome") {
-            if (pct <= 33) return "";
-            if (pct <= 66) return "";
-            return "";
-        }
-        if (pct <= 33) return "\uE04E";
-        if (pct <= 66) return "\uE04D";
-        return "\uE050";
-    }
 
     function getWifiIcon(signalPct: int, isConnected: bool, isEthernet: bool): string {
         if (isEthernet) return (iconSet === "kaomoji") ? "[eth]" : (iconSet === "text") ? "eth" : (iconSet === "nerd") ? "󰈀" : iconEthernet;

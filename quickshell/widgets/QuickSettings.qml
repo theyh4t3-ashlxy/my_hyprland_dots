@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../controls"
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
@@ -14,7 +15,6 @@ Rectangle {
     color: popup.open ? Theme.primary_container : (qsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
     border.width: Theme.pillBorder === "transparent" ? 0 : Theme.popupBorderWidth
-    // Scope safety guard for dynamic signal connections
 
     Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
     Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
@@ -27,6 +27,74 @@ Rectangle {
     property bool showResetConfirm: false
     property string activeShell: "quickshell"
 
+    readonly property string userHome: Quickshell.env("HOME") || ""
+    readonly property string cacheDir: Quickshell.env("XDG_CACHE_HOME") || (userHome + "/.cache")
+    readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || (userHome + "/.config")
+    readonly property string lockSandboxPath: configDir + "/quickshell/lockscreen.json"
+
+    // sandboxed lockscreen state (persisted independently in ~/.config/quickshell/lockscreen.json)
+    property var lockCfg: ({
+        syncClockGlobal: false,
+        clock24h: false,
+        showSeconds: false,
+        clockScale: 1.0,
+        quoteMode: "hyprland",
+        scrimDim: 0.58,
+        showMedia: true,
+        showUser: true,
+        wallpaperSync: true,
+        customWallpaper: ""
+    })
+
+    FileView {
+        id: lockSandboxFile
+        path: root.lockSandboxPath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: {
+            reload();
+            root.loadLockSandbox();
+        }
+        onLoaded: root.loadLockSandbox()
+    }
+
+    function loadLockSandbox() {
+        let raw = lockSandboxFile.text();
+        if (!raw || raw.trim() === "") return;
+        try {
+            let parsed = JSON.parse(raw);
+            root.lockCfg = Object.assign({}, root.lockCfg, parsed);
+        } catch (e) {}
+    }
+
+    function updateLockCfg(key, val) {
+        let next = Object.assign({}, root.lockCfg);
+        next[key] = val;
+        root.lockCfg = next;
+        lockSandboxFile.setText(JSON.stringify(next, null, 2));
+
+        // if global clock sync is enabled, mirror clock changes to the bar Settings singleton
+        if (next.syncClockGlobal && (key === "clock24h" || key === "showSeconds" || key === "syncClockGlobal")) {
+            root.applyGlobalClock(next.clock24h, next.showSeconds);
+        }
+    }
+
+    function applyGlobalClock(is24h, withSec) {
+        if (!Settings) return;
+        let fmt = is24h ? (withSec ? "HH:mm:ss" : "HH:mm") : (withSec ? "h:mm:ss ap" : "h:mm ap");
+        Settings.clockFormat = fmt;
+        Settings.clock24h = is24h;
+        Settings.clockMilitary = is24h;
+        Settings.clockShowSeconds = withSec;
+        if (Settings.save) Settings.save();
+    }
+
+    Component.onCompleted: loadLockSandbox()
+
+    readonly property bool usingMaterialIcons: Settings.iconSet === "material"
+        || Settings.iconSet === "material-outlined"
+        || Settings.iconSet === "material-sharp"
+
     readonly property string activeTabTitle: ({
         layout: "layout",
         style: "appearance",
@@ -36,30 +104,16 @@ Rectangle {
         advanced: "system"
     })[root.activeTab] || "settings"
 
-    readonly property bool usingMaterialIcons: Settings.iconSet === "material" || Settings.iconSet === "material-outlined" || Settings.iconSet === "material-sharp"
-    // Material 3 / Matugen semantic surfaces used throughout this panel.
-    readonly property color uiSurface0: Theme.surface_container_lowest
-    readonly property color uiSurface1: Theme.surface_container_low
-    readonly property color uiSurface2: Theme.surface_container
-    readonly property color uiSurface3: Theme.surface_container_high
-    readonly property color uiSurface4: Theme.surface_container_highest
-    readonly property color uiAccentContainer: Theme.primary_container
-    readonly property color uiAccentText: Theme.on_primary_container
-    readonly property color uiOutline: Theme.outline_variant
-    readonly property color uiSubtleText: Theme.on_surface_variant
-
-
     readonly property string activeTabSubtitle: ({
         layout: "arrange the bar and choose what lives on it",
         style: "shape, color, typography, and visual personality",
-        behavior: "motion, hover behavior, feedback, and interaction",
+        behavior: "motion, lock screen sandbox, clock, and feedback",
         capture: "screenshots, recording, and selection overlays",
         keybinds: "view and manage your shell shortcuts",
         advanced: "shell profiles, cache, aliases, and recovery tools"
     })[root.activeTab] || ""
 
     onActiveTabChanged: {
-        // Keep each page feeling like a fresh workspace instead of a stale scroll position.
         if (root.activeTab === "layout" && flickLayout) flickLayout.contentY = 0;
         else if (root.activeTab === "style" && flickStyle) flickStyle.contentY = 0;
         else if (root.activeTab === "behavior" && flickBehavior) flickBehavior.contentY = 0;
@@ -67,24 +121,12 @@ Rectangle {
         else if (root.activeTab === "advanced" && flickAdvanced) flickAdvanced.contentY = 0;
     }
 
-    Connections {
-        target: Settings
-        function onShowShellTabChanged() {
-            if (Settings.showShellTab === false && root.activeTab === "advanced") {
-                root.activeTab = "layout";
-            }
-        }
-    }
-
-    readonly property string userHome: Quickshell.env("HOME") || ""
-    readonly property string cacheDir: Quickshell.env("XDG_CACHE_HOME") || (userHome + "/.cache")
-
     FileView {
         id: shellWatcher
         printErrors: false
         path: root.cacheDir + "/current_shell"
         watchChanges: true
-        onFileChanged: { reload(); }
+        onFileChanged: reload()
         onLoaded: {
             const s = text().trim();
             if (s === "brain_shell" || s === "quickshell") {
@@ -101,25 +143,20 @@ Rectangle {
         function switchShell(target) {
             if (!target) return;
             if (running) running = false;
-            const bin = root.userHome + "/.local/bin/qs-switch";
-            command = [bin, target];
+            command = [root.userHome + "/.local/bin/qs-switch", target];
             running = true;
         }
         function restartCurrent() {
             switchShell("restart");
         }
-        onExited: {
-            shellWatcher.reload();
-        }
+        onExited: shellWatcher.reload()
     }
 
     readonly property var allFonts: {
         try {
             const raw = Qt.fontFamilies();
             if (!raw || raw.length === 0) return [];
-            return Array.from(raw).sort(function(a, b) {
-                return a.localeCompare(b, undefined, { sensitivity: "base" });
-            });
+            return Array.from(raw).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
         } catch (e) {
             return [];
         }
@@ -128,504 +165,450 @@ Rectangle {
     readonly property var filteredFonts: {
         if (!fontSearchQuery || fontSearchQuery.trim() === "") return allFonts;
         const q = fontSearchQuery.trim().toLowerCase();
-        return allFonts.filter(function(f) { return f && f.toLowerCase().includes(q); });
+        return allFonts.filter(f => f && f.toLowerCase().includes(q));
     }
 
-    // --- INLINE COMPONENTS (Safely inside root) ---
+    function isTargetMonitorActive() {
+        return !root.barScreen
+            || Quickshell.screens.length <= 1
+            || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id);
+    }
+
+    function updatePopupPos() {
+        const p = root.mapToItem(null, 0, 0);
+        if (p) {
+            popup.targetRelativeX = p.x + (root.width / 2);
+            popup.targetRelativeY = p.y + (root.height / 2);
+        }
+    }
+
+    // reusable setting components
 
     component CategoryHeader: ColumnLayout {
-    id: catHdr
-    property string title: ""
-    property string icon: ""
-    property string subtitle: ""
+        id: catHdr
+        property string title: ""
+        property string icon: ""
+        property string subtitle: ""
 
-    Layout.fillWidth: true
-    Layout.topMargin: 14
-    Layout.bottomMargin: 2
-    spacing: 5
-
-    RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        Layout.topMargin: 12
+        Layout.bottomMargin: 2
+        spacing: 4
 
-        Rectangle {
-            visible: catHdr.icon !== ""
-            width: 26
-            height: 26
-            radius: Theme.radiusSm
-            color: Theme.primary_container
-            border.color: Theme.alpha(Theme.outline_variant, 0.45)
-            border.width: 1
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Rectangle {
+                visible: catHdr.icon !== ""
+                width: 26
+                height: 26
+                radius: Theme.radiusSm
+                color: Theme.primary_container
+                border.color: Theme.alpha(Theme.outline_variant, 0.45)
+                border.width: 1
+
+                Text {
+                    anchors.centerIn: parent
+                    text: catHdr.icon
+                    font.family: Theme.fontIcon
+                    font.pixelSize: Theme.fontSizeXs
+                    color: Theme.on_primary_container
+                }
+            }
 
             Text {
-                anchors.centerIn: parent
-                text: catHdr.icon
-                font.family: Theme.fontIcon
-                font.pixelSize: Theme.fontSizeXs
-                color: Theme.on_primary_container
+                text: catHdr.title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSm
+                font.weight: Theme.fontWeightBold
+                color: Theme.on_surface
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.outline_variant
+                opacity: 0.55
+                Layout.alignment: Qt.AlignVCenter
             }
         }
 
         Text {
-            text: catHdr.title
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeSm
-            font.weight: Theme.fontWeightBold
-            color: Theme.on_surface
-            Layout.alignment: Qt.AlignVCenter
-        }
-
-        Rectangle {
+            visible: catHdr.subtitle !== ""
+            text: catHdr.subtitle
+            Layout.leftMargin: 34
             Layout.fillWidth: true
-            height: 1
-            color: Theme.outline_variant
-            opacity: 0.55
-            Layout.alignment: Qt.AlignVCenter
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            color: Theme.on_surface_variant
+            wrapMode: Text.Wrap
         }
     }
-
-    Text {
-        visible: catHdr.subtitle !== ""
-        text: catHdr.subtitle
-        Layout.leftMargin: 34
-        Layout.fillWidth: true
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSizeXs
-        font.weight: Theme.fontWeightRegular
-        color: Theme.on_surface_variant
-        wrapMode: Text.Wrap
-    }
-}
 
     component SettingCard: Rectangle {
-    default property alias content: cardCol.data
-    Layout.fillWidth: true
-    width: parent ? parent.width : undefined
-    implicitHeight: cardCol.implicitHeight + 18
-    radius: Theme.radiusMd
-    color: Theme.cardBg
-    border.color: Theme.outline_variant
-    border.width: Theme.popupBorderWidth
-    clip: true
+        default property alias content: cardCol.data
+        Layout.fillWidth: true
+        width: parent ? parent.width : undefined
+        implicitHeight: cardCol.implicitHeight + (Theme.widgetPaddingV * 2) + 8
+        radius: Theme.radiusMd
+        color: Theme.cardBg
+        border.color: Theme.outline_variant
+        border.width: Theme.popupBorderWidth
+        clip: true
 
-    Column {
-        id: cardCol
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: Theme.widgetPaddingH
-        anchors.rightMargin: Theme.widgetPaddingH
-        anchors.topMargin: Theme.widgetPaddingV
-        anchors.bottomMargin: Theme.widgetPaddingV
-        spacing: 2
+        Column {
+            id: cardCol
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: Theme.widgetPaddingH
+            anchors.rightMargin: Theme.widgetPaddingH
+            anchors.topMargin: Theme.widgetPaddingV + 4
+            spacing: 2
+        }
     }
-}
 
     component RowDivider: Rectangle {
-    width: parent ? parent.width - 24 : 0
-    anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
-    height: 1
-    color: Theme.outline_variant
-    opacity: 0.42
-}
+        width: parent ? parent.width - 16 : 0
+        anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+        height: 1
+        color: Theme.outline_variant
+        opacity: 0.38
+    }
 
     component ToggleRow: Rectangle {
-    id: trRoot
-    property string icon: ""
-    property string title: ""
-    property string subtitle: ""
-    property bool checked: false
-    signal toggled()
+        id: trRoot
+        property string icon: ""
+        property string title: ""
+        property string subtitle: ""
+        property bool checked: false
+        signal toggled()
 
-    width: parent ? parent.width : 0
-    implicitHeight: subtitle !== "" ? 50 : 40
-    height: implicitHeight
-    radius: Theme.radiusSm
-    color: trMouse.containsMouse ? Theme.widgetHover : "transparent"
-    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-    Rectangle {
-        id: trIcon
-        visible: trRoot.icon !== ""
-        anchors.left: parent.left
-        anchors.leftMargin: 8
-        anchors.verticalCenter: parent.verticalCenter
-        width: 28
-        height: 28
+        width: parent ? parent.width : 0
+        implicitHeight: subtitle !== "" ? 48 : 38
+        height: implicitHeight
         radius: Theme.radiusSm
-        color: trRoot.checked ? Theme.primary_container : Theme.surface_container_high
-        border.color: trRoot.checked ? Theme.alpha(Theme.primary, 0.26) : Theme.outline_disabled
-        border.width: 1
+        color: trMouse.containsMouse ? Theme.widgetHover : "transparent"
 
         Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
-        Text {
-            anchors.centerIn: parent
-            text: trRoot.icon
-            font.family: Theme.fontIcon
-            font.pixelSize: Theme.fontSizeXs
-            color: trRoot.checked ? Theme.on_primary_container : Theme.on_surface_variant
-        }
-    }
-
-    ToggleSwitch {
-        id: trSwitch
-        anchors.right: parent.right
-        anchors.rightMargin: 8
-        anchors.verticalCenter: parent.verticalCenter
-        checked: trRoot.checked
-        onToggled: trRoot.toggled()
-    }
-
-    Column {
-        anchors.left: trIcon.visible ? trIcon.right : parent.left
-        anchors.leftMargin: trIcon.visible ? 12 : 8
-        anchors.right: trSwitch.left
-        anchors.rightMargin: 12
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
-
-        Text {
-            width: parent.width
-            text: trRoot.title
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeSm
-            font.weight: trRoot.checked ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
-            color: Theme.on_surface
-            elide: Text.ElideRight
-        }
-
-        Text {
-            visible: trRoot.subtitle !== ""
-            width: parent.width
-            text: trRoot.subtitle
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeXs
-            color: Theme.on_surface_variant
-            opacity: 0.9
-            elide: Text.ElideRight
-        }
-    }
-
-    MouseArea {
-        id: trMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: trRoot.toggled()
-    }
-}
-
-    component ColorRow: Rectangle {
-    id: colRowRoot
-    property string title: ""
-    property string subtitle: ""
-    property color swatchColor: Theme.primary
-    signal clicked()
-
-    width: parent ? parent.width : 0
-    implicitHeight: subtitle !== "" ? 50 : 40
-    height: implicitHeight
-    radius: Theme.radiusSm
-    color: colRowMouse.containsMouse ? Theme.widgetHover : "transparent"
-    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-    Rectangle {
-        id: colRowSwatch
-        anchors.right: parent.right
-        anchors.rightMargin: 8
-        anchors.verticalCenter: parent.verticalCenter
-        width: 36
-        height: 24
-        radius: Theme.radiusSm
-        color: colRowRoot.swatchColor
-        border.color: Theme.alpha(Theme.outline, 0.55)
-        border.width: 1
-    }
-
-    Column {
-        anchors.left: parent.left
-        anchors.leftMargin: 8
-        anchors.right: colRowSwatch.left
-        anchors.rightMargin: 12
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
-
-        Text {
-            width: parent.width
-            text: colRowRoot.title
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeSm
-            font.weight: Theme.fontWeightMedium
-            color: Theme.on_surface
-            elide: Text.ElideRight
-        }
-
-        Text {
-            visible: colRowRoot.subtitle !== ""
-            width: parent.width
-            text: colRowRoot.subtitle
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeXs
-            color: Theme.on_surface_variant
-            elide: Text.ElideRight
-        }
-    }
-
-    MouseArea {
-        id: colRowMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: colRowRoot.clicked()
-    }
-}
-
-    component ColorTile: Rectangle {
-    id: colorTileRoot
-    property string title: ""
-    property string subtitle: ""
-    property color swatchColor: Theme.primary
-    signal clicked()
-
-    width: parent ? parent.width : 0
-    Layout.fillWidth: true
-    height: 58
-    radius: Theme.radiusMd
-    color: colorTileMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_low
-    border.color: colorTileMouse.containsMouse ? Theme.primary : Theme.outline_variant
-    border.width: 1
-
-    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-    Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-    RowLayout {
-        anchors.fill: parent
-        anchors.margins: 8
-        spacing: 8
-
         Rectangle {
-            width: 32
-            height: 32
+            id: trIcon
+            visible: trRoot.icon !== ""
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            width: 28
+            height: 28
             radius: Theme.radiusSm
-            color: colorTileRoot.swatchColor
-            border.color: Theme.alpha(Theme.outline, 0.6)
+            color: trRoot.checked ? Theme.primary_container : Theme.surface_container_high
+            border.color: trRoot.checked ? Theme.alpha(Theme.primary, 0.26) : Theme.outline_disabled
             border.width: 1
-        }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 1
+            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
             Text {
-                text: colorTileRoot.title
-                font.family: Theme.fontFamily
+                anchors.centerIn: parent
+                text: trRoot.icon
+                font.family: Theme.fontIcon
                 font.pixelSize: Theme.fontSizeXs
-                font.weight: Theme.fontWeightDemiBold
+                color: trRoot.checked ? Theme.on_primary_container : Theme.on_surface_variant
+            }
+        }
+
+        ToggleSwitch {
+            id: trSwitch
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            checked: trRoot.checked
+            onToggled: trRoot.toggled()
+        }
+
+        Column {
+            anchors.left: trIcon.visible ? trIcon.right : parent.left
+            anchors.leftMargin: trIcon.visible ? 12 : 8
+            anchors.right: trSwitch.left
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+
+            Text {
+                width: parent.width
+                text: trRoot.title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeSm
+                font.weight: trRoot.checked ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
                 color: Theme.on_surface
                 elide: Text.ElideRight
-                Layout.fillWidth: true
             }
 
             Text {
-                text: colorTileRoot.subtitle
-                font.family: Theme.fontMono
-                font.pixelSize: 8
+                visible: trRoot.subtitle !== ""
+                width: parent.width
+                text: trRoot.subtitle
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeXs
                 color: Theme.on_surface_variant
                 elide: Text.ElideRight
-                Layout.fillWidth: true
             }
+        }
+
+        MouseArea {
+            id: trMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: trRoot.toggled()
         }
     }
 
-    MouseArea {
-        id: colorTileMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: colorTileRoot.clicked()
-    }
-}
+    component ColorTile: Rectangle {
+        id: colorTileRoot
+        property string title: ""
+        property string subtitle: ""
+        property color swatchColor: Theme.primary
+        signal clicked()
 
-    component ChoiceRow: ColumnLayout {
-    id: crRoot
-    property string title: ""
-    property var model: []
-    property var currentValue
-    property int buttonHeight: 30
-    signal selected(var value)
-
-    width: parent ? parent.width : 0
-    implicitWidth: width
-    Layout.fillWidth: true
-    spacing: 6
-
-    Text {
-        visible: crRoot.title !== ""
-        text: crRoot.title
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.fontSizeXs
-        font.weight: Theme.fontWeightDemiBold
-        color: Theme.on_surface_variant
-    }
-
-    Rectangle {
+        width: parent ? parent.width : 0
         Layout.fillWidth: true
-        height: crRoot.buttonHeight + 8
+        height: 54
         radius: Theme.radiusMd
-        color: Theme.surface_container_lowest
-        border.color: Theme.outline_variant
+        color: colorTileMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_low
+        border.color: colorTileMouse.containsMouse ? Theme.primary : Theme.outline_variant
         border.width: 1
+
+        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+        Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 4
-            spacing: 4
+            anchors.margins: 8
+            spacing: 8
 
-            Repeater {
-                model: crRoot.model
+            Rectangle {
+                width: 30
+                height: 30
+                radius: Theme.radiusSm
+                color: colorTileRoot.swatchColor
+                border.color: Theme.alpha(Theme.outline, 0.6)
+                border.width: 1
+            }
 
-                delegate: Rectangle {
-                    required property var modelData
-                    readonly property var itemVal: modelData && typeof modelData === "object"
-                        ? (modelData.value !== undefined ? modelData.value : (modelData.pos !== undefined ? modelData.pos : (modelData.s !== undefined ? modelData.s : (modelData.w !== undefined ? modelData.w : (modelData.c !== undefined ? modelData.c : (modelData.fmt !== undefined ? modelData.fmt : modelData))))))
-                        : modelData
-                    readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
-                        ? String(modelData.label)
-                        : (typeof modelData === "number" ? (modelData === 0 ? "none" : modelData + "px") : String(modelData || ""))
-                    readonly property bool isSelected: (typeof crRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
-                        ? Math.abs(crRoot.currentValue - itemVal) < 0.04
-                        : crRoot.currentValue === itemVal
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
 
+                Text {
+                    text: colorTileRoot.title
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontSizeXs
+                    font.weight: Theme.fontWeightDemiBold
+                    color: Theme.on_surface
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    radius: Math.max(1, Theme.radiusSm)
-                    color: isSelected
-                        ? Theme.primary_container
-                        : (crMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+                }
 
-                    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                Text {
+                    text: colorTileRoot.subtitle
+                    font.family: Theme.fontMono
+                    font.pixelSize: 9
+                    color: Theme.on_surface_variant
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+        }
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: itemText
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontSizeXs
-                        font.weight: isSelected ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
-                        color: isSelected ? Theme.on_primary_container : Theme.on_surface
-                        elide: Text.ElideRight
-                    }
+        MouseArea {
+            id: colorTileMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: colorTileRoot.clicked()
+        }
+    }
 
-                    MouseArea {
-                        id: crMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: crRoot.selected(itemVal)
+    component ChoiceRow: ColumnLayout {
+        id: crRoot
+        property string title: ""
+        property var model: []
+        property var currentValue
+        property int buttonHeight: 28
+        signal selected(var value)
+
+        width: parent ? parent.width : 0
+        implicitWidth: width
+        Layout.fillWidth: true
+        spacing: 6
+
+        Text {
+            visible: crRoot.title !== ""
+            text: crRoot.title
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontSizeXs
+            font.weight: Theme.fontWeightDemiBold
+            color: Theme.on_surface_variant
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: crRoot.buttonHeight + 8
+            radius: Theme.radiusMd
+            color: Theme.surface_container_lowest
+            border.color: Theme.outline_variant
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 4
+                spacing: 4
+
+                Repeater {
+                    model: crRoot.model
+
+                    delegate: Rectangle {
+                        required property var modelData
+                        readonly property var itemVal: modelData && typeof modelData === "object"
+                            ? (modelData.value !== undefined ? modelData.value : modelData)
+                            : modelData
+                        readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
+                            ? String(modelData.label)
+                            : (typeof modelData === "number" ? (modelData === 0 ? "none" : modelData + "px") : String(modelData || ""))
+                        readonly property bool isSelected: (typeof crRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
+                            ? Math.abs(crRoot.currentValue - itemVal) < 0.04
+                            : crRoot.currentValue === itemVal
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: Math.max(1, Theme.radiusSm)
+                        color: isSelected
+                            ? Theme.primary_container
+                            : (crMouse.containsMouse ? Theme.surface_container_highest : "transparent")
+
+                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: itemText
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontSizeXs
+                            font.weight: isSelected ? Theme.fontWeightDemiBold : Theme.fontWeightMedium
+                            color: isSelected ? Theme.on_primary_container : Theme.on_surface
+                            elide: Text.ElideRight
+                        }
+
+                        MouseArea {
+                            id: crMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: crRoot.selected(itemVal)
+                        }
                     }
                 }
             }
         }
     }
-}
 
     component SliderRow: ColumnLayout {
-    id: slRoot
-    property string title: ""
-    property real from: 0
-    property real to: 100
-    property real value: 0
-    property real stepSize: 1
-    property string suffix: "px"
-    property var formatter: null
-    signal moved(real val)
+        id: slRoot
+        property string title: ""
+        property real from: 0
+        property real to: 100
+        property real value: 0
+        property real stepSize: 1
+        property string suffix: "px"
+        property var formatter: null
+        signal moved(real val)
 
-    width: parent ? parent.width : 0
-    implicitWidth: width
-    Layout.fillWidth: true
-    spacing: 7
-
-    readonly property string displayText: slRoot.formatter
-        ? slRoot.formatter(slRoot.value)
-        : ((Math.round(slRoot.value * 100) / 100) + slRoot.suffix)
-
-    RowLayout {
+        width: parent ? parent.width : 0
+        implicitWidth: width
         Layout.fillWidth: true
         spacing: 6
 
-        Text {
-            visible: slRoot.title !== ""
-            text: slRoot.title
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSizeXs
-            font.weight: Theme.fontWeightDemiBold
-            color: Theme.on_surface_variant
+        readonly property string displayText: slRoot.formatter
+            ? slRoot.formatter(slRoot.value)
+            : ((Math.round(slRoot.value * 100) / 100) + slRoot.suffix)
+
+        RowLayout {
             Layout.fillWidth: true
-        }
+            spacing: 6
 
-        Text {
-            text: slRoot.displayText
-            font.family: Theme.fontMono
-            font.pixelSize: Theme.fontSizeXs
-            font.weight: Theme.fontWeightBold
-            color: Theme.primary
-        }
-    }
-
-    Rectangle {
-        id: track
-        Layout.fillWidth: true
-        height: 8
-        radius: 4
-        color: Theme.surface_container_highest
-
-        readonly property real ratio: slRoot.to > slRoot.from
-            ? Math.max(0, Math.min(1, (slRoot.value - slRoot.from) / (slRoot.to - slRoot.from)))
-            : 0
-
-        Rectangle {
-            width: parent.width * track.ratio
-            height: parent.height
-            radius: parent.radius
-            color: Theme.primary
-        }
-
-        Rectangle {
-            id: handle
-            width: 18
-            height: 18
-            radius: 9
-            y: (track.height - height) / 2
-            x: Math.max(0, Math.min(track.width - width, track.width * track.ratio - width / 2))
-            color: Theme.primary
-            border.color: Theme.surface_bright
-            border.width: 2
-            scale: dragArea.pressed ? 1.12 : 1.0
-            Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
-        }
-
-        MouseArea {
-            id: dragArea
-            anchors.fill: parent
-            anchors.margins: -10
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            preventStealing: true
-
-            function commit(localX) {
-                const t = Math.max(0, Math.min(1, localX / track.width));
-                let raw = slRoot.from + t * (slRoot.to - slRoot.from);
-                if (slRoot.stepSize > 0) raw = Math.round(raw / slRoot.stepSize) * slRoot.stepSize;
-                raw = Math.max(slRoot.from, Math.min(slRoot.to, raw));
-                if (Math.abs(raw - slRoot.value) > 1e-9) slRoot.moved(raw);
+            Text {
+                visible: slRoot.title !== ""
+                text: slRoot.title
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSizeXs
+                font.weight: Theme.fontWeightDemiBold
+                color: Theme.on_surface_variant
+                Layout.fillWidth: true
             }
 
-            onPressed: commit(mouseX - 10)
-            onPositionChanged: if (pressed) commit(mouseX - 10)
+            Text {
+                text: slRoot.displayText
+                font.family: Theme.fontMono
+                font.pixelSize: Theme.fontSizeXs
+                font.weight: Theme.fontWeightBold
+                color: Theme.primary
+            }
+        }
+
+        Rectangle {
+            id: track
+            Layout.fillWidth: true
+            height: 8
+            radius: 4
+            color: Theme.surface_container_highest
+
+            readonly property real ratio: slRoot.to > slRoot.from
+                ? Math.max(0, Math.min(1, (slRoot.value - slRoot.from) / (slRoot.to - slRoot.from)))
+                : 0
+
+            Rectangle {
+                width: parent.width * track.ratio
+                height: parent.height
+                radius: parent.radius
+                color: Theme.primary
+            }
+
+            Rectangle {
+                id: handle
+                width: 16
+                height: 16
+                radius: 8
+                y: (track.height - height) / 2
+                x: Math.max(0, Math.min(track.width - width, track.width * track.ratio - width / 2))
+                color: Theme.primary
+                border.color: Theme.surface_bright
+                border.width: 2
+                scale: dragArea.pressed ? 1.15 : 1.0
+                Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+            }
+
+            MouseArea {
+                id: dragArea
+                anchors.fill: parent
+                anchors.margins: -8
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                preventStealing: true
+
+                function commit(localX) {
+                    const t = Math.max(0, Math.min(1, localX / track.width));
+                    let raw = slRoot.from + t * (slRoot.to - slRoot.from);
+                    if (slRoot.stepSize > 0) raw = Math.round(raw / slRoot.stepSize) * slRoot.stepSize;
+                    raw = Math.max(slRoot.from, Math.min(slRoot.to, raw));
+                    if (Math.abs(raw - slRoot.value) > 1e-9) slRoot.moved(raw);
+                }
+
+                onPressed: commit(mouseX - 8)
+                onPositionChanged: if (pressed) commit(mouseX - 8)
+            }
         }
     }
-}
 
     component ChoiceGrid: ColumnLayout {
         id: cgRoot
@@ -663,52 +646,28 @@ Rectangle {
 
                 delegate: Rectangle {
                     required property var modelData
+                    readonly property var itemVal: modelData && typeof modelData === "object"
+                        ? (modelData.value !== undefined ? modelData.value : (modelData.id !== undefined ? modelData.id : modelData))
+                        : modelData
+                    readonly property string itemText: modelData && typeof modelData === "object" && modelData.label !== undefined
+                        ? String(modelData.label)
+                        : String(modelData || "")
+                    readonly property bool isSelected: (typeof cgRoot.currentValue === "number" && typeof itemVal === "number" && !Number.isInteger(itemVal))
+                        ? Math.abs(cgRoot.currentValue - itemVal) < 0.04
+                        : cgRoot.currentValue === itemVal
 
-                    readonly property var itemVal:
-                        modelData && typeof modelData === "object"
-                            ? (modelData.value !== undefined ? modelData.value
-                            : (modelData.id !== undefined ? modelData.id
-                            : (modelData.s !== undefined ? modelData.s
-                            : (modelData.m !== undefined ? modelData.m
-                            : (modelData.fmt !== undefined ? modelData.fmt : modelData)))))
-                            : modelData
-
-                    readonly property string itemText:
-                        modelData && typeof modelData === "object" && modelData.label !== undefined
-                            ? String(modelData.label)
-                            : String(modelData || "")
-
-                    readonly property bool isSelected:
-                        (typeof cgRoot.currentValue === "number" &&
-                         typeof itemVal === "number" &&
-                         !Number.isInteger(itemVal))
-                            ? Math.abs(cgRoot.currentValue - itemVal) < 0.04
-                            : cgRoot.currentValue === itemVal
-
-                    width: Math.max(
-                        1,
-                        (choiceGrid.width - choiceGrid.columnSpacing * (choiceGrid.columns - 1))
-                        / choiceGrid.columns
-                    )
+                    width: Math.max(1, (choiceGrid.width - choiceGrid.columnSpacing * (choiceGrid.columns - 1)) / choiceGrid.columns)
                     height: cgRoot.buttonHeight
                     radius: Theme.radiusSm
                     color: isSelected
                         ? Theme.primary_container
-                        : (cgMouse.containsMouse
-                            ? Theme.surface_container_highest
-                            : Theme.surface_container_low)
+                        : (cgMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
                     border.color: isSelected ? Theme.primary : Theme.outline_variant
                     border.width: 1
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Theme.animFast
-                            easing.type: Theme.animColorEasing
-                        }
-                    }
+                    Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                     Text {
-                        id: choiceText
                         anchors.fill: parent
                         anchors.leftMargin: 8
                         anchors.rightMargin: 8
@@ -735,30 +694,30 @@ Rectangle {
     }
 
     component TabScrollTrack: Rectangle {
-    id: stRoot
-    required property Flickable target
-    anchors.right: target ? target.right : undefined
-    anchors.top: target ? target.top : undefined
-    anchors.bottom: target ? target.bottom : undefined
-    anchors.margins: 2
-    width: 4
-    radius: 2
-    color: "transparent"
-    visible: target ? (target.visible && target.visibleArea.heightRatio < 1.0) : false
-
-    Rectangle {
-        width: parent.width
-        readonly property real trackH: stRoot.height
-        readonly property real thumbH: Math.max(20, Math.min(trackH, (stRoot.target ? stRoot.target.visibleArea.heightRatio : 1) * trackH))
-        height: thumbH
-        y: Math.max(0, Math.min(trackH - thumbH, (stRoot.target ? stRoot.target.visibleArea.yPosition : 0) * trackH))
+        id: stRoot
+        required property Flickable target
+        anchors.right: target ? target.right : undefined
+        anchors.top: target ? target.top : undefined
+        anchors.bottom: target ? target.bottom : undefined
+        anchors.margins: 2
+        width: 4
         radius: 2
-        color: Theme.primary
-        opacity: 0.75
-    }
-}
-    // --- MAIN UI ---
+        color: "transparent"
+        visible: target ? (target.visible && target.visibleArea.heightRatio < 1.0) : false
 
+        Rectangle {
+            width: parent.width
+            readonly property real trackH: stRoot.height
+            readonly property real thumbH: Math.max(20, Math.min(trackH, (stRoot.target ? stRoot.target.visibleArea.heightRatio : 1) * trackH))
+            height: thumbH
+            y: Math.max(0, Math.min(trackH - thumbH, (stRoot.target ? stRoot.target.visibleArea.yPosition : 0) * trackH))
+            radius: 2
+            color: Theme.primary
+            opacity: 0.75
+        }
+    }
+
+    // bar button content
     Row {
         id: qsRow
         anchors.centerIn: parent
@@ -770,14 +729,6 @@ Rectangle {
             font.family: Theme.fontIcon
             font.pixelSize: Theme.fontSizeMd
             color: popup.open ? Theme.on_primary_container : Theme.on_surface
-        }
-    }
-
-    function updatePopupPos() {
-        const p = root.mapToItem(null, 0, 0);
-        if (p) {
-            popup.targetRelativeX = p.x + (root.width / 2);
-            popup.targetRelativeY = p.y + (root.height / 2);
         }
     }
 
@@ -809,12 +760,14 @@ Rectangle {
     Connections {
         target: Settings
         function onRequestQuickSettingsToggle() {
-            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+            if (root.isTargetMonitorActive()) {
+                root.updatePopupPos();
                 popup.open = !popup.open;
             }
         }
         function onRequestQuickSettingsOpen() {
-            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+            if (root.isTargetMonitorActive()) {
+                root.updatePopupPos();
                 popup.open = true;
             }
         }
@@ -822,7 +775,8 @@ Rectangle {
             popup.open = false;
         }
         function onRequestKeybindsToggle() {
-            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+            if (root.isTargetMonitorActive()) {
+                root.updatePopupPos();
                 if (!popup.open) {
                     root.activeTab = "keybinds";
                     popup.open = true;
@@ -834,7 +788,8 @@ Rectangle {
             }
         }
         function onRequestKeybindsOpen() {
-            if (!root.barScreen || Quickshell.screens.length <= 1 || (root.barMonitor && Hyprland.focusedMonitor && root.barMonitor.id === Hyprland.focusedMonitor.id)) {
+            if (root.isTargetMonitorActive()) {
+                root.updatePopupPos();
                 root.activeTab = "keybinds";
                 popup.open = true;
             }
@@ -858,13 +813,14 @@ Rectangle {
             anchors.fill: parent
             spacing: Theme.popupSpacing
 
+            // top header
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Math.max(8, Theme.popupSpacing)
 
                 Rectangle {
-                    width: 42
-                    height: 42
+                    width: 40
+                    height: 40
                     radius: Theme.radiusMd
                     color: popup.open ? Theme.primary_container : Theme.surface_container_high
 
@@ -900,8 +856,8 @@ Rectangle {
                 }
 
                 Rectangle {
-                    height: 26
-                    implicitWidth: saveBadgeRow.implicitWidth + 16
+                    height: 24
+                    implicitWidth: saveBadgeRow.implicitWidth + 14
                     radius: Theme.radiusPill
                     color: Theme.primary_container
                     border.color: Theme.alpha(Theme.outline_variant, 0.45)
@@ -920,7 +876,7 @@ Rectangle {
                         }
 
                         Text {
-                            text: "saved"
+                            text: "live"
                             font.family: Theme.fontFamily
                             font.pixelSize: 10
                             font.weight: Theme.fontWeightDemiBold
@@ -937,11 +893,11 @@ Rectangle {
                 }
             }
 
-            // Beautifully Reorganized Tab Bar
+            // horizontal tab bar
             Flickable {
                 id: tabFlick
                 Layout.fillWidth: true
-                height: 38
+                height: 36
                 contentWidth: tabRow.implicitWidth
                 flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
@@ -949,7 +905,7 @@ Rectangle {
 
                 WheelHandler {
                     orientation: Qt.Vertical
-                    onWheel: {
+                    onWheel: (event) => {
                         const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
                         const targetX = tabFlick.contentX - (delta * 0.8);
                         const maxX = Math.max(0, tabFlick.contentWidth - tabFlick.width);
@@ -975,14 +931,14 @@ Rectangle {
 
                         delegate: Rectangle {
                             required property var modelData
-                            height: 32
-                            width: tabItemRow.implicitWidth + 24
+                            height: 30
+                            width: tabItemRow.implicitWidth + 22
                             radius: Theme.radiusPill
                             readonly property bool isSelected: root.activeTab === modelData.id
 
                             color: isSelected
-                            ? Theme.primary_container
-                            : (tabMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
+                                ? Theme.primary_container
+                                : (tabMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low)
                             border.color: isSelected ? Theme.primary : Theme.outline_variant
                             border.width: 1
 
@@ -1014,7 +970,7 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { root.activeTab = modelData.id; }
+                                onClicked: root.activeTab = modelData.id
                             }
                         }
                     }
@@ -1027,39 +983,43 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // Tab Contents
+            // tab views
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                // 1. LAYOUT & MODULES TAB
+                // 1. layout & modules tab
                 Flickable {
                     id: flickLayout
                     anchors.fill: parent
                     visible: root.activeTab === "layout"
                     clip: true
                     contentWidth: width
-                    contentHeight: layoutCol.implicitHeight + 32
+                    contentHeight: layoutCol.implicitHeight + 28
                     boundsBehavior: Flickable.StopAtBounds
 
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
+
                     function isModAssigned(modId) {
-                        return (Settings && Settings.barModulesLeft ? Settings.barModulesLeft : []).includes(modId) ||
-                        (Settings && Settings.barModulesCenter ? Settings.barModulesCenter : []).includes(modId) ||
-                        (Settings && Settings.barModulesRight ? Settings.barModulesRight : []).includes(modId);
+                        return (Settings?.barModulesLeft || []).includes(modId)
+                            || (Settings?.barModulesCenter || []).includes(modId)
+                            || (Settings?.barModulesRight || []).includes(modId);
                     }
 
                     function toggleBarModule(modId, propName) {
                         if (!Settings) return;
-                        let currentlyActive = Settings[propName] && isModAssigned(modId);
+                        let currentlyActive = Boolean(Settings[propName]) && isModAssigned(modId);
                         let nextVal = !currentlyActive;
                         Settings[propName] = nextVal;
-                        if (nextVal) {
-                            if (!isModAssigned(modId)) {
-                                let right = (Settings.barModulesRight ? Settings.barModulesRight : []).slice();
-                                right.push(modId);
-                                Settings.barModulesRight = right;
-                            }
+                        if (nextVal && !isModAssigned(modId)) {
+                            let right = (Settings.barModulesRight || []).slice();
+                            right.push(modId);
+                            Settings.barModulesRight = right;
                         }
+                        if (Settings.save) Settings.save();
                     }
 
                     ColumnLayout {
@@ -1067,23 +1027,24 @@ Rectangle {
                         width: parent.width
                         spacing: Theme.popupSpacing
 
+                        // single unified bar summary & layout studio trigger card
                         SettingCard {
                             RowLayout {
-                                Layout.fillWidth: true
+                                width: parent.width
                                 spacing: 10
 
                                 Rectangle {
-                                    width: 42
-                                    height: 42
-                                    radius: 12
-                                    color: Theme.primary_container
+                                    width: 40
+                                    height: 40
+                                    radius: Theme.radiusSm
+                                    color: Settings.showBarStudio ? Theme.primary : Theme.primary_container
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Theme.iconGrid
+                                        text: Theme.iconSliders
                                         font.family: Theme.fontIcon
                                         font.pixelSize: Theme.fontSizeMd
-                                        color: Theme.primary
+                                        color: Settings.showBarStudio ? Theme.on_primary : Theme.on_primary_container
                                     }
                                 }
 
@@ -1092,7 +1053,7 @@ Rectangle {
                                     spacing: 2
 
                                     Text {
-                                        text: (Settings.barPosition === "up" ? "top" : (Settings.barPosition === "down" ? "bottom" : Settings.barPosition)) + " bar"
+                                        text: (Settings.barPosition === "up" ? "top" : (Settings.barPosition === "down" ? "bottom" : Settings.barPosition)) + " bar • layout studio"
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
                                         font.weight: Theme.fontWeightBold
@@ -1100,41 +1061,45 @@ Rectangle {
                                     }
 
                                     Text {
-                                        text: Settings.barHeight + "px  •  " + Settings.widgetSpacing + "px gap  •  " + Settings.widgetRadius + "px widgets"
+                                        text: Settings.showBarStudio
+                                            ? "studio active on screen edge"
+                                            : (Settings.barHeight + "px  •  " + Settings.widgetSpacing + "px gap  •  drag & reorder modules")
                                         font.family: Theme.fontMono
                                         font.pixelSize: 9
-                                        color: Theme.on_surface_variant
+                                        color: Settings.showBarStudio ? Theme.primary : Theme.on_surface_variant
                                     }
                                 }
 
                                 Rectangle {
                                     height: 28
-                                    implicitWidth: layoutStudioQuickText.implicitWidth + 18
+                                    implicitWidth: studioQuickTxt.implicitWidth + 20
                                     radius: Theme.radiusPill
-                                    color: Theme.primary
+                                    color: Settings.showBarStudio ? Theme.primary_overlay : Theme.primary
+                                    border.color: Settings.showBarStudio ? Theme.primary : "transparent"
+                                    border.width: 1
 
                                     Text {
-                                        id: layoutStudioQuickText
+                                        id: studioQuickTxt
                                         anchors.centerIn: parent
-                                        text: "open studio"
+                                        text: Settings.showBarStudio ? "close studio" : "open studio"
                                         font.family: Theme.fontFamily
-                                        font.pixelSize: 9
+                                        font.pixelSize: 10
                                         font.weight: Theme.fontWeightBold
-                                        color: Theme.on_primary
+                                        color: Settings.showBarStudio ? Theme.primary : Theme.on_primary
                                     }
 
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: { Settings.showBarStudio = true; }
+                                        onClicked: Settings.showBarStudio = !Settings.showBarStudio
                                     }
                                 }
                             }
                         }
 
                         CategoryHeader {
-                            title: "bar"
-                            subtitle: "position, size, spacing, and global geometry"
+                            title: "bar geometry"
+                            subtitle: "position, thickness, rounding, and spacing"
                             icon: Theme.iconGrid
                         }
 
@@ -1147,7 +1112,7 @@ Rectangle {
                                 { label: "right", value: "right" }
                             ]
                             currentValue: Settings.barPosition === "up" ? "top" : (Settings.barPosition === "down" ? "bottom" : Settings.barPosition)
-                            onSelected: { Settings.barPosition = value; }
+                            onSelected: (val) => Settings.barPosition = val
                         }
 
                         SliderRow {
@@ -1157,7 +1122,7 @@ Rectangle {
                             stepSize: 2
                             suffix: "px"
                             value: Settings.barHeight
-                            onMoved: { Settings.barHeight = val; }
+                            onMoved: (val) => Settings.barHeight = val
                         }
 
                         SliderRow {
@@ -1167,17 +1132,11 @@ Rectangle {
                             stepSize: 1
                             suffix: "px"
                             value: Settings.globalRounding
-                            onMoved: {
+                            onMoved: (val) => {
                                 Settings.globalRounding = val;
                                 Settings.widgetRadius = Math.max(1, Math.round(val * 0.5));
                                 Settings.popupRadius = Math.max(2, Math.round(val));
                             }
-                        }
-
-                        CategoryHeader {
-                            title: "layout density"
-                            subtitle: "spacing and radii that affect the whole shell"
-                            icon: Theme.iconSliders
                         }
 
                         SliderRow {
@@ -1187,17 +1146,17 @@ Rectangle {
                             stepSize: 1
                             suffix: "px"
                             value: Settings.widgetSpacing
-                            onMoved: { Settings.widgetSpacing = val; }
+                            onMoved: (val) => Settings.widgetSpacing = val
                         }
 
                         SliderRow {
-                            title: "widget padding"
+                            title: "widget horizontal padding"
                             from: 2
                             to: 18
                             stepSize: 1
                             suffix: "px"
                             value: Settings.widgetPaddingH
-                            onMoved: { Settings.widgetPaddingH = val; }
+                            onMoved: (val) => Settings.widgetPaddingH = val
                         }
 
                         ChoiceRow {
@@ -1210,7 +1169,7 @@ Rectangle {
                                 { label: "pill", value: 9999 }
                             ]
                             currentValue: Settings.widgetRadius
-                            onSelected: { Settings.widgetRadius = value; }
+                            onSelected: (val) => Settings.widgetRadius = val
                         }
 
                         SliderRow {
@@ -1220,22 +1179,22 @@ Rectangle {
                             stepSize: 2
                             suffix: "px"
                             value: Settings.popupRadius
-                            onMoved: { Settings.popupRadius = val; }
+                            onMoved: (val) => Settings.popupRadius = val
                         }
 
                         CategoryHeader {
                             title: "floating bar"
-                            subtitle: "detach the bar from the screen edge and tune its breathing room"
-                            icon: Theme.iconGrid
+                            subtitle: "detach the bar from the screen edge"
+                            icon: Theme.iconExpand
                         }
 
                         SettingCard {
                             ToggleRow {
-                                icon: Theme.iconGrid
+                                icon: Theme.iconExpand
                                 title: "floating bar"
                                 subtitle: "detach status bar from screen edge"
                                 checked: Settings.barFloating
-                                onToggled: { Settings.barFloating = !Settings.barFloating; }
+                                onToggled: Settings.barFloating = !Settings.barFloating
                             }
 
                             RowDivider { visible: Settings.barFloating }
@@ -1243,7 +1202,7 @@ Rectangle {
                             Item {
                                 visible: Settings.barFloating
                                 width: parent.width
-                                implicitHeight: floatRadiusRow.implicitHeight + 16
+                                implicitHeight: floatRadiusRow.implicitHeight + 14
 
                                 SliderRow {
                                     id: floatRadiusRow
@@ -1257,7 +1216,7 @@ Rectangle {
                                     stepSize: 2
                                     suffix: "px"
                                     value: Settings.barRadius
-                                    onMoved: function(v) { Settings.barRadius = v; }
+                                    onMoved: (v) => Settings.barRadius = v
                                 }
                             }
 
@@ -1266,7 +1225,7 @@ Rectangle {
                             Item {
                                 visible: Settings.barFloating
                                 width: parent.width
-                                implicitHeight: floatMarginRow.implicitHeight + 16
+                                implicitHeight: floatMarginRow.implicitHeight + 14
 
                                 SliderRow {
                                     id: floatMarginRow
@@ -1274,13 +1233,13 @@ Rectangle {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.margins: 8
-                                    title: "floating breathing room (margin)"
+                                    title: "floating margin"
                                     from: 0
                                     to: 32
                                     stepSize: 2
                                     suffix: "px"
                                     value: Settings.barMargin
-                                    onMoved: function(v) { Settings.barMargin = v; }
+                                    onMoved: (v) => Settings.barMargin = v
                                 }
                             }
 
@@ -1292,128 +1251,49 @@ Rectangle {
                                 title: "bento island hover lift"
                                 subtitle: "elevate capsules slightly on hover"
                                 checked: Settings.bentoHoverLift
-                                onToggled: function() { Settings.bentoHoverLift = !Settings.bentoHoverLift; }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "layout studio"
-                            subtitle: "visually reorder modules and move them between bar zones"
-                            icon: Theme.iconSliders
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 64
-                            radius: Theme.radiusMd
-                            color: studioBtnMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_low
-                            border.color: Settings.showBarStudio ? Theme.primary : Theme.widgetBorder
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 12
-
-                                Rectangle {
-                                    width: 44
-                                    height: 44
-                                    radius: Theme.radiusSm
-                                    color: Settings.showBarStudio ? Theme.primary_overlay : Theme.surface_container_high
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰑮"
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeLg
-                                        color: Theme.primary
-                                    }
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-
-                                    Text {
-                                        text: "layout studio"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
-                                    Text {
-                                        text: Settings.showBarStudio ? "studio open on screen edge (click to close)" : "reorder, shift zones & customize bar modules interactively"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Theme.on_surface_variant
-                                    }
-                                }
-
-                                Rectangle {
-                                    height: 28
-                                    implicitWidth: launchStudioText.implicitWidth + 24
-                                    radius: Theme.radiusPill
-                                    color: Settings.showBarStudio ? Theme.primary : Theme.primary_overlay
-
-                                    Text {
-                                        id: launchStudioText
-                                        anchors.centerIn: parent
-                                        text: Settings.showBarStudio ? "active ✓" : "open studio"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        font.weight: Theme.fontWeightBold
-                                        color: Settings.showBarStudio ? Theme.on_primary : Theme.primary
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                id: studioBtnMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: { Settings.showBarStudio = !Settings.showBarStudio; }
+                                onToggled: Settings.bentoHoverLift = !Settings.bentoHoverLift
                             }
                         }
 
                         CategoryHeader {
                             title: "navigation modules"
-                            subtitle: "the things you keep within reach on the bar"
+                            subtitle: "core workspace and window controls on the bar"
                             icon: Theme.iconWorkspaces
                         }
 
                         SettingCard {
                             ToggleRow {
-                                icon: Theme.iconGrid
+                                icon: Theme.iconAppLauncher
                                 title: "application launcher"
                                 checked: Settings.showLauncher && flickLayout.isModAssigned("launcher")
-                                onToggled: { flickLayout.toggleBarModule("launcher", "showLauncher"); }
+                                onToggled: flickLayout.toggleBarModule("launcher", "showLauncher")
                             }
                             RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconWorkspaces
                                 title: "workspaces switcher"
                                 checked: Settings.showWorkspaces && flickLayout.isModAssigned("workspaces")
-                                onToggled: { flickLayout.toggleBarModule("workspaces", "showWorkspaces"); }
+                                onToggled: flickLayout.toggleBarModule("workspaces", "showWorkspaces")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconGrid ?? "⊞"
+                                icon: Theme.iconGrid
                                 title: "tiling layout switcher"
                                 checked: Settings.showLayoutSwitcher && flickLayout.isModAssigned("layout")
-                                onToggled: { flickLayout.toggleBarModule("layout", "showLayoutSwitcher"); }
+                                onToggled: flickLayout.toggleBarModule("layout", "showLayoutSwitcher")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconNote
+                                icon: Theme.iconTerminal
                                 title: "window title"
                                 checked: Settings.showWindowTitle && flickLayout.isModAssigned("windowTitle")
-                                onToggled: { flickLayout.toggleBarModule("windowTitle", "showWindowTitle"); }
+                                onToggled: flickLayout.toggleBarModule("windowTitle", "showWindowTitle")
                             }
-                            RowDivider {}
+                            RowDivider { visible: Settings.showWindowTitle }
                             Item {
+                                visible: Settings.showWindowTitle
                                 width: parent.width
-                                implicitHeight: winTitleStretchRow.implicitHeight + 16
+                                implicitHeight: winTitleStretchRow.implicitHeight + 14
                                 ChoiceRow {
                                     id: winTitleStretchRow
                                     anchors.left: parent.left
@@ -1427,21 +1307,22 @@ Rectangle {
                                         { label: "compact", value: "compact" }
                                     ]
                                     currentValue: Settings.windowTitleMode
-                                    onSelected: { Settings.windowTitleMode = value; }
+                                    onSelected: (val) => Settings.windowTitleMode = val
                                 }
                             }
-                            RowDivider {}
+                            RowDivider { visible: Settings.showWindowTitle }
                             ToggleRow {
-                                icon: Theme.iconTerminal
+                                visible: Settings.showWindowTitle
+                                icon: Theme.iconEye
                                 title: "app icon in window title"
                                 checked: Settings.windowTitleShowIcon
-                                onToggled: { Settings.windowTitleShowIcon = !Settings.windowTitleShowIcon; }
+                                onToggled: Settings.windowTitleShowIcon = !Settings.windowTitleShowIcon
                             }
                         }
 
                         CategoryHeader {
-                            title: "status & information"
-                            icon: Theme.iconMusic
+                            title: "status, connectivity & utilities"
+                            icon: Theme.iconWifi
                         }
 
                         SettingCard {
@@ -1449,127 +1330,118 @@ Rectangle {
                                 icon: Theme.iconClock
                                 title: "clock & date"
                                 checked: Settings.showClock && flickLayout.isModAssigned("clock")
-                                onToggled: { flickLayout.toggleBarModule("clock", "showClock"); }
+                                onToggled: flickLayout.toggleBarModule("clock", "showClock")
                             }
                             RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconMusic
                                 title: "now playing / mpris"
                                 checked: Settings.showMedia && flickLayout.isModAssigned("media")
-                                onToggled: { flickLayout.toggleBarModule("media", "showMedia"); }
+                                onToggled: flickLayout.toggleBarModule("media", "showMedia")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconSparkles
+                                icon: Theme.iconWallpaper
                                 title: "wallpaper & theme browser"
                                 checked: Settings.showWallpaper && flickLayout.isModAssigned("wallpaper")
-                                onToggled: { flickLayout.toggleBarModule("wallpaper", "showWallpaper"); }
+                                onToggled: flickLayout.toggleBarModule("wallpaper", "showWallpaper")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconSliders
+                                icon: Theme.iconVolHigh
                                 title: "volume & audio mixer"
                                 checked: Settings.showVolume && flickLayout.isModAssigned("volume")
-                                onToggled: { flickLayout.toggleBarModule("volume", "showVolume"); }
+                                onToggled: flickLayout.toggleBarModule("volume", "showVolume")
                             }
-                        }
-
-                        CategoryHeader {
-                            title: "connectivity"
-                            icon: Theme.iconWifi
-                        }
-
-                        SettingCard {
+                            RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconWifi
                                 title: "network / wi-fi"
                                 checked: Settings.showNetwork && flickLayout.isModAssigned("network")
-                                onToggled: { flickLayout.toggleBarModule("network", "showNetwork"); }
+                                onToggled: flickLayout.toggleBarModule("network", "showNetwork")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconWifi
+                                icon: Theme.iconBluetooth
                                 title: "bluetooth devices"
                                 checked: Settings.showBluetooth && flickLayout.isModAssigned("bluetooth")
-                                onToggled: { flickLayout.toggleBarModule("bluetooth", "showBluetooth"); }
+                                onToggled: flickLayout.toggleBarModule("bluetooth", "showBluetooth")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconFlame
+                                icon: Theme.iconBatFull
                                 title: "battery & power status"
                                 checked: Settings.showBattery && flickLayout.isModAssigned("battery")
-                                onToggled: { flickLayout.toggleBarModule("battery", "showBattery"); }
+                                onToggled: flickLayout.toggleBarModule("battery", "showBattery")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconGrid
+                                icon: Theme.iconTray
                                 title: "system tray icons"
                                 checked: Settings.showSystemTray && flickLayout.isModAssigned("systemTray")
-                                onToggled: { flickLayout.toggleBarModule("systemTray", "showSystemTray"); }
+                                onToggled: flickLayout.toggleBarModule("systemTray", "showSystemTray")
                             }
-                        }
-
-                        CategoryHeader {
-                            title: "utilities"
-                            icon: Theme.iconSliders
-                        }
-
-                        SettingCard {
+                            RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconCoffee
                                 title: "caffeine / idle inhibitor"
                                 checked: Settings.showIdleInhibitor && flickLayout.isModAssigned("idleInhibitor")
-                                onToggled: { flickLayout.toggleBarModule("idleInhibitor", "showIdleInhibitor"); }
+                                onToggled: flickLayout.toggleBarModule("idleInhibitor", "showIdleInhibitor")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconNote
+                                icon: Theme.iconClipboard
                                 title: "clipboard history"
                                 checked: Settings.showClipboard && flickLayout.isModAssigned("clipboard")
-                                onToggled: { flickLayout.toggleBarModule("clipboard", "showClipboard"); }
+                                onToggled: flickLayout.toggleBarModule("clipboard", "showClipboard")
                             }
                             RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconNote
                                 title: "quick notes & scratchpad"
                                 checked: Settings.showQuickNotes && flickLayout.isModAssigned("quickNotes")
-                                onToggled: { flickLayout.toggleBarModule("quickNotes", "showQuickNotes"); }
+                                onToggled: flickLayout.toggleBarModule("quickNotes", "showQuickNotes")
                             }
                             RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconCamera
                                 title: "screen capture & recorder"
                                 checked: Settings.showScreenCapture && flickLayout.isModAssigned("screenCapture")
-                                onToggled: { flickLayout.toggleBarModule("screenCapture", "showScreenCapture"); }
+                                onToggled: flickLayout.toggleBarModule("screenCapture", "showScreenCapture")
                             }
                             RowDivider {}
                             ToggleRow {
                                 icon: Theme.iconBell
-                                title: "notification center module"
+                                title: "notification center"
                                 checked: Settings.showNotifications && flickLayout.isModAssigned("notifications")
-                                onToggled: { flickLayout.toggleBarModule("notifications", "showNotifications"); }
+                                onToggled: flickLayout.toggleBarModule("notifications", "showNotifications")
                             }
                             RowDivider {}
                             ToggleRow {
-                                icon: Theme.iconFlame
+                                icon: Theme.iconPower
                                 title: "power session menu"
                                 checked: Settings.showPowerMenu && flickLayout.isModAssigned("powerMenu")
-                                onToggled: { flickLayout.toggleBarModule("powerMenu", "showPowerMenu"); }
+                                onToggled: flickLayout.toggleBarModule("powerMenu", "showPowerMenu")
                             }
                         }
                     }
                 }
                 TabScrollTrack { target: flickLayout }
 
-                // 2. STYLE & THEMES TAB
+                // 2. appearance & style tab
                 Flickable {
                     id: flickStyle
                     anchors.fill: parent
                     visible: root.activeTab === "style"
                     clip: true
                     contentWidth: width
-                    contentHeight: styleCol.implicitHeight + 32
+                    contentHeight: styleCol.implicitHeight + 28
                     boundsBehavior: Flickable.StopAtBounds
+
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
 
                     ColumnLayout {
                         id: styleCol
@@ -1578,13 +1450,13 @@ Rectangle {
 
                         CategoryHeader {
                             title: "surface & material"
-                            subtitle: "bar material, transparency, and visual density"
+                            subtitle: "bar shader preset, opacity, and custom color overrides"
                             icon: Theme.iconSparkles
                         }
 
                         ChoiceGrid {
                             columns: 3
-                            buttonHeight: 34
+                            buttonHeight: 32
                             title: "bar material"
                             model: [
                                 { label: "regular", value: "regular" },
@@ -1598,73 +1470,7 @@ Rectangle {
                                 { label: "monochrome", value: "monochrome" }
                             ]
                             currentValue: Settings.barStyle
-                            onSelected: function(val) { Settings.barStyle = val; }
-                        }
-
-                        SettingCard {
-                            Item {
-                                width: parent.width
-                                implicitHeight: appearancePreviewCol.implicitHeight + 20
-
-                                ColumnLayout {
-                                    id: appearancePreviewCol
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 8
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-
-                                        Text {
-                                            text: "live style"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_surface
-                                            Layout.fillWidth: true
-                                        }
-
-                                        Text {
-                                            text: Settings.barStyle + "  •  " + Math.round(Settings.barOpacity * 100) + "% opacity"
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: 9
-                                            color: Theme.primary
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 34
-                                        radius: Math.min(Settings.widgetRadius, 16)
-                                        color: Theme.alpha(Theme.surface_container_highest, Settings.barOpacity)
-                                        border.color: Theme.alpha(Theme.primary, 0.28)
-                                        border.width: 1
-
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 10
-                                            anchors.rightMargin: 10
-                                            spacing: 8
-
-                                            Text {
-                                                text: Theme.iconGrid
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeXs
-                                                color: Theme.primary
-                                            }
-                                            Rectangle { width: 54; height: 8; radius: 4; color: Theme.primary_container }
-                                            Rectangle { Layout.fillWidth: true; height: 8; radius: 4; color: Theme.outline_variant }
-                                            Rectangle { width: 34; height: 18; radius: 9; color: Theme.primary_container }
-                                            Text {
-                                                text: Settings.barHeight + "px"
-                                                font.family: Theme.fontMono
-                                                font.pixelSize: 8
-                                                color: Theme.on_surface_variant
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            onSelected: (val) => Settings.barStyle = val
                         }
 
                         SliderRow {
@@ -1673,8 +1479,8 @@ Rectangle {
                             to: 1.0
                             stepSize: 0.05
                             value: Settings.barOpacity
-                            formatter: function(v) { return Math.round(v * 100) + "%"; }
-                            onMoved: { Settings.barOpacity = val; }
+                            formatter: (v) => Math.round(v * 100) + "%"
+                            onMoved: (val) => Settings.barOpacity = val
                         }
 
                         SliderRow {
@@ -1683,91 +1489,77 @@ Rectangle {
                             to: 1.0
                             stepSize: 0.05
                             value: Settings.popupOpacity
-                            formatter: function(v) { return Math.round(v * 100) + "%"; }
-                            onMoved: { Settings.popupOpacity = val; }
-                        }
-
-                        CategoryHeader {
-                            title: "color system"
-                            icon: Theme.iconSparkles
+                            formatter: (v) => Math.round(v * 100) + "%"
+                            onMoved: (val) => Settings.popupOpacity = val
                         }
 
                         SettingCard {
                             ToggleRow {
-                                icon: Theme.iconSparkles
-                                title: "use custom colors"
-                                subtitle: "override system wallpaper colors with custom palette"
+                                icon: Theme.iconPalette
+                                title: "custom color overrides"
+                                subtitle: "override matugen palette tokens with custom hex colors"
                                 checked: Settings.customColorsEnabled
                                 onToggled: {
                                     Settings.customColorsEnabled = !Settings.customColorsEnabled;
-                                    Settings.save();
+                                    if (Settings.save) Settings.save();
                                 }
                             }
 
                             GridLayout {
-                                id: colorGrid
                                 visible: Settings.customColorsEnabled
                                 width: parent.width
                                 columns: 2
                                 columnSpacing: 6
                                 rowSpacing: 6
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "background"
                                     subtitle: Settings.customBg !== "" ? Settings.customBg : "default"
                                     swatchColor: Settings.customBg !== "" ? Settings.customBg : Theme.background
-                                    onClicked: colorStudioModal.open("customBg", "Background Color", "Main background surface color", Settings.customBg, Theme.background)
+                                    onClicked: colorStudioModal.open("customBg", "background color", "main background surface color", Settings.customBg, Theme.background)
                                 }
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "accent"
                                     subtitle: Settings.customActive !== "" ? Settings.customActive : "default"
                                     swatchColor: Settings.customActive !== "" ? Settings.customActive : Theme.primary
-                                    onClicked: colorStudioModal.open("customActive", "Active Accent Color", "Primary highlight color for active items", Settings.customActive, Theme.primary)
+                                    onClicked: colorStudioModal.open("customActive", "accent color", "primary highlight color", Settings.customActive, Theme.primary)
                                 }
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "text"
                                     subtitle: Settings.customText !== "" ? Settings.customText : "default"
                                     swatchColor: Settings.customText !== "" ? Settings.customText : Theme.on_surface
-                                    onClicked: colorStudioModal.open("customText", "Text Color", "Primary typography & foreground glyphs", Settings.customText, Theme.on_surface)
+                                    onClicked: colorStudioModal.open("customText", "text color", "primary foreground text", Settings.customText, Theme.on_surface)
                                 }
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "subtext"
                                     subtitle: Settings.customSubtext !== "" ? Settings.customSubtext : "default"
                                     swatchColor: Settings.customSubtext !== "" ? Settings.customSubtext : Theme.on_surface_variant
-                                    onClicked: colorStudioModal.open("customSubtext", "Subtext Color", "Secondary text labels and inactive icons", Settings.customSubtext, Theme.on_surface_variant)
+                                    onClicked: colorStudioModal.open("customSubtext", "subtext color", "secondary labels and muted icons", Settings.customSubtext, Theme.on_surface_variant)
                                 }
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "border"
                                     subtitle: Settings.customBorder !== "" ? Settings.customBorder : "default"
                                     swatchColor: Settings.customBorder !== "" ? Settings.customBorder : Theme.outline
-                                    onClicked: colorStudioModal.open("customBorder", "Border Color", "Outlines, dividers, and card borders", Settings.customBorder, Theme.outline)
+                                    onClicked: colorStudioModal.open("customBorder", "border color", "outlines and dividers", Settings.customBorder, Theme.outline)
                                 }
 
                                 ColorTile {
-                                    Layout.minimumWidth: 0
-                                    Layout.fillWidth: true
                                     title: "widget & pill"
                                     subtitle: Settings.customWidgetBg !== "" ? Settings.customWidgetBg : "default"
                                     swatchColor: Settings.customWidgetBg !== "" ? Settings.customWidgetBg : Theme.pillBg
-                                    onClicked: colorStudioModal.open("customWidgetBg", "Widget & Pill Color", "Background color for bar pills & widgets", Settings.customWidgetBg, Theme.pillBg)
+                                    onClicked: colorStudioModal.open("customWidgetBg", "widget & pill color", "surface color for bar pills", Settings.customWidgetBg, Theme.pillBg)
                                 }
                             }
+                        }
+
+                        CategoryHeader {
+                            title: "screen shape & dynamic notch"
+                            subtitle: "concave fillets, scoops, curvature, and center island"
+                            icon: Theme.iconGrid
                         }
 
                         SettingCard {
@@ -1776,28 +1568,45 @@ Rectangle {
                                 title: "reactive dynamic notch"
                                 subtitle: "interactive center island (clock, calendar & timer)"
                                 checked: Settings.dynamicNotchEnabled
-                                onToggled: function() { Settings.dynamicNotchEnabled = !Settings.dynamicNotchEnabled; }
+                                onToggled: Settings.dynamicNotchEnabled = !Settings.dynamicNotchEnabled
                             }
 
                             RowDivider { visible: Settings.dynamicNotchEnabled }
 
                             ChoiceGrid {
                                 visible: Settings.dynamicNotchEnabled
-                                title: "dynamic notch carousel mode"
+                                title: "dynamic notch mode"
+                                columns: 3
                                 model: [
                                     { label: "adaptive auto", value: "auto" },
                                     { label: "clock only", value: "clock" },
                                     { label: "timer only", value: "timer" }
                                 ]
                                 currentValue: Settings.dynamicNotchMode
-                                onSelected: function(val) { Settings.dynamicNotchMode = val; }
+                                onSelected: (val) => Settings.dynamicNotchMode = val
                             }
-                        }
 
-                        CategoryHeader {
-                            title: "screen shape"
-                            subtitle: "fillets, scoops, curvature, and frame treatment"
-                            icon: Theme.iconGrid
+                            RowDivider { visible: Settings.dynamicNotchEnabled }
+
+                            ToggleRow {
+                                visible: Settings.dynamicNotchEnabled
+                                icon: Theme.iconSparkles
+                                title: "dynamic notch concave flares"
+                                subtitle: "melt center notch into screen bezel"
+                                checked: Settings.dynamicNotchFlared
+                                onToggled: Settings.dynamicNotchFlared = !Settings.dynamicNotchFlared
+                            }
+
+                            SliderRow {
+                                visible: Settings.dynamicNotchEnabled && Settings.dynamicNotchFlared
+                                title: "notch flare radius"
+                                from: 8
+                                to: 32
+                                stepSize: 2
+                                suffix: "px"
+                                value: Settings.notchFlareRadius
+                                onMoved: (val) => Settings.notchFlareRadius = val
+                            }
                         }
 
                         Dropdown {
@@ -1815,7 +1624,7 @@ Rectangle {
                                 { label: "right only", value: "right" }
                             ]
                             currentValue: Settings.screenCornerMode
-                            onSelected: { Settings.screenCornerMode = value; }
+                            onSelected: (val) => Settings.screenCornerMode = val
                         }
 
                         Dropdown {
@@ -1831,7 +1640,7 @@ Rectangle {
                                 { label: "flared", value: "flared" }
                             ]
                             currentValue: Settings.cornerStyle
-                            onSelected: { Settings.cornerStyle = value; }
+                            onSelected: (val) => Settings.cornerStyle = val
                         }
 
                         SettingCard {
@@ -1840,28 +1649,16 @@ Rectangle {
                                 title: "scoop border outlines"
                                 subtitle: "draw continuous stroke along concave curves"
                                 checked: Settings.scoopBorderEnabled
-                                onToggled: { Settings.scoopBorderEnabled = !Settings.scoopBorderEnabled; }
+                                onToggled: Settings.scoopBorderEnabled = !Settings.scoopBorderEnabled
                             }
-
                             RowDivider {}
-
                             ToggleRow {
-                                icon: Theme.iconSparkles
+                                icon: Theme.iconGrid
                                 title: "docked frame & scoops"
                                 subtitle: "anchor shell fillets directly to screen bounds"
                                 checked: Settings.screenFrameDocked
-                                onToggled: { Settings.screenFrameDocked = !Settings.screenFrameDocked; }
+                                onToggled: Settings.screenFrameDocked = !Settings.screenFrameDocked
                             }
-                        }
-
-                        SliderRow {
-                            title: "scoop border width"
-                            from: 1
-                            to: 6
-                            stepSize: 1
-                            suffix: "px"
-                            value: Settings.scoopBorderWidth
-                            onMoved: { Settings.scoopBorderWidth = val; }
                         }
 
                         ChoiceRow {
@@ -1873,7 +1670,17 @@ Rectangle {
                                 { label: "pure black", value: "pure-black" }
                             ]
                             currentValue: Settings.cornerColorMode
-                            onSelected: { Settings.cornerColorMode = value; }
+                            onSelected: (val) => Settings.cornerColorMode = val
+                        }
+
+                        SliderRow {
+                            title: "scoop border width"
+                            from: 1
+                            to: 6
+                            stepSize: 1
+                            suffix: "px"
+                            value: Settings.scoopBorderWidth
+                            onMoved: (val) => Settings.scoopBorderWidth = val
                         }
 
                         SliderRow {
@@ -1882,8 +1689,8 @@ Rectangle {
                             to: 16
                             stepSize: 2
                             value: Settings.screenBorderWidth
-                            formatter: function(v) { return v === 0 ? "none (corners only)" : (Math.round(v) + "px (full frame)"); }
-                            onMoved: { Settings.screenBorderWidth = val; }
+                            formatter: (v) => v === 0 ? "none (corners only)" : (Math.round(v) + "px (full frame)")
+                            onMoved: (val) => Settings.screenBorderWidth = val
                         }
 
                         SliderRow {
@@ -1893,7 +1700,7 @@ Rectangle {
                             stepSize: 2
                             suffix: "px"
                             value: Settings.scoopRadius
-                            onMoved: { Settings.scoopRadius = val; }
+                            onMoved: (val) => Settings.scoopRadius = val
                         }
 
                         SliderRow {
@@ -1903,18 +1710,18 @@ Rectangle {
                             stepSize: 2
                             suffix: "px"
                             value: Settings.screenCornerRadius
-                            onMoved: { Settings.screenCornerRadius = val; }
+                            onMoved: (val) => Settings.screenCornerRadius = val
                         }
 
                         Rectangle {
                             Layout.alignment: Qt.AlignRight
                             visible: Settings.scoopRadius !== Settings.screenCornerRadius
-                            height: 22
-                            implicitWidth: syncText.implicitWidth + 24
-                            radius: Theme.radiusSm
-                            color: syncMouse.containsMouse ? Theme.surface_container_high : Theme.surface_container_highest
-
-                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                            height: 24
+                            implicitWidth: syncText.implicitWidth + 20
+                            radius: Theme.radiusPill
+                            color: syncMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                            border.color: Theme.primary
+                            border.width: 1
 
                             Text {
                                 id: syncText
@@ -1931,35 +1738,13 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                            }
-                        }
-
-                        SettingCard {
-                            ToggleRow {
-                                icon: Theme.iconSparkles
-                                title: "dynamic notch concave flares"
-                                subtitle: "melt center notch directly into screen bezel"
-                                checked: Settings.dynamicNotchFlared
-                                onToggled: { Settings.dynamicNotchFlared = !Settings.dynamicNotchFlared; }
-                            }
-
-                            RowDivider { visible: Settings.dynamicNotchFlared }
-
-                            SliderRow {
-                                visible: Settings.dynamicNotchFlared
-                                title: "notch flare radius"
-                                from: 8
-                                to: 32
-                                stepSize: 2
-                                suffix: "px"
-                                value: Settings.notchFlareRadius
-                                onMoved: { Settings.notchFlareRadius = val; }
+                                onClicked: Settings.screenCornerRadius = Settings.scoopRadius
                             }
                         }
 
                         CategoryHeader {
-                            title: "typography"
-                            subtitle: "pick a font target, browse installed families, and preview them live"
+                            title: "typography & icon system"
+                            subtitle: "font families, scale, weight, and icon pack"
                             icon: Theme.iconNote
                         }
 
@@ -1969,7 +1754,7 @@ Rectangle {
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 36
+                                height: 34
                                 radius: Theme.radiusSm
                                 color: root.fontTarget === "sans" ? Theme.primary : Theme.surface_container_highest
 
@@ -1986,13 +1771,13 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: { root.fontTarget = "sans"; }
+                                    onClicked: root.fontTarget = "sans"
                                 }
                             }
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 36
+                                height: 34
                                 radius: Theme.radiusSm
                                 color: root.fontTarget === "mono" ? Theme.primary : Theme.surface_container_highest
 
@@ -2009,14 +1794,14 @@ Rectangle {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: { root.fontTarget = "mono"; }
+                                    onClicked: root.fontTarget = "mono"
                                 }
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 40
+                            height: 38
                             color: Theme.cardBg
                             radius: Theme.widgetRadius
                             border.color: fontSearchInput.activeFocus ? Theme.primary : Theme.cardBorder
@@ -2024,7 +1809,7 @@ Rectangle {
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.margins: 12
+                                anchors.margins: 10
                                 spacing: 8
 
                                 Text {
@@ -2055,7 +1840,7 @@ Rectangle {
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeSm
                                         color: Theme.on_surface
-                                        onTextChanged: { root.fontSearchQuery = text; }
+                                        onTextChanged: root.fontSearchQuery = text
                                     }
                                 }
 
@@ -2074,7 +1859,7 @@ Rectangle {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 220
+                            height: 180
                             color: Theme.cardBg
                             radius: Theme.widgetRadius
                             border.color: Theme.outline_variant
@@ -2083,7 +1868,7 @@ Rectangle {
 
                             WheelHandler {
                                 target: fontListView
-                                onWheel: {
+                                onWheel: (event) => {
                                     fontListView.flick(0, event.angleDelta.y * 6);
                                     event.accepted = true;
                                 }
@@ -2099,10 +1884,10 @@ Rectangle {
                                 delegate: Rectangle {
                                     required property string modelData
                                     width: fontListView.width
-                                    height: 36
+                                    height: 34
                                     radius: Theme.radiusSm
                                     readonly property bool isCurrent: (root.fontTarget === "sans" && Settings.fontFamily === modelData)
-                                    || (root.fontTarget === "mono" && Settings.fontMono === modelData)
+                                        || (root.fontTarget === "mono" && Settings.fontMono === modelData)
                                     color: isCurrent ? Theme.primary : (fItemMouse.containsMouse ? Theme.surface_container_highest : "transparent")
 
                                     RowLayout {
@@ -2133,84 +1918,14 @@ Rectangle {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            if (root.fontTarget === "sans") {
-                                                Settings.fontFamily = modelData;
-                                            } else {
-                                                Settings.fontMono = modelData;
-                                            }
+                                            if (root.fontTarget === "sans") Settings.fontFamily = modelData;
+                                            else Settings.fontMono = modelData;
                                         }
                                     }
                                 }
                             }
 
                             TabScrollTrack { target: fontListView }
-
-                            Text {
-                                anchors.centerIn: parent
-                                visible: root.filteredFonts.length === 0
-                                text: root.fontSearchQuery.trim() !== "" ? ("no fonts matching \"" + root.fontSearchQuery.trim() + "\"") : "no system fonts detected"
-                                font.family: Theme.fontFamily
-                                font.pixelSize: Theme.fontSizeXs
-                                color: Theme.on_surface_variant
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: prevCol.implicitHeight + 24
-                            color: Theme.cardBg
-                            radius: Theme.widgetRadius
-                            border.color: Theme.outline_variant
-                            border.width: 1
-
-                            ColumnLayout {
-                                id: prevCol
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 8
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Text {
-                                        text: "preview: " + (root.fontTarget === "sans" ? Settings.fontFamily : Settings.fontMono)
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.primary
-                                        Layout.fillWidth: true
-                                    }
-                                    Text {
-                                        text: Settings.fontScale + "x scale • " + Settings.fontWeight
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        color: Theme.on_surface_variant
-                                    }
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "the quick brown fox jumps over the lazy dog 0123456789"
-                                    font.family: root.fontTarget === "sans" ? Settings.fontFamily : Settings.fontMono
-                                    font.pixelSize: Theme.fontSizeMd
-                                    font.weight: Theme.getFontWeight ? Theme.getFontWeight(Settings.fontWeight) : Font.Normal
-                                    color: Theme.on_surface
-                                    wrapMode: Text.Wrap
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: "const vibe = async () => await rice.compile(); // 1234567890 != == ==="
-                                    font.family: Settings.fontMono
-                                    font.pixelSize: Theme.fontSizeSm
-                                    color: Theme.primary
-                                    wrapMode: Text.Wrap
-                                }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "type scale"
-                            icon: Theme.iconSliders
                         }
 
                         SliderRow {
@@ -2219,8 +1934,8 @@ Rectangle {
                             to: 1.4
                             stepSize: 0.05
                             value: Settings.fontScale
-                            formatter: function(v) { return Math.round(v * 100) + "%"; }
-                            onMoved: { Settings.fontScale = val; }
+                            formatter: (v) => Math.round(v * 100) + "%"
+                            onMoved: (val) => Settings.fontScale = val
                         }
 
                         ChoiceRow {
@@ -2233,19 +1948,13 @@ Rectangle {
                                 { label: "bold", value: "bold" }
                             ]
                             currentValue: Settings.fontWeight
-                            onSelected: function(val) { Settings.fontWeight = val; }
-                        }
-
-                        CategoryHeader {
-                            title: "icon system"
-                            subtitle: "choose one icon family; variants appear only for families that support them"
-                            icon: Theme.iconSparkles
+                            onSelected: (val) => Settings.fontWeight = val
                         }
 
                         SettingCard {
                             ChoiceGrid {
                                 columns: 2
-                                buttonHeight: 34
+                                buttonHeight: 32
                                 title: "icon family"
                                 model: [
                                     { label: "material", value: "material" },
@@ -2255,17 +1964,14 @@ Rectangle {
                                     { label: "(ﾉ◕ヮ◕)ﾉ kaomoji", value: "kaomoji" },
                                     { label: "plain text", value: "text" }
                                 ]
-                                currentValue: (root.usingMaterialIcons)
-                                    ? "material"
-                                    : Settings.iconSet
-                                onSelected: {
+                                currentValue: root.usingMaterialIcons ? "material" : Settings.iconSet
+                                onSelected: (value) => {
                                     Settings.iconSet = value;
-                                    if (value === "material") {
-                                        if (Settings.fontMaterial !== "Material Symbols Rounded" &&
-                                            Settings.fontMaterial !== "Material Symbols Outlined" &&
-                                            Settings.fontMaterial !== "Material Symbols Sharp") {
-                                            Settings.fontMaterial = "Material Symbols Rounded";
-                                        }
+                                    if (value === "material" &&
+                                        Settings.fontMaterial !== "Material Symbols Rounded" &&
+                                        Settings.fontMaterial !== "Material Symbols Outlined" &&
+                                        Settings.fontMaterial !== "Material Symbols Sharp") {
+                                        Settings.fontMaterial = "Material Symbols Rounded";
                                     }
                                     Settings.vibeStyle = (value === "kaomoji" || value === "text") ? value : "nerd";
                                 }
@@ -2282,7 +1988,7 @@ Rectangle {
                                     { label: "sharp", value: "Material Symbols Sharp" }
                                 ]
                                 currentValue: Settings.fontMaterial || "Material Symbols Rounded"
-                                onSelected: {
+                                onSelected: (value) => {
                                     Settings.iconSet = "material";
                                     Settings.fontMaterial = value;
                                 }
@@ -2296,22 +2002,27 @@ Rectangle {
                                     { label: "jetbrains mono nf", value: "JetBrainsMono NF" }
                                 ]
                                 currentValue: Settings.fontNerd
-                                onSelected: { Settings.fontNerd = value; }
+                                onSelected: (value) => Settings.fontNerd = value
                             }
                         }
                     }
                 }
                 TabScrollTrack { target: flickStyle }
 
-                // 3. BEHAVIOR & MOTION TAB
+                // 3. behavior, lock screen sandbox & clock tab
                 Flickable {
                     id: flickBehavior
                     anchors.fill: parent
                     visible: root.activeTab === "behavior"
                     clip: true
                     contentWidth: width
-                    contentHeight: behaviorCol.implicitHeight + 32
+                    contentHeight: behaviorCol.implicitHeight + 28
                     boundsBehavior: Flickable.StopAtBounds
+
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
 
                     ColumnLayout {
                         id: behaviorCol
@@ -2319,8 +2030,187 @@ Rectangle {
                         spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "motion presets"
-                            subtitle: "start with a personality preset before fine-tuning individual behavior"
+                            title: "lock screen & clock scope"
+                            subtitle: "keep lock screen tweaks in their own sandbox file or sync them globally across the rice"
+                            icon: Theme.iconLock
+                        }
+
+                        SettingCard {
+                            ToggleRow {
+                                icon: Theme.iconClock
+                                title: "sync clock globally across rice"
+                                subtitle: root.lockCfg.syncClockGlobal
+                                    ? "global mode: lock screen & bar share 12h/24h and seconds"
+                                    : "sandbox mode: lock screen clock stays independent in lockscreen.json"
+                                checked: Boolean(root.lockCfg.syncClockGlobal)
+                                onToggled: root.updateLockCfg("syncClockGlobal", !root.lockCfg.syncClockGlobal)
+                            }
+
+                            RowDivider {}
+
+                            Item {
+                                width: parent.width
+                                implicitHeight: lockQuoteRow.implicitHeight + 12
+
+                                ChoiceRow {
+                                    id: lockQuoteRow
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 6
+                                    title: "lock screen quote source"
+                                    model: [
+                                        { label: "hyprctl splash", value: "hyprland" },
+                                        { label: "unhinged", value: "unhinged" },
+                                        { label: "hidden", value: "off" }
+                                    ]
+                                    currentValue: root.lockCfg.quoteMode ?? "hyprland"
+                                    onSelected: (val) => root.updateLockCfg("quoteMode", val)
+                                }
+                            }
+
+                            RowDivider {}
+
+                            Item {
+                                width: parent.width
+                                implicitHeight: lockClockRow.implicitHeight + 12
+
+                                ChoiceRow {
+                                    id: lockClockRow
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 6
+                                    title: root.lockCfg.syncClockGlobal ? "global clock format (bar + lock screen)" : "sandboxed lock screen clock format"
+                                    model: [
+                                        { label: "12h", value: "12h" },
+                                        { label: "24h", value: "24h" },
+                                        { label: "12h + sec", value: "12h_sec" },
+                                        { label: "24h + sec", value: "24h_sec" }
+                                    ]
+                                    currentValue: (root.lockCfg.clock24h ? "24h" : "12h") + (root.lockCfg.showSeconds ? "_sec" : "")
+                                    onSelected: (val) => {
+                                        let is24 = val.startsWith("24h");
+                                        let hasSec = val.endsWith("_sec");
+                                        let next = Object.assign({}, root.lockCfg, { clock24h: is24, showSeconds: hasSec });
+                                        root.lockCfg = next;
+                                        lockSandboxFile.setText(JSON.stringify(next, null, 2));
+                                        if (next.syncClockGlobal) root.applyGlobalClock(is24, hasSec);
+                                    }
+                                }
+                            }
+
+                            RowDivider {}
+
+                            Item {
+                                width: parent.width
+                                implicitHeight: lockDimSlider.implicitHeight + 14
+
+                                SliderRow {
+                                    id: lockDimSlider
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.margins: 6
+                                    title: "lock screen backdrop dim"
+                                    from: 0.20
+                                    to: 0.90
+                                    stepSize: 0.05
+                                    value: root.lockCfg.scrimDim ?? 0.58
+                                    formatter: (v) => Math.round(v * 100) + "%"
+                                    onMoved: (val) => root.updateLockCfg("scrimDim", val)
+                                }
+                            }
+
+                            RowDivider {}
+
+                            ToggleRow {
+                                icon: Theme.iconWallpaper
+                                title: "sync lock wallpaper with desktop"
+                                subtitle: "disable to keep a separate shuffled wallpaper on the lock screen"
+                                checked: root.lockCfg.wallpaperSync ?? true
+                                onToggled: root.updateLockCfg("wallpaperSync", !(root.lockCfg.wallpaperSync ?? true))
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "bar clock, workspaces & audio"
+                            icon: Theme.iconClock
+                        }
+
+                        CollapsibleSection {
+                            Layout.fillWidth: true
+                            title: "bar clock & workspace capacity"
+                            subtitle: "bar time/date formats & max workspaces"
+                            icon: Theme.iconClock
+                            badge: Settings.showBarDate ? Settings.clockFormat : "time only"
+
+                            Dropdown {
+                                width: parent.width
+                                label: "bar clock format"
+                                icon: Theme.iconClock
+                                model: [
+                                    { label: "24h (16:45)", value: "HH:mm" },
+                                    { label: "12h (4:45 pm)", value: "h:mm ap" },
+                                    { label: "24h + sec", value: "HH:mm:ss" },
+                                    { label: "12h + sec", value: "h:mm:ss ap" }
+                                ]
+                                currentValue: Settings.clockFormat
+                                onSelected: (value) => {
+                                    Settings.clockFormat = value;
+                                    let is12 = /ap/i.test(value);
+                                    let hasSec = /:ss/i.test(value);
+                                    Settings.clockMilitary = !is12;
+                                    Settings.clock24h = !is12;
+                                    Settings.clockShowSeconds = hasSec;
+                                    if (root.lockCfg.syncClockGlobal) {
+                                        let next = Object.assign({}, root.lockCfg, { clock24h: !is12, showSeconds: hasSec });
+                                        root.lockCfg = next;
+                                        lockSandboxFile.setText(JSON.stringify(next, null, 2));
+                                    }
+                                }
+                            }
+
+                            Dropdown {
+                                width: parent.width
+                                label: "bar date format"
+                                icon: Theme.iconCalendar
+                                model: [
+                                    { label: "hidden (time only)", value: "none" },
+                                    { label: "short (mon, sep 1)", value: "ddd, MMM d" },
+                                    { label: "standard (sep 1)", value: "MMM d, yyyy" },
+                                    { label: "iso (2026-09-01)", value: "yyyy-MM-dd" }
+                                ]
+                                currentValue: !Settings.showBarDate ? "none" : Settings.dateFormat
+                                onSelected: (value) => {
+                                    if (value === "none") {
+                                        Settings.showBarDate = false;
+                                    } else {
+                                        Settings.dateFormat = value;
+                                        Settings.showBarDate = true;
+                                    }
+                                }
+                            }
+
+                            Dropdown {
+                                width: parent.width
+                                label: "workspace capacity"
+                                icon: Theme.iconWorkspaces
+                                model: [
+                                    { label: "5 spaces", value: 5 },
+                                    { label: "8 spaces", value: 8 },
+                                    { label: "10 spaces", value: 10 },
+                                    { label: "12 spaces", value: 12 },
+                                    { label: "16 spaces", value: 16 }
+                                ]
+                                currentValue: Settings.workspaceCount
+                                onSelected: (value) => Settings.workspaceCount = value
+                            }
+                        }
+
+                        CategoryHeader {
+                            title: "motion & interaction"
+                            subtitle: "animation speed presets, workspace trail, and hover behavior"
                             icon: Theme.iconFlame
                         }
 
@@ -2329,32 +2219,30 @@ Rectangle {
                                 model: [
                                     { id: "hyprland", label: "hyprland sync (default)", desc: "matches hyprland bezier curves & timing" },
                                     { id: "snappy", label: "snappy & responsive", desc: "110ms ultra-fast transitions with zero delay" },
-                                    { id: "chill", label: "smooth & relaxed", desc: "luxurious 300ms cubic ease for aesthetic flow" },
-                                    { id: "instant", label: "instant / zero lag", desc: "50ms minimal motion for raw performance" }
+                                    { id: "chill", label: "smooth & relaxed", desc: "300ms cubic ease for aesthetic flow" },
+                                    { id: "instant", label: "instant / zero lag", desc: "minimal motion for raw performance" }
                                 ]
 
                                 delegate: Column {
                                     required property var modelData
                                     required property int index
                                     width: parent.width
-                                    spacing: 0
 
                                     RowDivider { visible: index > 0 }
 
                                     Rectangle {
                                         width: parent.width
-                                        height: 52
+                                        height: 48
+                                        radius: Theme.radiusSm
                                         color: Settings.animSpeed === modelData.id
-                                        ? Theme.primary_overlay
-                                        : (aMouse.containsMouse ? Theme.surface_container_highest : "transparent")
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                                            ? Theme.primary_overlay
+                                            : (aMouse.containsMouse ? Theme.surface_container_highest : "transparent")
 
                                         RowLayout {
                                             anchors.fill: parent
-                                            anchors.leftMargin: 12
-                                            anchors.rightMargin: 12
-                                            spacing: 12
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            spacing: 10
 
                                             Text {
                                                 text: Settings.animSpeed === modelData.id ? Theme.iconCheckCircle : Theme.iconFlame
@@ -2365,7 +2253,7 @@ Rectangle {
 
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 2
+                                                spacing: 1
 
                                                 Text {
                                                     text: modelData.label
@@ -2389,7 +2277,7 @@ Rectangle {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: { Settings.animSpeed = modelData.id; }
+                                            onClicked: Settings.animSpeed = modelData.id
                                         }
                                     }
                                 }
@@ -2398,8 +2286,8 @@ Rectangle {
 
                         CollapsibleSection {
                             Layout.fillWidth: true
-                            title: "workspace motion"
-                            subtitle: "motion physics & trail duration"
+                            title: "workspace indicator motion"
+                            subtitle: "pill physics & fluid trail duration"
                             icon: Theme.iconWorkspaces
                             badge: Settings.workspaceMode
 
@@ -2413,7 +2301,7 @@ Rectangle {
                                     { label: "discrete pill", value: "discrete" }
                                 ]
                                 currentValue: Settings.workspaceMode
-                                onSelected: { Settings.workspaceMode = value; }
+                                onSelected: (value) => Settings.workspaceMode = value
                             }
 
                             SliderRow {
@@ -2424,14 +2312,14 @@ Rectangle {
                                 stepSize: 10
                                 suffix: "ms"
                                 value: Settings.workspaceTrailDuration
-                                onMoved: { Settings.workspaceTrailDuration = val; }
+                                onMoved: (val) => Settings.workspaceTrailDuration = val
                             }
                         }
 
                         CollapsibleSection {
                             Layout.fillWidth: true
-                            title: "hover & interaction"
-                            subtitle: "pill hover triggers & delay"
+                            title: "hover & flyouts"
+                            subtitle: "pill hover triggers & auto-close"
                             icon: Theme.iconEye
                             badge: Settings.hoverToOpen ? "enabled" : "click only"
 
@@ -2442,17 +2330,15 @@ Rectangle {
                                     title: "hover to open flyouts"
                                     subtitle: "hover over bar pills to open popups"
                                     checked: Settings.hoverToOpen
-                                    onToggled: { Settings.hoverToOpen = !Settings.hoverToOpen; }
+                                    onToggled: Settings.hoverToOpen = !Settings.hoverToOpen
                                 }
-
                                 RowDivider {}
-
                                 ToggleRow {
                                     icon: Theme.iconEyeOff
                                     title: "hover auto-close"
                                     subtitle: "dismiss popup when cursor leaves"
                                     checked: Settings.hoverAutoClose
-                                    onToggled: { Settings.hoverAutoClose = !Settings.hoverAutoClose; }
+                                    onToggled: Settings.hoverAutoClose = !Settings.hoverAutoClose
                                 }
                             }
 
@@ -2464,84 +2350,16 @@ Rectangle {
                                 stepSize: 10
                                 suffix: "ms"
                                 value: Settings.hoverDelay
-                                onMoved: { Settings.hoverDelay = val; }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "system feedback"
-                            icon: Theme.iconSliders
-                        }
-
-                        CollapsibleSection {
-                            Layout.fillWidth: true
-                            title: "clock & date display"
-                            subtitle: "formats & workspace capacity"
-                            icon: Theme.iconClock
-                            badge: Settings.showBarDate ? Settings.clockFormat : "time only"
-
-                            Dropdown {
-                                width: parent.width
-                                label: "clock time format"
-                                icon: Theme.iconClock
-                                model: [
-                                    { label: "24h (16:45)", value: "HH:mm" },
-                                    { label: "12h (4:45 pm)", value: "h:mm ap" },
-                                    { label: "24h + sec", value: "HH:mm:ss" },
-                                    { label: "12h + sec", value: "h:mm:ss ap" }
-                                ]
-                                currentValue: Settings.clockFormat
-                                onSelected: {
-                                    Settings.clockFormat = value;
-                                    let is12 = /ap/i.test(value);
-                                    Settings.clockMilitary = !is12;
-                                    Settings.clockShowSeconds = /:ss/i.test(value);
-                                }
-                            }
-
-                            Dropdown {
-                                width: parent.width
-                                label: "date display format"
-                                icon: Theme.iconCalendar
-                                model: [
-                                    { label: "hidden (time only)", value: "none" },
-                                    { label: "short (mon, sep 1)", value: "ddd, MMM d" },
-                                    { label: "standard (sep 1)", value: "MMM d, yyyy" },
-                                    { label: "iso (2026-09-01)", value: "yyyy-MM-dd" }
-                                ]
-                                currentValue: !Settings.showBarDate ? "none" : Settings.dateFormat
-                                onSelected: {
-                                    if (value === "none") {
-                                        Settings.showBarDate = false;
-                                    } else {
-                                        Settings.dateFormat = value;
-                                        Settings.showBarDate = true;
-                                    }
-                                }
-                            }
-
-                            Dropdown {
-                                width: parent.width
-                                label: "workspace capacity"
-                                icon: Theme.iconWorkspaces
-                                model: [
-                                    { label: "5 spaces", value: 5 },
-                                    { label: "8 spaces", value: 8 },
-                                    { label: "10 spaces", value: 10 },
-                                    { label: "12 spaces", value: 12 },
-                                    { label: "16 spaces", value: 16 }
-                                ]
-                                currentValue: Settings.workspaceCount
-                                onSelected: { Settings.workspaceCount = value; }
+                                onMoved: (val) => Settings.hoverDelay = val
                             }
                         }
 
                         CollapsibleSection {
                             Layout.fillWidth: true
-                            title: "audio & volume limits"
-                            subtitle: "scroll step & ceiling limit"
-                            icon: Theme.iconVolHigh
-                            badge: Settings.volumeMax + "%"
+                            title: "audio & notifications"
+                            subtitle: "volume limits, toast timeout & dnd"
+                            icon: Theme.iconBell
+                            badge: Settings.dnd ? "dnd on" : (Settings.volumeMax + "% max")
 
                             SliderRow {
                                 title: "volume scroll step"
@@ -2549,8 +2367,8 @@ Rectangle {
                                 to: 15
                                 stepSize: 1
                                 value: Settings.volumeStep
-                                formatter: function(v) { return Math.round(v) + "%"; }
-                                onMoved: { Settings.volumeStep = val; }
+                                formatter: (v) => Math.round(v) + "%"
+                                onMoved: (val) => Settings.volumeStep = val
                             }
 
                             SliderRow {
@@ -2559,17 +2377,9 @@ Rectangle {
                                 to: 200
                                 stepSize: 5
                                 value: Settings.volumeMax
-                                formatter: function(v) { return Math.round(v) + "%"; }
-                                onMoved: { Settings.volumeMax = val; }
+                                formatter: (v) => Math.round(v) + "%"
+                                onMoved: (val) => Settings.volumeMax = val
                             }
-                        }
-
-                        CollapsibleSection {
-                            Layout.fillWidth: true
-                            title: "notifications & alerts"
-                            subtitle: "auto-dismiss & do not disturb"
-                            icon: Theme.iconBell
-                            badge: Settings.dnd ? "dnd on" : (Settings.notificationTimeout === 0 ? "sticky" : (Settings.notificationTimeout / 1000 + "s"))
 
                             Dropdown {
                                 width: parent.width
@@ -2583,124 +2393,54 @@ Rectangle {
                                     { label: "sticky (manual)", value: 0 }
                                 ]
                                 currentValue: Settings.notificationTimeout
-                                onSelected: { Settings.notificationTimeout = value; }
+                                onSelected: (value) => Settings.notificationTimeout = value
                             }
 
                             SettingCard {
                                 width: parent.width
                                 ToggleRow {
-                                    icon: Theme.iconBell
+                                    icon: Theme.iconBellOff
                                     title: "do not disturb"
                                     subtitle: "suppress on-screen notification popups"
                                     checked: Settings.dnd
-                                    onToggled: { Settings.dnd = !Settings.dnd; }
+                                    onToggled: Settings.dnd = !Settings.dnd
                                 }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "personality"
-                            icon: Theme.iconSparkles
-                        }
-
-                        SettingCard {
-                            ToggleRow {
-                                icon: Theme.iconFlame
-                                title: "unhinged flavor text"
-                                subtitle: "chaotic system status quips & personality"
-                                checked: Settings.unhingedFlavor
-                                onToggled: { Settings.unhingedFlavor = !Settings.unhingedFlavor; }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 64
-                            radius: Theme.radiusMd
-                            color: Settings.showMotionSandbox ? Theme.primary_overlay : Theme.surface_container_highest
-                            border.color: Settings.showMotionSandbox ? Theme.primary : Theme.widgetBorder
-                            border.width: 1
-
-                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 12
-
-                                Rectangle {
-                                    width: 44
-                                    height: 44
-                                    radius: Theme.radiusSm
-                                    color: Settings.showMotionSandbox ? Theme.primary_overlay : Theme.surface_container_high
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: Theme.iconFlame
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeLg
-                                        color: Settings.showMotionSandbox ? Theme.primary : Theme.on_surface
-                                    }
+                                RowDivider {}
+                                ToggleRow {
+                                    icon: Theme.iconFlame
+                                    title: "unhinged flavor text"
+                                    subtitle: "chaotic system status quips & personality"
+                                    checked: Settings.unhingedFlavor
+                                    onToggled: Settings.unhingedFlavor = !Settings.unhingedFlavor
                                 }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-
-                                    Text {
-                                        text: "motion sandbox"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
-                                    Text {
-                                        text: Settings.showMotionSandbox ? "sandbox active on screen edge (click to dismiss)" : "interactive physics playground with springs & gravity"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Theme.on_surface_variant
-                                    }
+                                RowDivider {}
+                                ToggleRow {
+                                    icon: Theme.iconSparkles
+                                    title: "motion sandbox playground"
+                                    subtitle: "open interactive physics playground on screen edge"
+                                    checked: Settings.showMotionSandbox
+                                    onToggled: Settings.showMotionSandbox = !Settings.showMotionSandbox
                                 }
-
-                                Rectangle {
-                                    height: 28
-                                    implicitWidth: launchSandboxText.implicitWidth + 24
-                                    radius: Theme.radiusPill
-                                    color: Settings.showMotionSandbox ? Theme.primary : Theme.primary_overlay
-
-                                    Text {
-                                        id: launchSandboxText
-                                        anchors.centerIn: parent
-                                        text: Settings.showMotionSandbox ? "active ✓" : "launch"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        font.weight: Theme.fontWeightBold
-                                        color: Settings.showMotionSandbox ? Theme.on_primary : Theme.primary
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: { Settings.showMotionSandbox = !Settings.showMotionSandbox; }
                             }
                         }
                     }
                 }
                 TabScrollTrack { target: flickBehavior }
 
-                // 4. CAPTURE & MEDIA TAB
+                // 4. capture & recording tab
                 Flickable {
                     id: flickScreenshot
                     anchors.fill: parent
                     visible: root.activeTab === "capture"
                     clip: true
                     contentWidth: width
-                    contentHeight: screenshotCol.implicitHeight + 32
+                    contentHeight: screenshotCol.implicitHeight + 28
                     boundsBehavior: Flickable.StopAtBounds
+
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
 
                     ColumnLayout {
                         id: screenshotCol
@@ -2708,349 +2448,69 @@ Rectangle {
                         spacing: Theme.popupSpacing
 
                         CategoryHeader {
-                            title: "capture"
-                            subtitle: "instant actions first; behavior and visuals live underneath"
+                            title: "quick capture & recording"
+                            subtitle: "launch a screenshot or screen recording directly"
                             icon: Theme.iconCamera
                         }
 
                         SettingCard {
                             Item {
                                 width: parent.width
-                                implicitHeight: 56
+                                implicitHeight: 48
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 8
+                                    anchors.margins: 4
                                     spacing: 8
 
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: regMouse.pressed ? Theme.primary : (regMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
+                                    Repeater {
+                                        model: [
+                                            { id: "region", label: "shot region", icon: Theme.iconCrop },
+                                            { id: "window", label: "shot window", icon: Theme.iconWorkspaces },
+                                            { id: "full", label: "shot display", icon: Theme.iconExpand }
+                                        ]
 
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            height: 38
+                                            radius: Theme.widgetRadius
+                                            color: scQuickM.pressed ? Theme.primary : (scQuickM.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
+                                            border.color: scQuickM.containsMouse ? Theme.primary : Theme.outline_variant
+                                            border.width: 1
 
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconCrop
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: regMouse.pressed ? Theme.on_primary : Theme.primary
+                                            RowLayout {
+                                                anchors.centerIn: parent
+                                                spacing: 6
+                                                Text {
+                                                    text: modelData.icon
+                                                    font.family: Theme.fontIcon
+                                                    font.pixelSize: Theme.fontSizeSm
+                                                    color: scQuickM.pressed ? Theme.on_primary : Theme.primary
+                                                }
+                                                Text {
+                                                    text: modelData.label
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: Theme.fontSizeXs
+                                                    font.weight: Theme.fontWeightMedium
+                                                    color: scQuickM.pressed ? Theme.on_primary : Theme.on_surface
+                                                }
                                             }
-                                            Text {
-                                                text: "capture region"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: regMouse.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
 
-                                        MouseArea {
-                                            id: regMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                ScreenshotService.open("region");
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: winMouse.pressed ? Theme.primary : (winMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconWorkspaces
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: winMouse.pressed ? Theme.on_primary : Theme.primary
-                                            }
-                                            Text {
-                                                text: "capture window"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: winMouse.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: winMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                ScreenshotService.open("window");
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: fullMouse.pressed ? Theme.primary : (fullMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconExpand
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: fullMouse.pressed ? Theme.on_primary : Theme.primary
-                                            }
-                                            Text {
-                                                text: "fullscreen"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: fullMouse.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: fullMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                const scr = root.barScreen || (Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null);
-                                                ScreenshotService.captureFullscreen(scr, Settings.screenshotDefaultAction || "both");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "recording"
-                            subtitle: "gpu-screen-recorder controls and audio sources"
-                            icon: Theme.iconCamera
-                        }
-
-                        SettingCard {
-                            Item {
-                                width: parent.width
-                                implicitHeight: ScreenRecService.isRecording ? 58 : 56
-
-                                RowLayout {
-                                    visible: ScreenRecService.isRecording
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 8
-
-                                    Rectangle {
-                                        width: 10
-                                        height: 10
-                                        radius: 5
-                                        color: Theme.error
-                                    }
-
-                                    Text {
-                                        text: "recording (" + ScreenRecService.elapsedTimeString + ")"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.error
-                                        Layout.fillWidth: true
-                                    }
-
-                                    Rectangle {
-                                        height: 36
-                                        implicitWidth: stopBtnTxt.implicitWidth + 24
-                                        radius: Theme.radiusSm
-                                        color: Theme.error
-
-                                        Text {
-                                            id: stopBtnTxt
-                                            anchors.centerIn: parent
-                                            text: "stop & save"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_error
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: { ScreenRecService.stopRecording(); }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        height: 36
-                                        implicitWidth: discBtnTxt.implicitWidth + 20
-                                        radius: Theme.radiusSm
-                                        color: "transparent"
-                                        border.color: Theme.error
-                                        border.width: 1
-
-                                        Text {
-                                            id: discBtnTxt
-                                            anchors.centerIn: parent
-                                            text: "discard"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.error
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: { ScreenRecService.discardRecording(); }
-                                        }
-                                    }
-                                }
-
-                                RowLayout {
-                                    visible: !ScreenRecService.isRecording
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 8
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: recRegM.pressed ? Theme.primary : (recRegM.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconCrop
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: recRegM.pressed ? Theme.on_primary : Theme.primary
-                                            }
-                                            Text {
-                                                text: "region"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: recRegM.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: recRegM
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                ScreenRecService.startRecording("region");
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: recScrM.pressed ? Theme.primary : (recScrM.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconExpand
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: recScrM.pressed ? Theme.on_primary : Theme.primary
-                                            }
-                                            Text {
-                                                text: "screen"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: recScrM.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: recScrM
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                ScreenRecService.startRecording("screen");
-                                            }
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 40
-                                        radius: Theme.widgetRadius
-                                        color: recWinM.pressed ? Theme.primary : (recWinM.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest)
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                        RowLayout {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                text: Theme.iconWorkspaces
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: Theme.fontSizeSm
-                                                color: recWinM.pressed ? Theme.on_primary : Theme.primary
-                                            }
-                                            Text {
-                                                text: "window"
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.fontSizeSm
-                                                font.weight: Theme.fontWeightMedium
-                                                color: recWinM.pressed ? Theme.on_primary : Theme.on_surface
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: recWinM
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                ScreenRecService.startRecording("window");
+                                            MouseArea {
+                                                id: scQuickM
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    popup.open = false;
+                                                    if (modelData.id === "full") {
+                                                        const scr = root.barScreen || (Quickshell.screens?.length > 0 ? Quickshell.screens[0] : null);
+                                                        ScreenshotService.captureFullscreen(scr, Settings.screenshotDefaultAction || "both");
+                                                    } else {
+                                                        ScreenshotService.open(modelData.id);
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -3067,16 +2527,11 @@ Rectangle {
                                 { label: "muted", value: "none" }
                             ]
                             currentValue: ScreenRecService.activeAudio
-                            onSelected: { ScreenRecService.activeAudio = value; }
-                        }
-
-                        CategoryHeader {
-                            title: "after capture"
-                            icon: Theme.iconSliders
+                            onSelected: (val) => ScreenRecService.activeAudio = val
                         }
 
                         ChoiceRow {
-                            title: "default action on confirmation"
+                            title: "default screenshot action"
                             model: [
                                 { label: "save & copy", value: "both" },
                                 { label: "clipboard only", value: "copy" },
@@ -3084,53 +2539,70 @@ Rectangle {
                                 { label: "editor / markup", value: "edit" }
                             ]
                             currentValue: Settings.screenshotDefaultAction
-                            onSelected: { Settings.screenshotDefaultAction = value; }
+                            onSelected: (val) => Settings.screenshotDefaultAction = val
+                        }
+
+                        CategoryHeader {
+                            title: "selection overlay & behavior"
+                            icon: Theme.iconSliders
                         }
 
                         SettingCard {
                             ToggleRow {
                                 icon: Theme.iconWorkspaces
                                 title: "window snapping"
-                                subtitle: "hover over any hyprland client to auto-detect its geometry"
+                                subtitle: "hover over any hyprland client to snap to its geometry"
                                 checked: Settings.screenshotWindowSnapping
-                                onToggled: { Settings.screenshotWindowSnapping = !Settings.screenshotWindowSnapping; }
+                                onToggled: Settings.screenshotWindowSnapping = !Settings.screenshotWindowSnapping
                             }
-
                             RowDivider {}
-
                             ToggleRow {
                                 icon: Theme.iconEye
                                 title: "freeze frame on open"
-                                subtitle: "freeze display during selection so animated windows don't move"
+                                subtitle: "freeze display during selection so windows don't move"
                                 checked: Settings.screenshotFreeze
-                                onToggled: { Settings.screenshotFreeze = !Settings.screenshotFreeze; }
+                                onToggled: Settings.screenshotFreeze = !Settings.screenshotFreeze
                             }
-
                             RowDivider {}
-
                             ToggleRow {
                                 icon: Theme.iconFlame
                                 title: "shutter flash"
-                                subtitle: "visual flash animation when capture is completed"
+                                subtitle: "visual flash animation when capture finishes"
                                 checked: Settings.screenshotFlash
-                                onToggled: { Settings.screenshotFlash = !Settings.screenshotFlash; }
+                                onToggled: Settings.screenshotFlash = !Settings.screenshotFlash
                             }
-
                             RowDivider {}
-
                             ToggleRow {
                                 icon: Theme.iconBell
                                 title: "desktop notification"
-                                subtitle: "dispatch notification with image thumbnail on capture"
+                                subtitle: "send notification with image preview on capture"
                                 checked: Settings.screenshotNotify
-                                onToggled: { Settings.screenshotNotify = !Settings.screenshotNotify; }
+                                onToggled: Settings.screenshotNotify = !Settings.screenshotNotify
                             }
-                        }
-
-                        CategoryHeader {
-                            title: "selection overlay"
-                            subtitle: "everything the capture selector draws while you aim"
-                            icon: Theme.iconSliders
+                            RowDivider {}
+                            ToggleRow {
+                                icon: Theme.iconGrid
+                                title: "hairline crosshairs"
+                                subtitle: "show alignment crosshairs tracking cursor"
+                                checked: Settings.screenshotShowCrosshair
+                                onToggled: Settings.screenshotShowCrosshair = !Settings.screenshotShowCrosshair
+                            }
+                            RowDivider {}
+                            ToggleRow {
+                                icon: Theme.iconNote
+                                title: "live dimension badge"
+                                subtitle: "show [w × h] and window class above selection"
+                                checked: Settings.screenshotShowBadge
+                                onToggled: Settings.screenshotShowBadge = !Settings.screenshotShowBadge
+                            }
+                            RowDivider {}
+                            ToggleRow {
+                                icon: Theme.iconExpand
+                                title: "corner accent handles"
+                                subtitle: "render accent markers on selection corners"
+                                checked: Settings.screenshotShowHandles
+                                onToggled: Settings.screenshotShowHandles = !Settings.screenshotShowHandles
+                            }
                         }
 
                         SliderRow {
@@ -3139,8 +2611,8 @@ Rectangle {
                             to: 0.9
                             stepSize: 0.05
                             value: Settings.screenshotDimOpacity
-                            formatter: function(v) { return Math.round(v * 100) + "%"; }
-                            onMoved: { Settings.screenshotDimOpacity = val; }
+                            formatter: (v) => Math.round(v * 100) + "%"
+                            onMoved: (val) => Settings.screenshotDimOpacity = val
                         }
 
                         SliderRow {
@@ -3150,7 +2622,7 @@ Rectangle {
                             stepSize: 1
                             suffix: "px"
                             value: Settings.screenshotBorderWidth
-                            onMoved: { Settings.screenshotBorderWidth = val; }
+                            onMoved: (val) => Settings.screenshotBorderWidth = val
                         }
 
                         SliderRow {
@@ -3160,140 +2632,36 @@ Rectangle {
                             stepSize: 2
                             suffix: "px"
                             value: Settings.screenshotBorderRadius
-                            onMoved: { Settings.screenshotBorderRadius = val; }
-                        }
-
-                        SettingCard {
-                            ToggleRow {
-                                icon: Theme.iconGrid
-                                title: "hairline crosshairs"
-                                subtitle: "show screen-spanning crosshair lines tracking cursor"
-                                checked: Settings.screenshotShowCrosshair
-                                onToggled: { Settings.screenshotShowCrosshair = !Settings.screenshotShowCrosshair; }
-                            }
-
-                            RowDivider {}
-
-                            ToggleRow {
-                                icon: Theme.iconNote
-                                title: "live dimension badge"
-                                subtitle: "show [w x h] badge and client name above selection"
-                                checked: Settings.screenshotShowBadge
-                                onToggled: { Settings.screenshotShowBadge = !Settings.screenshotShowBadge; }
-                            }
-
-                            RowDivider {}
-
-                            ToggleRow {
-                                icon: Theme.iconExpand
-                                title: "corner accent handles"
-                                subtitle: "render accent markers on selection corners"
-                                checked: Settings.screenshotShowHandles
-                                onToggled: { Settings.screenshotShowHandles = !Settings.screenshotShowHandles; }
-                            }
-                        }
-
-                        CategoryHeader {
-                            title: "storage"
-                            icon: Theme.iconFolder
-                        }
-
-                        SettingCard {
-                            Rectangle {
-                                width: parent.width
-                                implicitHeight: 48
-                                height: implicitHeight
-                                color: "transparent"
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 8
-                                    spacing: 8
-
-                                    Text {
-                                        text: Theme.iconFolder
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeSm
-                                        color: Theme.primary
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Text {
-                                            text: "screenshots & recordings"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_surface
-                                        }
-
-                                        Text {
-                                            text: Settings.screenshotDir
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: 10
-                                            color: Theme.on_surface_variant
-                                            elide: Text.ElideMiddle
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        height: 28
-                                        implicitWidth: openScTxt.implicitWidth + 24
-                                        radius: Theme.radiusSm
-                                        color: oScMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container
-                                        border.color: Theme.outline_variant || Theme.primary
-                                        border.width: 1
-
-                                        Text {
-                                            id: openScTxt
-                                            anchors.centerIn: parent
-                                            text: "open files"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: 10
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.primary
-                                        }
-
-                                        MouseArea {
-                                            id: oScMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                popup.open = false;
-                                                let dir = Settings.screenshotDir || (Quickshell.env("HOME") + "/Pictures/Screenshots");
-                                                Quickshell.execDetached(["xdg-open", dir]);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            onMoved: (val) => Settings.screenshotBorderRadius = val
                         }
                     }
                 }
                 TabScrollTrack { target: flickScreenshot }
 
-                // 5. ADVANCED & SYSTEM TAB
+                // 5. system & recovery tab
                 Flickable {
                     id: flickAdvanced
                     anchors.fill: parent
                     visible: root.activeTab === "advanced"
                     clip: true
                     contentWidth: width
-                    contentHeight: advancedCol.implicitHeight + 32
+                    contentHeight: advancedCol.implicitHeight + 28
                     boundsBehavior: Flickable.StopAtBounds
+
+                    WheelHandler {
+                        orientation: Qt.Vertical
+                        target: parent
+                    }
 
                     ColumnLayout {
                         id: advancedCol
                         width: parent.width
                         spacing: Theme.popupSpacing
 
+                        readonly property var aliasKeys: Object.keys(Settings.networkAliases || {})
+
                         CategoryHeader {
-                            title: "shell"
+                            title: "shell profiles & process"
                             icon: Theme.iconTerminal
                         }
 
@@ -3303,7 +2671,7 @@ Rectangle {
                                     {
                                         id: "quickshell",
                                         name: "quickshell (native)",
-                                        desc: "my shitty ai-generated quickshell setup",
+                                        desc: "primary custom quickshell setup",
                                         path: "~/.config/quickshell",
                                         icon: Theme.iconSliders
                                     },
@@ -3320,27 +2688,25 @@ Rectangle {
                                     required property var modelData
                                     required property int index
                                     width: parent.width
-                                    spacing: 0
 
                                     RowDivider { visible: index > 0 }
 
                                     Rectangle {
                                         width: parent.width
-                                        implicitHeight: 68
+                                        implicitHeight: 62
+                                        radius: Theme.radiusSm
                                         color: root.activeShell === modelData.id
-                                        ? Theme.primary_overlay
-                                        : (shMouse.containsMouse ? Theme.surface_container_highest : "transparent")
-
-                                        Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                                            ? Theme.primary_overlay
+                                            : (shMouse.containsMouse ? Theme.surface_container_highest : "transparent")
 
                                         RowLayout {
                                             anchors.fill: parent
-                                            anchors.margins: 12
+                                            anchors.margins: 10
                                             spacing: 12
 
                                             Rectangle {
-                                                width: 40
-                                                height: 40
+                                                width: 38
+                                                height: 38
                                                 radius: Theme.radiusSm
                                                 color: root.activeShell === modelData.id ? Theme.primary : Theme.surface_container_high
 
@@ -3355,83 +2721,39 @@ Rectangle {
 
                                             ColumnLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 2
-
-                                                RowLayout {
-                                                    spacing: 6
-                                                    Text {
-                                                        text: modelData.name
-                                                        font.family: Theme.fontFamily
-                                                        font.pixelSize: Theme.fontSizeSm
-                                                        font.weight: Theme.fontWeightBold
-                                                        color: Theme.on_surface
-                                                    }
-                                                    Rectangle {
-                                                        visible: root.activeShell === modelData.id
-                                                        height: 16
-                                                        width: activeText.implicitWidth + 12
-                                                        radius: 8
-                                                        color: Theme.primary
-
-                                                        Text {
-                                                            id: activeText
-                                                            anchors.centerIn: parent
-                                                            text: "active"
-                                                            font.family: Theme.fontFamily
-                                                            font.pixelSize: 9
-                                                            font.weight: Theme.fontWeightBold
-                                                            color: Theme.on_primary
-                                                        }
-                                                    }
-                                                }
+                                                spacing: 1
 
                                                 Text {
-                                                    text: modelData.desc
+                                                    text: modelData.name
                                                     font.family: Theme.fontFamily
-                                                    font.pixelSize: 10
-                                                    color: Theme.on_surface_variant
+                                                    font.pixelSize: Theme.fontSizeSm
+                                                    font.weight: Theme.fontWeightBold
+                                                    color: Theme.on_surface
                                                 }
 
                                                 Text {
-                                                    text: modelData.path
+                                                    text: modelData.desc + "  •  " + modelData.path
                                                     font.family: Theme.fontMono
                                                     font.pixelSize: 9
-                                                    color: Theme.primary
+                                                    color: Theme.on_surface_variant
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
                                                 }
                                             }
 
                                             Rectangle {
-                                                height: 30
-                                                width: 72
-                                                radius: Theme.radiusSm
-                                                color: root.activeShell === modelData.id
-                                                ? Theme.surface_container_high
-                                                : (shBtnMouse.containsMouse ? Theme.primary : Theme.surface_container_highest)
-                                                border.color: root.activeShell === modelData.id ? Theme.primary : "transparent"
-                                                border.width: 1
-
-                                                Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
+                                                height: 28
+                                                width: 68
+                                                radius: Theme.radiusPill
+                                                color: root.activeShell === modelData.id ? Theme.primary : Theme.surface_container_highest
 
                                                 Text {
                                                     anchors.centerIn: parent
-                                                    text: root.activeShell === modelData.id ? "current" : "switch"
+                                                    text: root.activeShell === modelData.id ? "active" : "switch"
                                                     font.family: Theme.fontFamily
                                                     font.pixelSize: 10
                                                     font.weight: Theme.fontWeightBold
-                                                    color: root.activeShell === modelData.id ? Theme.primary : (shBtnMouse.containsMouse ? Theme.on_primary : Theme.on_surface)
-                                                }
-
-                                                MouseArea {
-                                                    id: shBtnMouse
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    cursorShape: root.activeShell === modelData.id ? Qt.ArrowCursor : Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        if (root.activeShell !== modelData.id) {
-                                                            root.activeShell = modelData.id;
-                                                            switchProc.switchShell(modelData.id);
-                                                        }
-                                                    }
+                                                    color: root.activeShell === modelData.id ? Theme.on_primary : Theme.on_surface
                                                 }
                                             }
                                         }
@@ -3453,101 +2775,41 @@ Rectangle {
                             }
                         }
 
-                        CategoryHeader {
-                            title: "process & cache"
-                            subtitle: "restart, persistence, and shell state diagnostics"
-                            icon: Theme.iconSliders
-                        }
-
-                        RowLayout {
+                        Rectangle {
                             Layout.fillWidth: true
-                            spacing: 8
+                            height: 42
+                            radius: Theme.widgetRadius
+                            color: rstMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
+                            border.color: rstMouse.containsMouse ? Theme.primary : Theme.widgetBorder
+                            border.width: 1
 
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 44
-                                radius: Theme.widgetRadius
-                                color: rstMouse.containsMouse ? Theme.primary_overlay : Theme.surface_container_highest
-                                border.color: rstMouse.containsMouse ? Theme.primary : Theme.widgetBorder
-                                border.width: 1
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 8
 
-                                Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-                                Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-
-                                RowLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 8
-
-                                    Text {
-                                        text: Theme.iconHistory
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeSm
-                                        color: Theme.primary
-                                    }
-
-                                    Text {
-                                        text: switchProc.running ? "restarting shell..." : "restart active shell process"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
+                                Text {
+                                    text: Theme.iconRefresh
+                                    font.family: Theme.fontIcon
+                                    font.pixelSize: Theme.fontSizeSm
+                                    color: Theme.primary
                                 }
 
-                                MouseArea {
-                                    id: rstMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    enabled: !switchProc.running
-                                    onClicked: { switchProc.restartCurrent(); }
+                                Text {
+                                    text: switchProc.running ? "restarting shell..." : "restart active shell process"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSm
+                                    font.weight: Theme.fontWeightBold
+                                    color: Theme.on_surface
                                 }
                             }
-                        }
 
-                        SettingCard {
-                            Item {
-                                width: parent.width
-                                implicitHeight: infoCol.implicitHeight + 24
-                                ColumnLayout {
-                                    id: infoCol
-                                    anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 8
-
-                                    RowLayout {
-                                        spacing: 8
-                                        Text {
-                                            text: Theme.iconNote
-                                            font.family: Theme.fontIcon
-                                            font.pixelSize: Theme.fontSizeSm
-                                            color: Theme.primary
-                                        }
-                                        Text {
-                                            text: "state cache:"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_surface
-                                        }
-                                        Text {
-                                            text: "~/.cache/current_shell"
-                                            font.family: Theme.fontMono
-                                            font.pixelSize: 10
-                                            color: Theme.on_surface_variant
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-
-                                    Text {
-                                        text: "switch script automatically updates state cache so your selection persists across hyprland sessions and reboots."
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 10
-                                        color: Theme.on_surface_variant
-                                        wrapMode: Text.Wrap
-                                        Layout.fillWidth: true
-                                    }
-                                }
+                            MouseArea {
+                                id: rstMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: !switchProc.running
+                                onClicked: switchProc.restartCurrent()
                             }
                         }
 
@@ -3556,42 +2818,21 @@ Rectangle {
                             icon: Theme.iconWifi
                         }
 
-                        readonly property var aliasKeys: Object.keys(Settings.networkAliases || {})
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 48
-                            radius: Theme.widgetRadius
-                            color: Theme.cardBg
-                            border.color: Theme.outline_variant
-                            border.width: 1
-                            visible: advancedCol.aliasKeys.length === 0
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 10
+                        SettingCard {
+                            Rectangle {
+                                width: parent.width
+                                height: 38
+                                color: "transparent"
+                                visible: advancedCol.aliasKeys.length === 0
 
                                 Text {
-                                    text: Theme.iconWifi
-                                    font.family: Theme.fontIcon
-                                    font.pixelSize: Theme.fontSizeSm
-                                    color: Theme.on_surface_variant
-                                }
-
-                                Text {
-                                    Layout.fillWidth: true
+                                    anchors.centerIn: parent
                                     text: "no custom network aliases saved yet (rename in wi-fi menu)"
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 10
                                     color: Theme.on_surface_variant
-                                    elide: Text.ElideRight
                                 }
                             }
-                        }
-
-                        SettingCard {
-                            visible: advancedCol.aliasKeys.length > 0
 
                             Repeater {
                                 model: advancedCol.aliasKeys
@@ -3600,44 +2841,26 @@ Rectangle {
                                     required property string modelData
                                     required property int index
                                     width: parent.width
-                                    spacing: 0
 
                                     RowDivider { visible: index > 0 }
 
                                     Rectangle {
                                         width: parent.width
-                                        height: 44
+                                        height: 40
                                         color: "transparent"
 
-                                        Text {
-                                            id: alIcon
-                                            anchors.left: parent.left
-                                            anchors.leftMargin: 12
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            text: Theme.iconWifi
-                                            font.family: Theme.fontIcon
-                                            font.pixelSize: Theme.fontSizeXs
-                                            color: Theme.primary
-                                        }
-
-                                        IconButton {
-                                            id: alTrash
-                                            anchors.right: parent.right
-                                            anchors.rightMargin: 12
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            icon: Theme.iconTrash
-                                            iconSize: 12
-                                            tooltip: "remove alias"
-                                            onClicked: { Settings.setNetworkAlias(modelData, ""); }
-                                        }
-
                                         RowLayout {
-                                            anchors.left: alIcon.right
+                                            anchors.fill: parent
                                             anchors.leftMargin: 10
-                                            anchors.right: alTrash.left
                                             anchors.rightMargin: 10
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 6
+                                            spacing: 8
+
+                                            Text {
+                                                text: Theme.iconWifi
+                                                font.family: Theme.fontIcon
+                                                font.pixelSize: Theme.fontSizeXs
+                                                color: Theme.primary
+                                            }
 
                                             Text {
                                                 text: (Settings.networkAliases && Settings.networkAliases[modelData]) || ""
@@ -3649,11 +2872,18 @@ Rectangle {
 
                                             Text {
                                                 text: "(" + modelData + ")"
-                                                font.family: Theme.fontFamily
+                                                font.family: Theme.fontMono
                                                 font.pixelSize: 10
                                                 color: Theme.on_surface_variant
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
+                                            }
+
+                                            IconButton {
+                                                icon: Theme.iconTrash
+                                                iconSize: 12
+                                                tooltip: "remove alias"
+                                                onClicked: Settings.setNetworkAlias(modelData, "")
                                             }
                                         }
                                     }
@@ -3662,122 +2892,30 @@ Rectangle {
                         }
 
                         CategoryHeader {
-                            title: "onboarding & reset"
-                            subtitle: "small setup tools and the irreversible stuff"
+                            title: "onboarding & recovery"
                             icon: Theme.iconSparkles
                         }
 
                         SettingCard {
-                            RowLayout {
-                                width: parent.width
-                                spacing: 12
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 1
-
-                                    Text {
-                                        text: "desktop shell profiles tab"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeSm
-                                        font.weight: Theme.fontWeightBold
-                                        color: Theme.on_surface
-                                    }
-
-                                    Text {
-                                        text: "display or hide the shell switcher tab in quicksettings"
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: Theme.fontSizeXs
-                                        color: Theme.on_surface_variant
-                                    }
-                                }
-
-                                ToggleSwitch {
-                                    checked: Settings.showShellTab !== false
-                                    onToggled: { Settings.showShellTab = !Settings.showShellTab; }
-                                }
-                            }
-
-                            RowDivider {}
-
-                            Rectangle {
-                                width: parent.width
-                                implicitHeight: 52
-                                radius: Theme.radiusSm
-                                color: rewelcomeMouse.containsMouse ? Theme.surface_container_highest : "transparent"
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    spacing: 12
-
-                                    Text {
-                                        text: Theme.iconSparkles
-                                        font.family: Theme.fontIcon
-                                        font.pixelSize: Theme.fontSizeSm
-                                        color: Theme.primary
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Text {
-                                            text: "reopen welcome guide"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeSm
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_surface
-                                        }
-
-                                        Text {
-                                            text: "revisit the asylum onboarding & vibe calibration"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            color: Theme.on_surface_variant
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: 64
-                                        height: 28
-                                        radius: Theme.radiusPill
-                                        color: Theme.primary
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "launch"
-                                            font.family: Theme.fontFamily
-                                            font.pixelSize: Theme.fontSizeXs
-                                            font.weight: Theme.fontWeightBold
-                                            color: Theme.on_primary
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: rewelcomeMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        popup.open = false;
-                                        Settings.requestWelcomeOpen();
-                                    }
+                            ToggleRow {
+                                icon: Theme.iconSparkles
+                                title: "reopen welcome guide"
+                                subtitle: "launch the onboarding & vibe calibration wizard"
+                                checked: false
+                                onToggled: {
+                                    popup.open = false;
+                                    Settings.requestWelcomeOpen();
                                 }
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 58
+                            height: 52
                             radius: Theme.widgetRadius
                             color: nukeMouse.containsMouse ? Theme.error_overlay : Theme.surface_container_highest
-                            border.color: nukeMouse.containsMouse ? (Theme.error) : Theme.widgetBorder
+                            border.color: nukeMouse.containsMouse ? Theme.error : Theme.widgetBorder
                             border.width: 1
-
-                            Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
-                            Behavior on border.color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.animColorEasing } }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -3793,7 +2931,7 @@ Rectangle {
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    spacing: 2
+                                    spacing: 1
 
                                     Text {
                                         text: "reset all custom settings"
@@ -3812,9 +2950,9 @@ Rectangle {
                                 }
 
                                 Rectangle {
-                                    width: 64
-                                    height: 30
-                                    radius: Theme.radiusSm
+                                    width: 60
+                                    height: 28
+                                    radius: Theme.radiusPill
                                     color: Theme.error
 
                                     Text {
@@ -3833,14 +2971,14 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { root.showResetConfirm = true; }
+                                onClicked: root.showResetConfirm = true
                             }
                         }
                     }
                 }
                 TabScrollTrack { target: flickAdvanced }
 
-                // 6. KEYBINDS TAB
+                // 6. keybinds tab
                 Item {
                     id: tabKeybinds
                     anchors.fill: parent
@@ -3853,6 +2991,7 @@ Rectangle {
                 }
             }
 
+            // footer
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -3882,7 +3021,7 @@ Rectangle {
             }
         }
 
-        // DANGER MODAL
+        // reset confirmation modal
         Rectangle {
             id: resetConfirmModal
             anchors.fill: parent
@@ -3892,7 +3031,7 @@ Rectangle {
             radius: Theme.popupRadius
             focus: visible
 
-            Keys.onEscapePressed: { root.showResetConfirm = false; }
+            Keys.onEscapePressed: root.showResetConfirm = false
 
             MouseArea {
                 anchors.fill: parent
@@ -3930,7 +3069,7 @@ Rectangle {
                 }
 
                 Text {
-                    text: "are you sure? this will wipe every tweak and revert everything back to stock defaults. there is no going back."
+                    text: "are you sure? this will wipe every tweak and revert everything back to stock defaults."
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.on_surface_variant
@@ -3965,7 +3104,7 @@ Rectangle {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: { root.showResetConfirm = false; }
+                            onClicked: root.showResetConfirm = false
                         }
                     }
 
@@ -3973,14 +3112,14 @@ Rectangle {
                         Layout.fillWidth: true
                         height: 40
                         radius: Theme.radiusSm
-                        color: confirmMouse.containsMouse ? Theme.error_container : (Theme.error)
+                        color: confirmMouse.containsMouse ? Theme.error_container : Theme.error
 
                         Text {
                             text: "reset everything"
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeSm
                             font.weight: Theme.fontWeightBold
-                            color: confirmMouse.containsMouse ? Theme.on_error_container : (Theme.on_error)
+                            color: confirmMouse.containsMouse ? Theme.on_error_container : Theme.on_error
                             anchors.centerIn: parent
                         }
 

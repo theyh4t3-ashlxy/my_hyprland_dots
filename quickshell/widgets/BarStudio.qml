@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import ".."
 import "../controls"
 import "../corners"
+import "../services"
 
 PopupPanel {
     id: root
@@ -47,7 +48,8 @@ PopupPanel {
         "battery":       { name: "battery & power",   icon: Theme?.iconBatFull ?? "\uE1A5",   desc: "upower level & charging" },
         "quickSettings": { name: "quick settings",    icon: Theme?.iconSettings ?? "\uE8B8",  desc: "system & appearance toggles" },
         "powerMenu":     { name: "power menu",        icon: Theme?.iconPower ?? "\uF8C7",     desc: "lock, logout & power off" },
-        "dynamicNotch":  { name: "dynamic notch",     icon: Theme?.iconSparkles ?? "\uE65F",  desc: "reactive island carousel (clock, calendar & timer)" }
+        "dynamicNotch":  { name: "dynamic notch",     icon: Theme?.iconSparkles ?? "\uE65F",  desc: "reactive island carousel (clock, calendar & timer)" },
+        "screenCapture": { name: "screen capture",    icon: Theme?.iconCamera ?? "\uE3B4",    desc: "screenshot & screen recording" }
     })
 
     readonly property var unassignedModules: {
@@ -56,7 +58,10 @@ PopupPanel {
             ...(Settings?.barModulesCenter ?? []),
             ...(Settings?.barModulesRight ?? [])
         ]);
-        return Object.keys(root.moduleCatalog).filter(id => !assigned.has(id));
+        const keys = (PresetService && Object.keys(PresetService.blockMap).length > 0)
+            ? Object.keys(PresetService.blockMap)
+            : Object.keys(root.moduleCatalog);
+        return keys.filter(id => !assigned.has(id));
     }
 
     Component.onCompleted: {
@@ -94,10 +99,13 @@ PopupPanel {
     }
 
     function getModuleInfo(modId) {
+        let b = PresetService?.getBlockInfo(modId);
+        if (b) return b;
         return root.moduleCatalog[modId] ?? {
             name: modId,
             icon: Theme?.iconGrid ?? "\uE9B0",
-            desc: "custom widget"
+            desc: "custom widget",
+            color: "#4c97ff"
         };
     }
 
@@ -367,6 +375,81 @@ PopupPanel {
                 }
             }
 
+            Row {
+                spacing: 6
+                Layout.alignment: Qt.AlignVCenter
+
+                Text {
+                    text: "preset:"
+                    font.family: Theme?.fontFamily
+                    font.pixelSize: 10
+                    color: Theme?.on_surface_variant ?? "#888888"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Repeater {
+                    model: PresetService?.availablePresets ?? []
+                    delegate: Rectangle {
+                        required property var modelData
+                        height: 24
+                        implicitWidth: pText.implicitWidth + 14
+                        radius: Theme?.radiusPill ?? 12
+                        readonly property bool isCurrent: PresetService?.activePresetName === modelData.id
+                        color: isCurrent ? (Theme?.primary ?? "#ffffff") : (pMouse.containsMouse ? (Theme?.surface_container_highest ?? "#383838") : (Theme?.surface_container_high ?? "#282828"))
+                        border.color: isCurrent ? (Theme?.primary ?? "#ffffff") : (Theme?.widgetBorder ?? "#444444")
+                        border.width: 1
+
+                        Text {
+                            id: pText
+                            anchors.centerIn: parent
+                            text: modelData.name
+                            font.family: Theme?.fontFamily
+                            font.pixelSize: 9
+                            font.weight: isCurrent ? Font.Bold : Font.Normal
+                            color: isCurrent ? (Theme?.on_primary ?? "#000000") : (Theme?.on_surface ?? "#ffffff")
+                        }
+
+                        MouseArea {
+                            id: pMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: PresetService?.applyPresetById(modelData.id)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 24
+                    implicitWidth: saveText.implicitWidth + 14
+                    radius: Theme?.radiusPill ?? 12
+                    color: saveMouse.containsMouse ? (Theme?.primary_overlay ?? "#25ffffff") : "transparent"
+                    border.color: Theme?.widgetBorder ?? "#444444"
+                    border.width: 1
+
+                    Text {
+                        id: saveText
+                        anchors.centerIn: parent
+                        text: "💾 save preset"
+                        font.family: Theme?.fontFamily
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                        color: Theme?.primary ?? "#ffffff"
+                    }
+
+                    MouseArea {
+                        id: saveMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            let name = "custom_" + Math.floor(Date.now() / 1000);
+                            PresetService?.exportCurrentAsPreset(name);
+                        }
+                    }
+                }
+            }
+
             Item { Layout.fillWidth: true }
 
             Rectangle {
@@ -474,12 +557,13 @@ PopupPanel {
                         readonly property var info: root.getModuleInfo(modelData)
                         readonly property bool isVis: root.isModuleVisible(modelData)
                         readonly property bool isGhostTarget: root.isDragging && root.draggedModId === modelData
+                        readonly property color bColor: info?.color ?? Theme?.primary ?? "#4c97ff"
 
                         height: barPreviewMock.isVertical ? 14 : 12
                         width: barPreviewMock.isVertical ? 14 : Math.max(12, mText.implicitWidth + 6)
                         radius: 3
-                        color: isGhostTarget ? (Theme?.primary ?? "#ffffff") : (isVis ? (Theme?.primary_overlay ?? "#25ffffff") : (Theme?.surface_container_highest ?? "#383838"))
-                        border.color: isGhostTarget ? (Theme?.primary ?? "#ffffff") : "transparent"
+                        color: isGhostTarget ? "#ffffff" : (isVis ? bColor : (Theme?.surface_container_highest ?? "#383838"))
+                        border.color: isGhostTarget ? "#ffffff" : "transparent"
                         border.width: 1
 
                         Text {
@@ -488,7 +572,7 @@ PopupPanel {
                             text: parent.info.icon
                             font.family: Theme?.fontIcon
                             font.pixelSize: 8
-                            color: parent.isGhostTarget ? (Theme?.on_primary ?? "#000000") : (parent.isVis ? (Theme?.primary ?? "#ffffff") : (Theme?.on_surface_disabled ?? "#666666"))
+                            color: parent.isGhostTarget ? "#000000" : (parent.isVis ? "#ffffff" : (Theme?.on_surface_disabled ?? "#666666"))
                         }
                     }
 
@@ -876,230 +960,38 @@ PopupPanel {
                                 }
                             }
 
-                            Rectangle {
+                            ScratchBlock {
                                 id: card
                                 width: parent.width
-                                height: 38
-                                radius: Theme?.radiusSm ?? 4
-                                color: cardColWrap.isThisDragged ? (Theme?.surface_container_highest ?? "#3c3c3c") : (cardMouse.containsMouse ? (Theme?.surface_container_highest ?? "#353535") : (Theme?.surface_container_high ?? "#292929"))
-                                border.color: cardColWrap.isThisDragged ? (Theme?.primary ?? "#ffffff") : (cardColWrap.isVisible ? (Theme?.widgetBorder ?? "#3b3b3b") : (Theme?.error_overlay ?? "#40ff5555"))
-                                border.width: 1
-                                opacity: cardColWrap.isThisDragged ? 0.35 : 1.0
+                                blockId: cardColWrap.modelData
+                                zoneId: zoneRoot.zoneId
+                                index: cardColWrap.index
+                                isDragged: cardColWrap.isThisDragged
+                                isVisibleInBar: cardColWrap.isVisible
 
-                                MouseArea {
-                                    id: cardMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    preventStealing: pressedLocal || root.isDragging
-                                    cursorShape: root.isDragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-
-                                    property real pressX: 0
-                                    property real pressY: 0
-                                    property bool pressedLocal: false
-
-                                    onPressed: (mouse) => {
-                                        if (mouse.button !== Qt.LeftButton) return;
-                                        pressX = mouse.x;
-                                        pressY = mouse.y;
-                                        pressedLocal = true;
-                                    }
-
-                                    onPositionChanged: (mouse) => {
-                                        if (!pressedLocal) return;
-                                        if (!root.isDragging) {
-                                            if (Math.hypot(mouse.x - pressX, mouse.y - pressY) > 4) {
-                                                root.startDrag(zoneRoot.zoneId, cardColWrap.index, cardColWrap.modelData, card, mouse.x, mouse.y);
-                                            }
-                                        } else {
-                                            const p = card.mapToItem(null, mouse.x, mouse.y);
-                                            root.updateDrag(p.x, p.y);
-                                        }
-                                    }
-
-                                    onReleased: {
-                                        if (root.isDragging) root.finishDrag();
-                                        pressedLocal = false;
-                                    }
-
-                                    onCanceled: {
-                                        if (root.isDragging) root.cancelDrag();
-                                        pressedLocal = false;
-                                    }
+                                onDragStarted: (mx, my) => {
+                                    root.startDrag(zoneRoot.zoneId, cardColWrap.index, cardColWrap.modelData, card, mx, my);
                                 }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 8
-                                    anchors.rightMargin: 8
-                                    spacing: 6
-
-                                    Text {
-                                        text: "⠿"
-                                        font.family: Theme?.fontIcon
-                                        font.pixelSize: 13
-                                        color: cardMouse.containsMouse ? (Theme?.primary ?? "#ffffff") : (Theme?.on_surface_variant ?? "#777777")
-                                    }
-
-                                    Text {
-                                        text: cardColWrap.info.icon
-                                        font.family: Theme?.fontIcon
-                                        font.pixelSize: Theme?.fontSizeSm ?? 12
-                                        color: cardColWrap.isVisible ? (Theme?.primary ?? "#ffffff") : (Theme?.on_surface_disabled ?? "#555555")
-                                    }
-
-                                    Text {
-                                        text: cardColWrap.info.name
-                                        font.family: Theme?.fontFamily
-                                        font.pixelSize: 10
-                                        font.weight: Font.DemiBold
-                                        color: cardColWrap.isVisible ? (Theme?.on_surface ?? "#ffffff") : (Theme?.on_surface_disabled ?? "#555555")
-                                        Layout.fillWidth: true
-                                        elide: Text.ElideRight
-                                    }
-
-                                    RowLayout {
-                                        z: 5
-                                        spacing: 2
-                                        opacity: cardMouse.containsMouse ? 1.0 : 0.45
-
-                                        Rectangle {
-                                            visible: zoneRoot.zoneId === "center" || zoneRoot.zoneId === "right"
-                                            Layout.preferredWidth: 18
-                                            Layout.preferredHeight: 18
-                                            radius: 3
-                                            color: shiftLeftMouse.containsMouse ? (Theme?.surface_container_highest ?? "#444444") : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: "◀"
-                                                font.pixelSize: 8
-                                                color: Theme?.on_surface ?? "#ffffff"
-                                            }
-
-                                            MouseArea {
-                                                id: shiftLeftMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.transferModule(zoneRoot.zoneId, cardColWrap.index, zoneRoot.zoneId === "right" ? "center" : "left")
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            visible: cardColWrap.index > 0
-                                            Layout.preferredWidth: 18
-                                            Layout.preferredHeight: 18
-                                            radius: 3
-                                            color: upMouse.containsMouse ? (Theme?.surface_container_highest ?? "#444444") : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: "▲"
-                                                font.pixelSize: 7
-                                                color: Theme?.on_surface ?? "#ffffff"
-                                            }
-
-                                            MouseArea {
-                                                id: upMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.moveModuleStep(zoneRoot.zoneId, cardColWrap.index, -1)
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            visible: cardColWrap.index < zoneRoot.modulesList.length - 1
-                                            Layout.preferredWidth: 18
-                                            Layout.preferredHeight: 18
-                                            radius: 3
-                                            color: downMouse.containsMouse ? (Theme?.surface_container_highest ?? "#444444") : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: "▼"
-                                                font.pixelSize: 7
-                                                color: Theme?.on_surface ?? "#ffffff"
-                                            }
-
-                                            MouseArea {
-                                                id: downMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.moveModuleStep(zoneRoot.zoneId, cardColWrap.index, 1)
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            visible: zoneRoot.zoneId === "left" || zoneRoot.zoneId === "center"
-                                            Layout.preferredWidth: 18
-                                            Layout.preferredHeight: 18
-                                            radius: 3
-                                            color: shiftRightMouse.containsMouse ? (Theme?.surface_container_highest ?? "#444444") : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: "▶"
-                                                font.pixelSize: 8
-                                                color: Theme?.on_surface ?? "#ffffff"
-                                            }
-
-                                            MouseArea {
-                                                id: shiftRightMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.transferModule(zoneRoot.zoneId, cardColWrap.index, zoneRoot.zoneId === "left" ? "center" : "right")
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            Layout.preferredWidth: 20
-                                            Layout.preferredHeight: 20
-                                            radius: Theme?.radiusSm ?? 3
-                                            color: eyeMouse.containsMouse ? (cardColWrap.isVisible ? (Theme?.primary_overlay ?? "#25ffffff") : (Theme?.error_overlay ?? "#30ff5555")) : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: cardColWrap.isVisible ? Theme.iconEye : Theme.iconEyeOff
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: 11
-                                                color: cardColWrap.isVisible ? (Theme?.primary ?? "#ffffff") : (Theme?.error ?? "#ff5555")
-                                            }
-
-                                            MouseArea {
-                                                id: eyeMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.toggleModuleVisibility(cardColWrap.modelData)
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            Layout.preferredWidth: 18
-                                            Layout.preferredHeight: 18
-                                            radius: 3
-                                            color: removeMouse.containsMouse ? (Theme?.error_overlay ?? "#30ff5555") : "transparent"
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: Theme.iconClose
-                                                font.family: Theme.fontIcon
-                                                font.pixelSize: 10
-                                                color: removeMouse.containsMouse ? (Theme?.error ?? "#ff5555") : (Theme?.on_surface_variant ?? "#777777")
-                                            }
-
-                                            MouseArea {
-                                                id: removeMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.removeModule(zoneRoot.zoneId, cardColWrap.index)
-                                            }
-                                        }
-                                    }
+                                onDragUpdated: (gx, gy) => {
+                                    root.updateDrag(gx, gy);
+                                }
+                                onDragFinished: {
+                                    root.finishDrag();
+                                }
+                                onDragCanceled: {
+                                    root.cancelDrag();
+                                }
+                                onShiftZoneRequested: (targetZone) => {
+                                    root.transferModule(zoneRoot.zoneId, cardColWrap.index, targetZone);
+                                }
+                                onMoveStepRequested: (delta) => {
+                                    root.moveModuleStep(zoneRoot.zoneId, cardColWrap.index, delta);
+                                }
+                                onVisibilityToggled: {
+                                    root.toggleModuleVisibility(cardColWrap.modelData);
+                                }
+                                onRemoveRequested: {
+                                    root.removeModule(zoneRoot.zoneId, cardColWrap.index);
                                 }
                             }
 
@@ -1165,42 +1057,49 @@ PopupPanel {
         x: root.ghostX
         y: root.ghostY
         width: root.ghostW
-        height: 38
-        radius: Theme?.radiusSm ?? 4
-        color: Theme?.surface_container_highest ?? "#383838"
-        border.color: Theme?.primary ?? "#ffffff"
+        height: 44
+        radius: 7
+        readonly property var info: root.getModuleInfo(root.draggedModId)
+        readonly property color ghostColor: info?.color ?? Theme?.primary ?? "#4c97ff"
+        color: ghostColor
+        border.color: "#ffffff"
         border.width: 2
         z: 99999
-        opacity: 0.94
-        scale: 1.03
-
-        readonly property var info: root.getModuleInfo(root.draggedModId)
+        opacity: 0.95
+        scale: 1.04
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 8
+            anchors.margins: 10
             spacing: 8
 
             Text {
                 text: "⠿"
-                font.family: Theme?.fontIcon
                 font.pixelSize: 13
-                color: Theme?.primary ?? "#ffffff"
+                color: "#ffffff"
             }
 
-            Text {
-                text: dragGhost.info.icon
-                font.family: Theme?.fontIcon
-                font.pixelSize: Theme?.fontSizeSm ?? 12
-                color: Theme?.primary ?? "#ffffff"
+            Rectangle {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                radius: 5
+                color: Qt.darker(dragGhost.ghostColor, 1.3)
+
+                Text {
+                    anchors.centerIn: parent
+                    text: dragGhost.info.icon
+                    font.family: Theme?.fontIcon
+                    font.pixelSize: 11
+                    color: "#ffffff"
+                }
             }
 
             Text {
                 text: dragGhost.info.name
                 font.family: Theme?.fontFamily
-                font.pixelSize: 10
-                font.weight: Font.DemiBold
-                color: Theme?.on_surface ?? "#ffffff"
+                font.pixelSize: 11
+                font.weight: Font.Bold
+                color: "#ffffff"
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }

@@ -85,6 +85,7 @@ PanelWindow {
     readonly property bool isBottom: pos === "down" || pos === "bottom"
     readonly property bool isLeft: pos === "left"
     readonly property bool isRight: pos === "right"
+    readonly property bool isVertical: isLeft || isRight
 
     readonly property real maxWindowTitleWidth: {
         let halfScreen = root.width / 2;
@@ -98,7 +99,6 @@ PanelWindow {
         let clockRight = halfScreen - centerHalf;
         return Math.max(380, clockRight - (Theme.widgetPaddingH * 2));
     }
-    readonly property bool isVertical: isLeft || isRight
 
     readonly property bool isFloating: (Settings?.barFloating ?? false) || (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating")
     readonly property bool isIslandMode: (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating") || (root.isFloating && (Settings?.barIslandMode ?? true))
@@ -110,7 +110,6 @@ PanelWindow {
     readonly property int scoopRadius: Math.round(Settings?.scoopRadius ?? Settings?.screenCornerRadius ?? 16)
     readonly property string cornerMode: Settings?.screenCornerMode ?? "all"
 
-    // bar scoops belong to the bar, dont let "opposite" kill them
     readonly property bool scoopAllowedLeft: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("left", isBottom ? "bottomLeft" : "topLeft"))
     readonly property bool scoopAllowedRight: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("right", isBottom ? "bottomRight" : "topRight"))
     readonly property bool scoopAllowedTop: cornerMode !== "none" && (cornerMode !== "monitor" || !hasAdjacentMonitorAt("top", isRight ? "topRight" : "topLeft"))
@@ -120,6 +119,14 @@ PanelWindow {
     readonly property bool hasBarScoops: !root.isFloating && !root.isIslandMode && (Settings?.screenFrameDocked ?? true) && (
         root.isVertical ? (scoopAllowedTop || scoopAllowedBottom) : (scoopAllowedLeft || scoopAllowedRight)
     )
+
+    readonly property string cornerStyle: Settings?.cornerStyle ?? "cubic"
+    readonly property real scoopTension: {
+        if (cornerStyle === "squircle") return 0.72;
+        if (cornerStyle === "continuous-bezier" || cornerStyle === "g2") return 0.58;
+        if (cornerStyle === "flared") return 0.38;
+        return Settings?.scoopTension ?? 0.55228475;
+    }
 
     anchors {
         top: root.isTop || root.isVertical
@@ -137,7 +144,7 @@ PanelWindow {
 
     implicitWidth: root.isVertical ? (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0)) : (root.screen?.width ?? 1920)
     implicitHeight: root.isVertical ? (root.screen?.height ?? 1080) : (Theme.barHeight + (root.hasBarScoops ? root.scoopRadius : 0))
-    exclusiveZone: root.isVertical ? (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) : (Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)) // exclusiveZone: Theme.barHeight
+    exclusiveZone: Theme.barHeight + (root.isFloating ? root.effectiveBarMargin : 0)
     exclusionMode: ExclusionMode.Normal
 
     WlrLayershell.layer: WlrLayer.Top
@@ -145,10 +152,6 @@ PanelWindow {
 
     mask: Region {
         Region { item: barBg }
-        Region { item: (root.hasBarScoops && scoopLeftH.visible) ? scoopLeftH : null }
-        Region { item: (root.hasBarScoops && scoopRightH.visible) ? scoopRightH : null }
-        Region { item: (root.hasBarScoops && scoopTopV.visible) ? scoopTopV : null }
-        Region { item: (root.hasBarScoops && scoopBottomV.visible) ? scoopBottomV : null }
     }
 
     property alias launcherPopup: launcherPopup
@@ -309,6 +312,208 @@ PanelWindow {
             z: -2
         }
 
+        // Single unified shape for docked bar + concave corners
+        Canvas {
+            id: unifiedBarCanvas
+            anchors.fill: parent
+            visible: !root.isFloating && !root.isIslandMode
+            antialiasing: true
+            smooth: true
+            renderTarget: Canvas.FramebufferObject
+            renderStrategy: Canvas.Immediate
+
+            property color fillColor: Theme.barBg
+            property real glowOpacity: (Theme?.isCyberNeon ?? false) ? 1.0 : 0.85
+
+            SequentialAnimation on glowOpacity {
+                loops: Animation.Infinite
+                running: (Theme?.isCyberNeon ?? false) && !root.isIslandMode && !root.isFloating
+                NumberAnimation { from: 0.55; to: 1.0; duration: 1200; easing.type: Easing.InOutQuad }
+                NumberAnimation { from: 1.0; to: 0.55; duration: 1200; easing.type: Easing.InOutQuad }
+            }
+
+            onFillColorChanged: requestPaint()
+            onGlowOpacityChanged: requestPaint()
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+
+            Connections {
+                target: root
+                function onPosChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopRadiusChanged() { unifiedBarCanvas.requestPaint(); }
+                function onHasBarScoopsChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopAllowedLeftChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopAllowedRightChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopAllowedTopChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopAllowedBottomChanged() { unifiedBarCanvas.requestPaint(); }
+                function onBorderWidthChanged() { unifiedBarCanvas.requestPaint(); }
+                function onCornerStyleChanged() { unifiedBarCanvas.requestPaint(); }
+                function onScoopTensionChanged() { unifiedBarCanvas.requestPaint(); }
+            }
+
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.reset();
+                ctx.clearRect(0, 0, width, height);
+
+                var W = width;
+                var H = height;
+                var barH = Theme.barHeight;
+                var r = root.hasBarScoops ? root.scoopRadius : 0;
+                var bw = root.borderWidth;
+                var t = root.scoopTension;
+
+                var sL = root.hasBarScoops && !root.isVertical && r > 0 && root.scoopAllowedLeft;
+                var sR = root.hasBarScoops && !root.isVertical && r > 0 && root.scoopAllowedRight;
+                var sT = root.hasBarScoops && root.isVertical && r > 0 && root.scoopAllowedTop;
+                var sB = root.hasBarScoops && root.isVertical && r > 0 && root.scoopAllowedBottom;
+
+                ctx.fillStyle = unifiedBarCanvas.fillColor;
+                ctx.beginPath();
+
+                if (root.isTop) {
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(W, 0);
+                    if (sR) {
+                        ctx.lineTo(W, barH + r);
+                        if (bw > 0) ctx.lineTo(W - bw, barH + r);
+                        ctx.bezierCurveTo(W - bw, barH + r * (1 - t), W - bw - r * (1 - t), barH, W - bw - r, barH);
+                    } else {
+                        ctx.lineTo(W, barH);
+                    }
+                    ctx.lineTo(sL ? (bw + r) : 0, barH);
+                    if (sL) {
+                        ctx.bezierCurveTo(bw + r * (1 - t), barH, bw, barH + r * (1 - t), bw, barH + r);
+                        if (bw > 0) ctx.lineTo(0, barH + r);
+                    }
+                    ctx.closePath();
+                } else if (root.isBottom) {
+                    var topY = H - barH;
+                    ctx.moveTo(0, H);
+                    ctx.lineTo(W, H);
+                    if (sR) {
+                        ctx.lineTo(W, 0);
+                        if (bw > 0) ctx.lineTo(W - bw, 0);
+                        ctx.bezierCurveTo(W - bw, r * t, W - bw - r * (1 - t), topY, W - bw - r, topY);
+                    } else {
+                        ctx.lineTo(W, topY);
+                    }
+                    ctx.lineTo(sL ? (bw + r) : 0, topY);
+                    if (sL) {
+                        ctx.bezierCurveTo(bw + r * (1 - t), topY, bw, r * t, bw, 0);
+                        if (bw > 0) ctx.lineTo(0, 0);
+                    }
+                    ctx.closePath();
+                } else if (root.isLeft) {
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, H);
+                    if (sB) {
+                        ctx.lineTo(barH + r, H);
+                        if (bw > 0) ctx.lineTo(barH + r, H - bw);
+                        ctx.bezierCurveTo(barH + r * (1 - t), H - bw, barH, H - bw - r * (1 - t), barH, H - bw - r);
+                    } else {
+                        ctx.lineTo(barH, H);
+                    }
+                    ctx.lineTo(barH, sT ? (bw + r) : 0);
+                    if (sT) {
+                        ctx.bezierCurveTo(barH, bw + r * (1 - t), barH + r * (1 - t), bw, barH + r, bw);
+                        if (bw > 0) ctx.lineTo(barH + r, 0);
+                    }
+                    ctx.closePath();
+                } else if (root.isRight) {
+                    var leftX = W - barH;
+                    ctx.moveTo(W, 0);
+                    ctx.lineTo(W, H);
+                    if (sB) {
+                        ctx.lineTo(0, H);
+                        if (bw > 0) ctx.lineTo(0, H - bw);
+                        ctx.bezierCurveTo(r * t, H - bw, leftX, H - bw - r * (1 - t), leftX, H - bw - r);
+                    } else {
+                        ctx.lineTo(leftX, H);
+                    }
+                    ctx.lineTo(leftX, sT ? (bw + r) : 0);
+                    if (sT) {
+                        ctx.bezierCurveTo(leftX, bw + r * (1 - t), r * t, bw, 0, bw);
+                        if (bw > 0) ctx.lineTo(0, 0);
+                    }
+                    ctx.closePath();
+                }
+
+                ctx.fill();
+
+                // Continuous inner edge stroke so borders/glows curve smoothly into the corners
+                var hasNeon = (Theme?.isCyberNeon ?? false) || (Theme?.isAccentGlow ?? false);
+                var hasGlass = Theme?.isGlass ?? false;
+                var hasPureBlack = Theme?.isPureBlack ?? false;
+
+                if (hasNeon || hasGlass || hasPureBlack) {
+                    ctx.beginPath();
+                    if (root.isTop) {
+                        if (sL) {
+                            ctx.moveTo(bw, barH + r);
+                            ctx.bezierCurveTo(bw, barH + r * (1 - t), bw + r * (1 - t), barH, bw + r, barH);
+                        } else {
+                            ctx.moveTo(0, barH);
+                        }
+                        ctx.lineTo(sR ? (W - bw - r) : W, barH);
+                        if (sR) {
+                            ctx.bezierCurveTo(W - bw - r * (1 - t), barH, W - bw, barH + r * (1 - t), W - bw, barH + r);
+                        }
+                    } else if (root.isBottom) {
+                        var bTopY = H - barH;
+                        if (sL) {
+                            ctx.moveTo(bw, 0);
+                            ctx.bezierCurveTo(bw, r * t, bw + r * (1 - t), bTopY, bw + r, bTopY);
+                        } else {
+                            ctx.moveTo(0, bTopY);
+                        }
+                        ctx.lineTo(sR ? (W - bw - r) : W, bTopY);
+                        if (sR) {
+                            ctx.bezierCurveTo(W - bw - r * (1 - t), bTopY, W - bw, r * t, W - bw, 0);
+                        }
+                    } else if (root.isLeft) {
+                        if (sT) {
+                            ctx.moveTo(barH + r, bw);
+                            ctx.bezierCurveTo(barH + r * (1 - t), bw, barH, bw + r * (1 - t), barH, bw + r);
+                        } else {
+                            ctx.moveTo(barH, 0);
+                        }
+                        ctx.lineTo(barH, sB ? (H - bw - r) : H);
+                        if (sB) {
+                            ctx.bezierCurveTo(barH, H - bw - r * (1 - t), barH + r * (1 - t), H - bw, barH + r, H - bw);
+                        }
+                    } else if (root.isRight) {
+                        var rLeftX = W - barH;
+                        if (sT) {
+                            ctx.moveTo(0, bw);
+                            ctx.bezierCurveTo(r * t, bw, rLeftX, bw + r * (1 - t), rLeftX, bw + r);
+                        } else {
+                            ctx.moveTo(rLeftX, 0);
+                        }
+                        ctx.lineTo(rLeftX, sB ? (H - bw - r) : H);
+                        if (sB) {
+                            ctx.bezierCurveTo(rLeftX, H - bw - r * (1 - t), r * t, H - bw, 0, H - bw);
+                        }
+                    }
+
+                    if (hasNeon) {
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, unifiedBarCanvas.glowOpacity);
+                        ctx.stroke();
+                    } else if (hasGlass) {
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = Theme.glassHighlight ?? Qt.rgba(1, 1, 1, 0.22);
+                        ctx.stroke();
+                    } else if (hasPureBlack) {
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = "#222222";
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Layout box and background for floating mode
         Rectangle {
             id: barBg
             x: root.isRight && root.hasBarScoops && root.scoopRadius > 0 ? root.scoopRadius : 0
@@ -317,83 +522,9 @@ PanelWindow {
             height: root.isVertical ? parent.height : Theme.barHeight
             radius: root.effectiveBarRadius
             clip: root.isFloating && root.effectiveBarRadius > 0 && !root.isIslandMode
-            color: root.isIslandMode ? "transparent" : Theme.barBg
-            border.color: root.isIslandMode ? "transparent" : ((Theme?.isPureBlack ?? false) ? "#222222" : ((Theme?.isCyberNeon ?? false) ? Theme.alpha(Theme.primary, 0.60) : (root.isFloating ? Theme.barBorderColor : "transparent")))
-            border.width: root.isIslandMode ? 0 : (((Theme?.isPureBlack ?? false) || (Theme?.isCyberNeon ?? false)) ? 1 : (root.isFloating && Theme.barBorderColor !== "transparent" ? 1 : 0))
-
-            Rectangle {
-                visible: ((Theme?.isCyberNeon ?? false) || (Theme?.isAccentGlow ?? false)) && !root.isIslandMode
-                x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 2 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
-                y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 2 : 0))
-                width: Math.round(root.isVertical ? 2 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
-                height: Math.round(root.isVertical ? (parent.height - ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopBottomV.visible) ? (root.borderWidth + root.scoopRadius) : 0)) : 2)
-                color: Theme.primary
-                opacity: (Theme?.isCyberNeon ?? false) ? 1.0 : 0.85
-
-                SequentialAnimation on opacity {
-                    loops: Animation.Infinite
-                    running: (Theme?.isCyberNeon ?? false) && !root.isIslandMode
-                    NumberAnimation { from: 0.55; to: 1.0; duration: 1200; easing.type: Easing.InOutQuad }
-                    NumberAnimation { from: 1.0; to: 0.55; duration: 1200; easing.type: Easing.InOutQuad }
-                }
-            }
-
-            Rectangle {
-                visible: (Theme?.isGlass ?? false) && !root.isIslandMode
-                x: Math.round(root.isVertical ? (root.isLeft ? parent.width - 1 : 0) : ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0))
-                y: Math.round(root.isVertical ? ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) : (root.isTop ? parent.height - 1 : 0))
-                width: Math.round(root.isVertical ? 1 : (parent.width - ((root.hasBarScoops && scoopLeftH.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopRightH.visible) ? (root.borderWidth + root.scoopRadius) : 0)))
-                height: Math.round(root.isVertical ? (parent.height - ((root.hasBarScoops && scoopTopV.visible) ? (root.borderWidth + root.scoopRadius) : 0) - ((root.hasBarScoops && scoopBottomV.visible) ? (root.borderWidth + root.scoopRadius) : 0)) : 1)
-                color: Theme.glassHighlight ?? Qt.rgba(1, 1, 1, 0.22)
-            }
-        }
-
-        ConcaveCorner {
-            id: scoopLeftH
-            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && root.scoopAllowedLeft
-            x: Math.round(root.borderWidth > 0 && root.scoopAllowedLeft ? root.borderWidth : 0)
-            y: Math.round(root.isTop ? Theme.barHeight : 0)
-            radiusX: root.scoopRadius
-            radiusY: root.scoopRadius
-            fillColor: Theme.barBg
-            flipX: false
-            flipY: root.isBottom
-        }
-
-        ConcaveCorner {
-            id: scoopRightH
-            visible: root.hasBarScoops && !root.isVertical && root.scoopRadius > 0 && root.scoopAllowedRight
-            x: Math.round(parent.width - (root.borderWidth > 0 && root.scoopAllowedRight ? root.borderWidth : 0) - root.scoopRadius)
-            y: Math.round(root.isTop ? Theme.barHeight : 0)
-            radiusX: root.scoopRadius
-            radiusY: root.scoopRadius
-            fillColor: Theme.barBg
-            flipX: true
-            flipY: root.isBottom
-        }
-
-        ConcaveCorner {
-            id: scoopTopV
-            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && root.scoopAllowedTop
-            x: Math.round(root.isLeft ? Theme.barHeight : 0)
-            y: Math.round(root.borderWidth > 0 && root.scoopAllowedTop ? root.borderWidth : 0)
-            radiusX: root.scoopRadius
-            radiusY: root.scoopRadius
-            fillColor: Theme.barBg
-            flipX: root.isRight
-            flipY: false
-        }
-
-        ConcaveCorner {
-            id: scoopBottomV
-            visible: root.hasBarScoops && root.isVertical && root.scoopRadius > 0 && root.scoopAllowedBottom
-            x: Math.round(root.isLeft ? Theme.barHeight : 0)
-            y: Math.round(parent.height - (root.borderWidth > 0 && root.scoopAllowedBottom ? root.borderWidth : 0) - root.scoopRadius)
-            radiusX: root.scoopRadius
-            radiusY: root.scoopRadius
-            fillColor: Theme.barBg
-            flipX: root.isRight
-            flipY: true
+            color: (root.isIslandMode || !root.isFloating) ? "transparent" : Theme.barBg
+            border.color: (root.isIslandMode || !root.isFloating) ? "transparent" : ((Theme?.isPureBlack ?? false) ? "#222222" : ((Theme?.isCyberNeon ?? false) ? Theme.alpha(Theme.primary, 0.60) : Theme.barBorderColor))
+            border.width: (root.isIslandMode || !root.isFloating) ? 0 : (((Theme?.isPureBlack ?? false) || (Theme?.isCyberNeon ?? false) || Theme.barBorderColor !== "transparent") ? 1 : 0)
         }
 
         Item {
@@ -419,7 +550,6 @@ PanelWindow {
                 Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
                 Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
-                // Ambient underglow
                 Rectangle {
                     visible: Theme?.isAccentGlow ?? false
                     anchors.fill: parent
@@ -428,7 +558,6 @@ PanelWindow {
                     color: Theme.alpha(Theme.primary, 0.22)
                     z: -2
                 }
-                // Glass specular highlight
                 Rectangle {
                     visible: Theme?.isGlass ?? false
                     anchors.top: parent.top
@@ -456,7 +585,6 @@ PanelWindow {
                 Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
                 Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
-                // Ambient underglow
                 Rectangle {
                     visible: Theme?.isAccentGlow ?? false
                     anchors.fill: parent
@@ -465,7 +593,6 @@ PanelWindow {
                     color: Theme.alpha(Theme.primary, 0.22)
                     z: -2
                 }
-                // Glass specular highlight
                 Rectangle {
                     visible: Theme?.isGlass ?? false
                     anchors.top: parent.top
@@ -495,7 +622,6 @@ PanelWindow {
                 Behavior on scale { NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutQuad } }
                 Behavior on width { NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing } }
 
-                // Ambient underglow
                 Rectangle {
                     visible: Theme?.isAccentGlow ?? false
                     anchors.fill: parent
@@ -504,7 +630,6 @@ PanelWindow {
                     color: Theme.alpha(Theme.primary, 0.22)
                     z: -2
                 }
-                // Glass specular highlight
                 Rectangle {
                     visible: Theme?.isGlass ?? false
                     anchors.top: parent.top
@@ -566,7 +691,7 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
                 z: 10
 
-                // ── Live Screen Recording Pill (Horizontal) ──────────────
+                // Live screen recording pill (horizontal)
                 Rectangle {
                     visible: ScreenRecService.isRecording
                     implicitHeight: Theme.barHeight - 8
@@ -581,7 +706,6 @@ PanelWindow {
                         anchors.centerIn: parent
                         spacing: 6
 
-                        // Pulsing red dot
                         Rectangle {
                             width: 8
                             height: 8
@@ -744,7 +868,7 @@ PanelWindow {
                 spacing: Theme.widgetSpacing
                 z: 10
 
-                // ── Live Screen Recording Pill (Vertical) ─────────────────
+                // Live screen recording pill (vertical)
                 Rectangle {
                     visible: ScreenRecService.isRecording
                     implicitWidth: Theme.barHeight - 8

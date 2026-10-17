@@ -66,8 +66,8 @@ Scope {
 
     readonly property string rawBarPos: Settings?.barPosition ?? "up"
     readonly property string barPos: (rawBarPos === "up" || rawBarPos === "top") ? "top" : ((rawBarPos === "down" || rawBarPos === "bottom") ? "bottom" : rawBarPos)
-    readonly property bool isBarFloating: Settings?.barFloating ?? false
-    readonly property bool isIslandMode: Settings?.barIslandMode ?? false
+    readonly property bool isBarFloating: (Settings?.barFloating ?? false) || (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating")
+    readonly property bool isIslandMode: (Theme?.isBento ?? false) || (Settings?.barStyle === "bento-floating") || (isBarFloating && (Settings?.barIslandMode ?? true))
     readonly property bool framingEnabled: Settings?.screenFrameDocked ?? true
     readonly property bool isDocked: framingEnabled && !isBarFloating
     readonly property int cornerRadius: Settings?.screenCornerRadius ?? 16
@@ -209,12 +209,11 @@ Scope {
         }
     }
 
-    PanelWindow {
+PanelWindow {
         id: horizontalBarSideWindow
         screen: root.modelData
         color: "transparent"
-
-        visible: root.framingEnabled && !root.isFullscreen && root.isHorizontalBar && (root.isBarFloating || root.isIslandMode || root.borderWidth > 0 || root.mode === "all" || root.mode === "top") && (
+        visible: root.framingEnabled && !root.isFullscreen && root.isHorizontalBar && (root.isBarFloating || root.isIslandMode) && (
             (root.barPos === "top" ? ((root.borderWidth > 0 && root.borderTopAllowed)    || ((root.showTopLeft    || root.showTopRight)    && root.cornerRadius > 0))
                                    : ((root.borderWidth > 0 && root.borderBottomAllowed) || ((root.showBottomLeft || root.showBottomRight) && root.cornerRadius > 0)))
         )
@@ -385,12 +384,13 @@ Scope {
         }
     }
 
-    PanelWindow {
+      PanelWindow {
         id: verticalBarSideWindow
         screen: root.modelData
         color: "transparent"
 
-        visible: root.framingEnabled && !root.isFullscreen && root.isVerticalBar && (root.isBarFloating || root.isIslandMode || root.borderWidth > 0 || root.mode === "all" || root.mode === "left" || root.mode === "right") && (
+        // Only show bar-side screen corners when the bar is floating or island mode
+        visible: root.framingEnabled && !root.isFullscreen && root.isVerticalBar && (root.isBarFloating || root.isIslandMode) && (
             (root.barPos === "left" ? ((root.borderWidth > 0 && root.borderLeftAllowed)  || ((root.showTopLeft  || root.showBottomLeft)  && root.cornerRadius > 0))
                                     : ((root.borderWidth > 0 && root.borderRightAllowed) || ((root.showTopRight || root.showBottomRight) && root.cornerRadius > 0)))
         )

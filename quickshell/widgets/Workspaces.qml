@@ -5,12 +5,17 @@ import Quickshell.Hyprland
 
 Rectangle {
     id: wsContainer
+
+    // extra padding on the ends of the pill so the outer dots don't hug the curved caps
+    readonly property int trackPadding: Math.max(Theme.workspaceWidgetPadding * 2, 10)
+
     implicitWidth: Theme.isVertical
         ? Theme.barHeight - (Theme.workspaceWidgetPadding * 2)
-        : (wsRow.implicitWidth + Theme.workspaceWidgetPadding * 2)
+        : (wsRow.implicitWidth + trackPadding * 2)
     implicitHeight: Theme.isVertical
-        ? (wsCol.implicitHeight + Theme.workspaceWidgetPadding * 2)
+        ? (wsCol.implicitHeight + trackPadding * 2)
         : Theme.barHeight - (Theme.workspaceWidgetPadding * 2)
+
     radius: Theme.radiusPill
     color: popup.open ? Theme.primary_overlay : (wsMouse.containsMouse ? Theme.pillHover : Theme.pillBg)
     border.color: Theme.pillBorder
@@ -20,23 +25,48 @@ Rectangle {
     Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
     property var workspaceList: []
+    property var workspaceMap: ({})
+    property int scratchpadWindows: 0
 
-    // Workspace dispatcher targeting Hyprland (supports Lua configuration & runtime dispatchers)
+    // routes through Settings for Lua/custom config hooks, falls back to native Hyprland IPC
     function dispatchWs(target) {
-        Settings.dispatchWorkspace(target);
+        if (Settings?.dispatchWorkspace) {
+            Settings.dispatchWorkspace(target);
+        } else {
+            Hyprland.dispatch("workspace " + target);
+        }
     }
 
     function toggleSpecialWs(name) {
-        Settings.dispatchToggleSpecial(name);
+        if (Settings?.dispatchToggleSpecial) {
+            Settings.dispatchToggleSpecial(name);
+        } else {
+            Hyprland.dispatch("togglespecialworkspace " + name);
+        }
     }
 
-    // filter out negative ids so scratchpads don't pollute bar dots
+    // filter out negative ids so scratchpads don't pollute bar dots,
+    // and build a lookup map so popup cards don't loop over Hyprland values on every render
     function updateWorkspaceList() {
         let vals = Hyprland.workspaces?.values || [];
-        workspaceList = vals
-            .filter(w => w.id > 0)
-            .slice()
-            .sort((a, b) => a.id - b.id);
+        let list = [];
+        let map = {};
+        let scratchCount = 0;
+
+        for (let i = 0; i < vals.length; i++) {
+            let w = vals[i];
+            if (w.id > 0) {
+                list.push(w);
+                map[w.id] = w;
+            } else if (w.name === "special:scratchpad" || w.name === "scratchpad") {
+                scratchCount = w.windows ?? 0;
+            }
+        }
+
+        list.sort((a, b) => a.id - b.id);
+        workspaceList = list;
+        workspaceMap = map;
+        scratchpadWindows = scratchCount;
     }
 
     Component.onCompleted: updateWorkspaceList()
@@ -63,52 +93,60 @@ Rectangle {
         return 0;
     }
 
+    // track travel direction so fluid-trail stretches the right edge first
+    property int prevWsIdx: 0
+    property bool movingForward: true
+    onCurrentWsIdxChanged: {
+        movingForward = currentWsIdx >= prevWsIdx;
+        prevWsIdx = currentWsIdx;
+    }
+
     readonly property string wsMode: Settings.workspaceMode ?? "slide"
 
-    // vertical bar layout with configurable indicator modes
+    // vertical bar track
     Item {
         id: wsTrackV
         visible: Theme.isVertical
         anchors.centerIn: parent
-        implicitWidth: Theme.workspaceIndicatorSize + Theme.workspaceSpacing
+        implicitWidth: Math.max(Theme.workspaceDotSize, Theme.workspaceIndicatorSize)
         implicitHeight: wsCol.implicitHeight
 
         Rectangle {
             id: fluidIndicatorV
             visible: wsContainer.workspaceList.length > 0 && wsContainer.wsMode !== "discrete"
-            radius: Theme.radiusXs
+            width: Theme.workspaceDotSize
+            radius: width / 2
             color: Theme.primary
             z: 2
+            anchors.horizontalCenter: parent.horizontalCenter
 
             readonly property var activeItem: wsRepeaterV.itemAt(wsContainer.currentWsIdx)
             readonly property real targetY: activeItem ? activeItem.y : 0
             readonly property real targetH: activeItem ? activeItem.height : Theme.workspaceActiveSize
 
-            property real leadingY: targetY + targetH
-            property real trailingY: targetY
-            property int lastIdx: 0
+            property real topEdge: targetY
+            property real bottomEdge: targetY + targetH
 
-            onActiveItemChanged: {
-                if (!activeItem) return;
-                let newIdx = wsContainer.currentWsIdx;
-                lastIdx = newIdx;
-                leadingY = targetY + targetH;
-                trailingY = targetY;
-            }
-
-            y: wsContainer.wsMode === "fluid-trail" ? Math.min(leadingY, trailingY) : targetY
-            height: wsContainer.wsMode === "fluid-trail" ? Math.max(Theme.workspaceIndicatorMin, Math.abs(leadingY - trailingY)) : targetH
-            width: Theme.workspaceIndicatorSize
-            anchors.horizontalCenter: parent.horizontalCenter
-
-            Behavior on leadingY {
+            Behavior on topEdge {
                 enabled: wsContainer.wsMode === "fluid-trail"
-                NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing }
+                NumberAnimation {
+                    duration: wsContainer.movingForward ? Theme.workspaceTrailDuration : Theme.animFast
+                    easing.type: Theme.animEasing
+                }
             }
-            Behavior on trailingY {
+            Behavior on bottomEdge {
                 enabled: wsContainer.wsMode === "fluid-trail"
-                NumberAnimation { duration: Theme.workspaceTrailDuration; easing.type: Theme.animEasing }
+                NumberAnimation {
+                    duration: wsContainer.movingForward ? Theme.animFast : Theme.workspaceTrailDuration
+                    easing.type: Theme.animEasing
+                }
             }
+
+            y: wsContainer.wsMode === "fluid-trail" ? topEdge : targetY
+            height: wsContainer.wsMode === "fluid-trail"
+                ? Math.max(Theme.workspaceDotSize, bottomEdge - topEdge)
+                : targetH
+
             Behavior on y {
                 enabled: wsContainer.wsMode === "slide"
                 NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
@@ -132,22 +170,27 @@ Rectangle {
                 Item {
                     id: wsItemV
                     required property var modelData
-                    property bool isFocused: wsContainer.currentWsId === modelData.id
-                    property bool isActive: modelData.windows > 0
+                    readonly property bool isFocused: wsContainer.currentWsId === modelData.id
+                    readonly property bool isActive: modelData.windows > 0
 
                     width: Theme.workspaceDotSize
-                    height: (wsContainer.wsMode === "discrete" && isFocused) ? Theme.workspaceActiveSize : (isActive ? Theme.workspaceDotSize + 2 : Theme.workspaceDotSize)
-                    Behavior on height { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+                    height: isFocused ? Theme.workspaceActiveSize : Theme.workspaceDotSize
+
+                    Behavior on height {
+                        NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing }
+                    }
 
                     Rectangle {
                         anchors.centerIn: parent
                         width: Theme.workspaceDotSize
                         height: parent.height
-                        radius: Theme.radiusXs
+                        radius: width / 2
                         color: (wsContainer.wsMode === "discrete" && parent.isFocused)
                             ? Theme.primary
                             : (parent.isActive ? Theme.on_surface_variant : Theme.outline_variant)
-                        opacity: (wsContainer.wsMode !== "discrete" && parent.isFocused) ? 0 : 1
+                        opacity: (wsContainer.wsMode !== "discrete" && parent.isFocused)
+                            ? 0.25
+                            : (parent.isActive ? 0.9 : 0.4)
 
                         Behavior on color { ColorAnimation { duration: Theme.animFast } }
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast } }
@@ -157,50 +200,50 @@ Rectangle {
         }
     }
 
-    // horizontal bar layout with configurable indicator modes
+    // horizontal bar track
     Item {
         id: wsTrackH
         visible: !Theme.isVertical
         anchors.centerIn: parent
         implicitWidth: wsRow.implicitWidth
-        implicitHeight: 10
+        implicitHeight: Math.max(Theme.workspaceDotSize, Theme.workspaceIndicatorSize)
 
         Rectangle {
             id: fluidIndicatorH
             visible: wsContainer.workspaceList.length > 0 && wsContainer.wsMode !== "discrete"
-            radius: Theme.radiusXs
+            height: Theme.workspaceDotSize
+            radius: height / 2
             color: Theme.primary
             z: 2
+            anchors.verticalCenter: parent.verticalCenter
 
             readonly property var activeItem: wsRepeaterH.itemAt(wsContainer.currentWsIdx)
             readonly property real targetX: activeItem ? activeItem.x : 0
             readonly property real targetW: activeItem ? activeItem.width : Theme.workspaceActiveSize
 
-            property real leadingX: targetX + targetW
-            property real trailingX: targetX
-            property int lastIdx: 0
+            property real leftEdge: targetX
+            property real rightEdge: targetX + targetW
 
-            onActiveItemChanged: {
-                if (!activeItem) return;
-                let newIdx = wsContainer.currentWsIdx;
-                lastIdx = newIdx;
-                leadingX = targetX + targetW;
-                trailingX = targetX;
-            }
-
-            x: wsContainer.wsMode === "fluid-trail" ? Math.min(leadingX, trailingX) : targetX
-            width: wsContainer.wsMode === "fluid-trail" ? Math.max(Theme.workspaceIndicatorMin, Math.abs(leadingX - trailingX)) : targetW
-            height: Theme.workspaceIndicatorSize
-            anchors.verticalCenter: parent.verticalCenter
-
-            Behavior on leadingX {
+            Behavior on leftEdge {
                 enabled: wsContainer.wsMode === "fluid-trail"
-                NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing }
+                NumberAnimation {
+                    duration: wsContainer.movingForward ? Theme.workspaceTrailDuration : Theme.animFast
+                    easing.type: Theme.animEasing
+                }
             }
-            Behavior on trailingX {
+            Behavior on rightEdge {
                 enabled: wsContainer.wsMode === "fluid-trail"
-                NumberAnimation { duration: Theme.workspaceTrailDuration; easing.type: Theme.animEasing }
+                NumberAnimation {
+                    duration: wsContainer.movingForward ? Theme.animFast : Theme.workspaceTrailDuration
+                    easing.type: Theme.animEasing
+                }
             }
+
+            x: wsContainer.wsMode === "fluid-trail" ? leftEdge : targetX
+            width: wsContainer.wsMode === "fluid-trail"
+                ? Math.max(Theme.workspaceDotSize, rightEdge - leftEdge)
+                : targetW
+
             Behavior on x {
                 enabled: wsContainer.wsMode === "slide"
                 NumberAnimation { duration: Theme.animNormal; easing.type: Theme.animEasing }
@@ -224,22 +267,27 @@ Rectangle {
                 Item {
                     id: wsItemH
                     required property var modelData
-                    property bool isFocused: wsContainer.currentWsId === modelData.id
-                    property bool isActive: modelData.windows > 0
+                    readonly property bool isFocused: wsContainer.currentWsId === modelData.id
+                    readonly property bool isActive: modelData.windows > 0
 
-                    width: (wsContainer.wsMode === "discrete" && isFocused) ? Theme.workspaceActiveSize : (isActive ? Theme.workspaceDotSize + 2 : Theme.workspaceDotSize)
+                    width: isFocused ? Theme.workspaceActiveSize : Theme.workspaceDotSize
                     height: Theme.workspaceDotSize
-                    Behavior on width { NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing } }
+
+                    Behavior on width {
+                        NumberAnimation { duration: Theme.animFast; easing.type: Theme.animEasing }
+                    }
 
                     Rectangle {
                         anchors.centerIn: parent
                         width: parent.width
                         height: Theme.workspaceDotSize
-                        radius: Theme.radiusXs
+                        radius: height / 2
                         color: (wsContainer.wsMode === "discrete" && parent.isFocused)
                             ? Theme.primary
                             : (parent.isActive ? Theme.on_surface_variant : Theme.outline_variant)
-                        opacity: (wsContainer.wsMode !== "discrete" && parent.isFocused) ? 0 : 1
+                        opacity: (wsContainer.wsMode !== "discrete" && parent.isFocused)
+                            ? 0.25
+                            : (parent.isActive ? 0.9 : 0.4)
 
                         Behavior on color { ColorAnimation { duration: Theme.animFast } }
                         Behavior on opacity { NumberAnimation { duration: Theme.animFast } }
@@ -249,42 +297,30 @@ Rectangle {
         }
     }
 
-    Connections {
-        target: Settings
-        function onRequestWorkspacesToggle() {
-            if (Theme.isVertical) {
-                let pt = wsContainer.mapToItem(null, 0, 0);
-                popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
-            } else {
-                let pt = wsContainer.mapToItem(null, 0, 0);
-                popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
-            }
-            popup.pinned = !popup.open;
-            popup.open = !popup.open;
-        }
-        function onRequestWorkspacesOpen() {
-            if (Theme.isVertical) {
-                let pt = wsContainer.mapToItem(null, 0, 0);
-                popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
-            } else {
-                let pt = wsContainer.mapToItem(null, 0, 0);
-                popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
-            }
-            popup.pinned = true;
-            popup.open = true;
-        }
-        function onRequestWorkspacesClose() {
-            popup.pinned = false;
-            popup.open = false;
-        }
-    }
-
     function syncAnchor() {
         let pt = wsContainer.mapToItem(null, 0, 0);
         if (Theme.isVertical) {
             popup.targetRelativeY = pt ? (pt.y + (wsContainer.height / 2)) : 0;
         } else {
             popup.targetRelativeX = pt ? (pt.x + (wsContainer.width / 2)) : 0;
+        }
+    }
+
+    Connections {
+        target: Settings
+        function onRequestWorkspacesToggle() {
+            wsContainer.syncAnchor();
+            popup.pinned = !popup.open;
+            popup.open = !popup.open;
+        }
+        function onRequestWorkspacesOpen() {
+            wsContainer.syncAnchor();
+            popup.pinned = true;
+            popup.open = true;
+        }
+        function onRequestWorkspacesClose() {
+            popup.pinned = false;
+            popup.open = false;
         }
     }
 
@@ -339,14 +375,14 @@ Rectangle {
             )
         )
         cardHeight: Math.max(
-            Theme.popupMinHeight, 
+            Theme.popupMinHeight,
             Math.min(Theme.popupMaxHeight, popupContent.implicitHeight + (Theme.popupPadding * 2))
         )
         targetRelativeX: (wsContainer.mapToItem(null, 0, 0)?.x ?? 0) + (wsContainer.width / 2)
 
         content: ColumnLayout {
             id: popupContent
-            // Derives width deterministically from popup.cardWidth to prevent binding loops
+            // derives width deterministically from popup.cardWidth to prevent binding loops
             width: Math.max(0, popup.cardWidth - (Theme.popupPadding * 2))
             spacing: Theme.popupSpacing
 
@@ -371,8 +407,9 @@ Rectangle {
 
                     RowLayout {
                         spacing: Theme.widgetSpacing
+
                         Text {
-                            text: "active: workspace " + (Hyprland.focusedWorkspace?.id ?? 1)
+                            text: "active: workspace " + wsContainer.currentWsId
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontSizeXs
                             color: Theme.on_surface_variant
@@ -391,11 +428,19 @@ Rectangle {
                     }
                 }
 
-                Text {
-                    text: Theme.iconWorkspaces
-                    font.family: Theme.fontIcon
-                    font.pixelSize: Theme.fontSizeMd
-                    color: Theme.primary
+                Rectangle {
+                    Layout.preferredWidth: Theme.popupCardIconSize
+                    Layout.preferredHeight: Theme.popupCardIconSize
+                    radius: Theme.radiusSm
+                    color: Theme.primary_overlay
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Theme.iconWorkspaces
+                        font.family: Theme.fontIcon
+                        font.pixelSize: Theme.fontSizeMd
+                        color: Theme.primary
+                    }
                 }
             }
 
@@ -405,7 +450,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // workspace grid grows with its contents; once it reaches the Theme limit, scroll it.
+            // workspace grid grows with its contents; once it reaches the Theme limit, scroll it
             Flickable {
                 id: workspaceScroller
                 Layout.fillWidth: true
@@ -417,7 +462,6 @@ Rectangle {
                 flickableDirection: Flickable.VerticalFlick
                 interactive: contentHeight > height
 
-                // Replaced QtQuick.Layouts GridLayout with QtQuick Grid positioner
                 Grid {
                     id: workspaceGrid
                     width: workspaceScroller.width
@@ -437,22 +481,20 @@ Rectangle {
                             id: cardDelegate
                             required property int index
                             readonly property int wsId: index + 1
-                            readonly property var wsObj: {
-                                let list = Hyprland.workspaces?.values || [];
-                                for (let i = 0; i < list.length; i++) {
-                                    if (list[i].id === wsId) return list[i];
-                                }
-                                return null;
-                            }
-                            readonly property bool isCurrent: (Hyprland.focusedWorkspace?.id ?? 1) === wsId
-                            readonly property bool hasWindows: (wsObj?.windows ?? 0) > 0
+                            readonly property var wsObj: wsContainer.workspaceMap[wsId] ?? null
+                            readonly property bool isCurrent: wsContainer.currentWsId === wsId
                             readonly property int winCount: wsObj?.windows ?? 0
+                            readonly property bool hasWindows: winCount > 0
 
                             width: workspaceGrid.cardWidth
                             height: Theme.popupCardHeight
                             radius: Theme.radiusMd
-                            color: isCurrent ? Theme.primary_overlay : (cardMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
-                            border.color: isCurrent ? Theme.primary : "transparent"
+                            color: isCurrent
+                                ? Theme.primary_overlay
+                                : (cardMouse.containsMouse ? Theme.surface_container_highest : Theme.surface_container_high)
+                            border.color: isCurrent
+                                ? Theme.primary
+                                : (cardMouse.containsMouse ? Theme.outline_variant : "transparent")
                             border.width: 1
 
                             Behavior on color { ColorAnimation { duration: Theme.animFast } }
@@ -467,7 +509,11 @@ Rectangle {
                                     Layout.preferredWidth: Theme.popupCardIconSize
                                     Layout.preferredHeight: Theme.popupCardIconSize
                                     radius: Theme.radiusSm
-                                    color: isCurrent ? Theme.primary : (hasWindows ? Theme.surface_variant : Theme.surface_container)
+                                    color: isCurrent
+                                        ? Theme.primary
+                                        : (hasWindows ? Theme.surface_variant : Theme.surface_container)
+
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                                     Text {
                                         text: wsId
@@ -494,7 +540,9 @@ Rectangle {
                                     }
 
                                     Text {
-                                        text: isCurrent ? "currently active" : (hasWindows ? (winCount + (winCount === 1 ? " window" : " windows")) : "empty")
+                                        text: isCurrent
+                                            ? "currently active"
+                                            : (hasWindows ? (winCount + (winCount === 1 ? " window" : " windows")) : "empty")
                                         font.family: Theme.fontFamily
                                         font.pixelSize: Theme.fontSizeXs
                                         color: isCurrent ? Theme.primary : Theme.on_surface_variant
@@ -507,7 +555,13 @@ Rectangle {
                                     Layout.preferredWidth: Theme.popupCardIconSize - 4
                                     Layout.preferredHeight: Theme.popupCardIconSize - 6
                                     radius: Theme.radiusSm
-                                    color: isCurrent ? Theme.primary : "transparent"
+                                    color: isCurrent
+                                        ? Theme.primary
+                                        : (cardMouse.containsMouse ? Theme.surface_variant : "transparent")
+                                    opacity: (isCurrent || cardMouse.containsMouse) ? 1.0 : 0.45
+
+                                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                                    Behavior on opacity { NumberAnimation { duration: Theme.animFast } }
 
                                     Text {
                                         text: isCurrent ? Theme.iconCheck : "↵"
@@ -542,7 +596,7 @@ Rectangle {
                 color: Theme.widgetBorder
             }
 
-            // footer action: clean full-width scratchpad button
+            // footer action: full-width scratchpad button with live window count
             Rectangle {
                 Layout.preferredHeight: Theme.popupActionHeight
                 Layout.fillWidth: true
@@ -552,6 +606,7 @@ Rectangle {
                 border.width: 1
 
                 Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                Behavior on border.color { ColorAnimation { duration: Theme.animFast } }
 
                 RowLayout {
                     anchors.fill: parent
@@ -573,6 +628,15 @@ Rectangle {
                         font.pixelSize: Theme.fontSizeXs
                         font.weight: Theme.fontWeightMedium
                         color: Theme.on_surface
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        visible: wsContainer.scratchpadWindows > 0
+                        text: wsContainer.scratchpadWindows + (wsContainer.scratchpadWindows === 1 ? " window" : " windows")
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.primary
                     }
                 }
 
