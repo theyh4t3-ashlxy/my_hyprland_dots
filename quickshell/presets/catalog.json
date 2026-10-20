@@ -1,0 +1,145 @@
+{
+  "$schema": "quickshell-block-catalog-v1",
+  "blocks": {
+    "workspaces": {
+      "type": "widget",
+      "category": "navigation",
+      "name": "workspaces",
+      "icon": "󰮯",
+      "desc": "hyprland workspace dots and active trail"
+    },
+    "layout": {
+      "type": "widget",
+      "category": "navigation",
+      "name": "layout switcher",
+      "icon": "󰕰",
+      "desc": "active hyprland window layout indicator"
+    },
+    "windowTitle": {
+      "type": "widget",
+      "category": "status",
+      "name": "active window",
+      "icon": "󰖲",
+      "desc": "focused window title badge"
+    },
+    "clock": {
+      "type": "widget",
+      "category": "system",
+      "name": "clock & date",
+      "icon": "󰥔",
+      "desc": "time, date & popup calendar"
+    },
+    "dynamicNotch": {
+      "type": "widget",
+      "category": "island",
+      "name": "dynamic notch",
+      "icon": "󰂚",
+      "desc": "reactive island carousel (clock, calendar & timer)"
+    },
+    "quickSettings": {
+      "type": "widget",
+      "category": "controls",
+      "name": "quick settings",
+      "icon": "󰒓",
+      "desc": "system toggles & appearance sliders"
+    },
+    "battery": {
+      "type": "widget",
+      "category": "sensors",
+      "name": "battery & power",
+      "icon": "󰁹",
+      "desc": "upower level & charging monitor"
+    },
+    "network": {
+      "type": "widget",
+      "category": "sensors",
+      "name": "network status",
+      "icon": "󰤨",
+      "desc": "wifi & ethernet connection monitor"
+    },
+    "bluetooth": {
+      "type": "widget",
+      "category": "sensors",
+      "name": "bluetooth",
+      "icon": "󰂯",
+      "desc": "device connections & pairing scan"
+    },
+    "volume": {
+      "type": "widget",
+      "category": "audio",
+      "name": "volume & sink",
+      "icon": "󰕾",
+      "desc": "pipewire audio level controls"
+    },
+    "media": {
+      "type": "widget",
+      "category": "audio",
+      "name": "media player",
+      "icon": "󰝚",
+      "desc": "mpris playback & track info"
+    },
+    "clipboard": {
+      "type": "widget",
+      "category": "tools",
+      "name": "clipboard manager",
+      "icon": "󰅌",
+      "desc": "cliphist history & search"
+    },
+    "quickNotes": {
+      "type": "widget",
+      "category": "tools",
+      "name": "quick notes",
+      "icon": "󰏫",
+      "desc": "floating scratchpad notes"
+    },
+    "idleInhibitor": {
+      "type": "widget",
+      "category": "system",
+      "name": "idle inhibitor",
+      "icon": "󰅶",
+      "desc": "stay-awake caffeine toggle"
+    },
+    "notifications": {
+      "type": "widget",
+      "category": "system",
+      "name": "notifications",
+      "icon": "󰂚",
+      "desc": "alert center & toast log"
+    },
+    "systemTray": {
+      "type": "widget",
+      "category": "system",
+      "name": "system tray",
+      "icon": "󰍜",
+      "desc": "statusnotifier tray icons"
+    },
+    "powerMenu": {
+      "type": "widget",
+      "category": "system",
+      "name": "power menu",
+      "icon": "󰐥",
+      "desc": "lock, logout & power off modal"
+    },
+    "launcher": {
+      "type": "widget",
+      "category": "navigation",
+      "name": "app launcher",
+      "icon": "󰀻",
+      "desc": "application search grid"
+    },
+    "wallpaper": {
+      "type": "widget",
+      "category": "tools",
+      "name": "wallpaper browser",
+      "icon": "󰸉",
+      "desc": "awww & mpvpaper selector"
+    },
+    "screenCapture": {
+      "type": "widget",
+      "category": "tools",
+      "name": "screen capture",
+      "icon": "󰄀",
+      "desc": "screenshot & screen recording tools"
+    }
+  }
+}

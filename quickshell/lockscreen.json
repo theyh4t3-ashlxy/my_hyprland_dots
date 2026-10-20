@@ -1,0 +1,12 @@
+{
+  "syncClockGlobal": true,
+  "clock24h": false,
+  "showSeconds": false,
+  "clockScale": 1,
+  "quoteMode": "hyprland",
+  "scrimDim": 0.75,
+  "showMedia": true,
+  "showUser": false,
+  "wallpaperSync": true,
+  "customWallpaper": ""
+}

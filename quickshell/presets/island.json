@@ -1,0 +1,35 @@
+{
+  "$schema": "quickshell-preset-v1",
+  "name": "island",
+  "version": 1,
+  "bar": {
+    "position": "top",
+    "floating": true,
+    "margin": 10,
+    "height": 36,
+    "radius": 16,
+    "style": "regular",
+    "paddingScale": "comfortable"
+  },
+  "zones": {
+    "left": [
+      "launcher",
+      "workspaces"
+    ],
+    "center": [
+      "dynamicNotch"
+    ],
+    "right": [
+      "quickSettings",
+      "battery",
+      "powerMenu"
+    ]
+  },
+  "styling": {
+    "cornerStyle": "continuous-bezier",
+    "notificationCornerStyle": "concave",
+    "scoopRadius": 22,
+    "widgetRadius": 8,
+    "popupRadius": 10
+  }
+}

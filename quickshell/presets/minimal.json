@@ -1,0 +1,32 @@
+{
+  "$schema": "quickshell-preset-v1",
+  "name": "minimal",
+  "version": 1,
+  "bar": {
+    "position": "top",
+    "floating": true,
+    "margin": 6,
+    "height": 28,
+    "radius": 10,
+    "style": "glass",
+    "paddingScale": "compact"
+  },
+  "zones": {
+    "left": [
+      "workspaces"
+    ],
+    "center": [
+      "clock"
+    ],
+    "right": [
+      "powerMenu"
+    ]
+  },
+  "styling": {
+    "cornerStyle": "continuous-bezier",
+    "notificationCornerStyle": "concave",
+    "scoopRadius": 18,
+    "widgetRadius": 6,
+    "popupRadius": 8
+  }
+}
